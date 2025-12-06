@@ -36,7 +36,6 @@ We pitted the RSE Symbolic Kernel against a standard V8 JavaScript recursion eng
 ### Quick Start
 ```bash
 # 1. Clone the repository
-# 1. Clone the repository
 git clone https://github.com/Betti-Labs/RSE.git
 
 # 2. Install dependencies

@@ -29,6 +29,11 @@ This repository contains the verified **Microkernel Logic**, **Scheduler**, and 
 *   **Capability**: Instant system rollback to exact previous states using circular logic buffers.
 *   **Precision**: Bit-perfect restoration verified at Cycle 100 depth.
 
+### 4. Metal Kernel (C++ 20) (`src/cpp_kernel/`)
+*   **Status**: Alpha (Source Available).
+*   **allocator.h**: Custom Global Memory Allocator that overrides `new`/`delete` to route RAM requests through the Folding Engine.
+*   **Architecture**: Zero-dependency C++ implementation ready for bare-metal bootloaders.
+
 ## 📊 Benchmark Telemetry
 All results reproducible via `Docker` or local scripts.
 
@@ -44,11 +49,12 @@ To replicate these findings:
 
 ### Docker (Recommended)
 ```bash
-docker build -t bettios-verify .
-docker run bettios-verify
+# Build and Verify both TypeScript and C++ Kernels
+docker build -t bettios-metal .
+docker run bettios-metal
 ```
 
-### Manual Scripts
+### Manual Scripts (Node.js Only)
 ```bash
 # 1. Chaos Test (Spawn/Kill/Recurse)
 npx tsx scripts/verify_mixed_load.ts

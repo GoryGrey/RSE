@@ -57,8 +57,8 @@ export class RSEKernel {
         if (this.history.length >= this.maxHistory) {
             this.history.shift(); // circular buffer
         }
-        // Deep copy agents for snapshot (naive but works for demo)
-        const agents = Array.from(this.space.grid.values()).map(a => ({ ...a }));
+        // Deep copy agents for snapshot
+        const agents = Array.from(this.space.grid.values()).flat().map(a => ({ ...a }));
         this.history.push({
             cycle: this.cycle,
             agents
@@ -67,15 +67,17 @@ export class RSEKernel {
 
     // "Infinite Zoom" - Lazy Load Inner Universe
     getInnerUniverse(agentId: string): RSEKernel | undefined {
-        for (const agent of this.space.grid.values()) {
-            if (agent.id === agentId) {
-                if (!agent.innerKernel) {
-                    console.log(`[RSE] Generating inner universe for agent ${agent.symbol}...`);
-                    const k = new RSEKernel(this);
-                    k.init();
-                    agent.innerKernel = k;
+        for (const agents of this.space.grid.values()) {
+            for (const agent of agents) {
+                if (agent.id === agentId) {
+                    if (!agent.innerKernel) {
+                        console.log(`[RSE] Generating inner universe for agent ${agent.symbol}...`);
+                        const k = new RSEKernel(this);
+                        k.init();
+                        agent.innerKernel = k;
+                    }
+                    return agent.innerKernel;
                 }
-                return agent.innerKernel;
             }
         }
         return undefined;
@@ -84,8 +86,11 @@ export class RSEKernel {
     // Time Travel
     seek(cycleTarget: number) {
         // Find closest snapshot
-        // Ideally we interpolate, but snapping is fine
-        const snap = this.history.find(s => Math.abs(s.cycle - cycleTarget) < 2);
+        const snap = this.history.find(s => s.cycle === cycleTarget) ||
+            this.history.reduce((prev, curr) =>
+                Math.abs(curr.cycle - cycleTarget) < Math.abs(prev.cycle - cycleTarget) ? curr : prev
+            );
+
         if (snap) {
             this.cycle = snap.cycle;
             this.space.grid.clear();
@@ -96,7 +101,7 @@ export class RSEKernel {
     // The "Infinite on Finite" Tick
     step() {
         this.cycle++;
-        const agents = Array.from(this.space.grid.values());
+        const agents = Array.from(this.space.grid.values()).flat();
 
         agents.forEach(agent => {
             this.executeAgent(agent);

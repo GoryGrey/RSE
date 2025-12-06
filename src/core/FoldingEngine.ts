@@ -52,7 +52,7 @@ export class FoldingEngine {
         if (!this.active) return false;
 
         let totalDistance = 0;
-        const agents = Array.from(this.space.grid.values());
+        const agents = Array.from(this.space.grid.values()).flat();
 
         // Simple gravity: Move towards Center
         for (const agent of agents) {
@@ -62,6 +62,22 @@ export class FoldingEngine {
 
             // Move 5% closer
             this.space.moveAgent(agent, dx * 0.05, dy * 0.05, dz * 0.05);
+
+            // Fusion Logic (Schwarzschild Radius)
+            // If distance < 1, merge into singularity (delete agent)
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+            // Note: In Multi-Agent mode, we need to check if there are OTHER agents in the cell or nearby
+            // For now, we just delete if it hits the center (distance < 2)
+            if (dist < 2.0 && agents.length > 1) {
+                const key = this.space.key(agent.x, agent.y, agent.z);
+                const cell = this.space.grid.get(key);
+                if (cell) {
+                    const idx = cell.findIndex(a => a.id === agent.id);
+                    if (idx !== -1) cell.splice(idx, 1);
+                    if (cell.length === 0) this.space.grid.delete(key);
+                }
+            }
 
             totalDistance += Math.abs(dx) + Math.abs(dy) + Math.abs(dz);
         }

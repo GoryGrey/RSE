@@ -4,7 +4,7 @@ export class ToroidalSpace {
     width: number;
     height: number;
     depth: number;
-    grid: Map<string, SymbolicAgent>; // Sparse storage key "x,y,z"
+    grid: Map<string, SymbolicAgent[]>; // Sparse storage key "x,y,z"
 
     constructor(width = 16, height = 16, depth = 16) {
         this.width = width;
@@ -25,23 +25,32 @@ export class ToroidalSpace {
 
     addAgent(agent: SymbolicAgent): void {
         const k = this.key(agent.x, agent.y, agent.z);
-        this.grid.set(k, agent);
+        if (!this.grid.has(k)) {
+            this.grid.set(k, []);
+        }
+        this.grid.get(k)!.push(agent);
     }
 
-    getAgentAt(x: number, y: number, z: number): SymbolicAgent | undefined {
-        return this.grid.get(this.key(x, y, z));
+    getAgentsAt(x: number, y: number, z: number): SymbolicAgent[] {
+        return this.grid.get(this.key(x, y, z)) || [];
     }
 
     moveAgent(agent: SymbolicAgent, dx: number, dy: number, dz: number): void {
         const oldKey = this.key(agent.x, agent.y, agent.z);
-        this.grid.delete(oldKey);
+        const cell = this.grid.get(oldKey);
+        if (cell) {
+            const idx = cell.findIndex(a => a.id === agent.id);
+            if (idx !== -1) cell.splice(idx, 1);
+            if (cell.length === 0) this.grid.delete(oldKey);
+        }
 
         agent.x = this.wrap(agent.x + dx, this.width);
         agent.y = this.wrap(agent.y + dy, this.height);
         agent.z = this.wrap(agent.z + dz, this.depth);
 
         const newKey = this.key(agent.x, agent.y, agent.z);
-        this.grid.set(newKey, agent); // Note: Collisions currently overwrite (simplified physics)
+        if (!this.grid.has(newKey)) this.grid.set(newKey, []);
+        this.grid.get(newKey)!.push(agent);
     }
 
     // Von Neumann Neighborhood (6 neighbors in 3D)
@@ -54,7 +63,7 @@ export class ToroidalSpace {
         ];
 
         for (const [dx, dy, dz] of dirs) {
-            neighbors.push(this.getAgentAt(x + dx, y + dy, z + dz));
+            neighbors.push(...this.getAgentsAt(x + dx, y + dy, z + dz));
         }
         return neighbors;
     }

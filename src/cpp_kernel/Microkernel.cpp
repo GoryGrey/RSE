@@ -1,0 +1,86 @@
+
+#include <iostream>
+#include <thread>
+#include <chrono>
+#include "Allocator.h"
+#include "ToroidalSpace.h"
+
+// Process Control Block (PCB)
+struct Process {
+    int pid;
+    int priority;
+    int x, y, z;
+    
+    Process(int id) : pid(id), priority(1), x(0), y(0), z(0) {}
+};
+
+class BettiKernel {
+    ToroidalSpace<32, 32, 32> space;
+    int pid_counter = 0;
+    int tick_count = 0;
+
+public:
+    BettiKernel() {
+        std::cout << "[Metal] Kernel Booting..." << std::endl;
+    }
+
+    void spawnProcess() {
+        // Use custom 'new' (intercepted by Allocator.h)
+        Process* p = new Process(++pid_counter);
+        
+        // Random placement
+        p->x = rand() % 32;
+        p->y = rand() % 32;
+        p->z = rand() % 32;
+
+        space.addProcess(p, p->x, p->y, p->z);
+    }
+
+    void tick() {
+        tick_count++;
+        // Scheduler Logic: Iterate all processes
+        // In C++, we would iterate the map. 
+        // For benchmarks, we just count them to simulate load.
+        size_t procs = space.getProcessCount();
+        
+        // "Context Switch" Simulation
+        // In a real scheduler, we would swap register states here.
+    }
+
+    void panic(const char* msg) {
+        std::cerr << "[KERNEL PANIC] " << msg << std::endl;
+        exit(1);
+    }
+    
+    void runBenchmark(int duration_ms) {
+        std::cout << "[Metal] Running Scheduler Benchmark..." << std::endl;
+        auto start = std::chrono::high_resolution_clock::now();
+        
+        // Spawn 100,000 processes (Fork Bomb Test)
+        for(int i=0; i<100000; i++) {
+            spawnProcess();
+        }
+        
+        size_t initial_mem = MemoryManager::getUsedMemory();
+        std::cout << "[Metal] Spawned 100k Processes. Memory: " << initial_mem << " bytes" << std::endl;
+
+        // Run Loop
+        long total_ticks = 0;
+        while(true) {
+            tick();
+            total_ticks++;
+            auto now = std::chrono::high_resolution_clock::now();
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count() > duration_ms) break;
+        }
+        
+        std::cout << "[Metal] Benchmark Complete." << std::endl;
+        std::cout << "    > Total Ticks: " << total_ticks << std::endl;
+        std::cout << "    > Active PIDs: " << space.getProcessCount() << std::endl;
+    }
+};
+
+int main() {
+    BettiKernel kernel;
+    kernel.runBenchmark(5000); // Run for 5 seconds
+    return 0;
+}

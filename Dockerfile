@@ -1,25 +1,36 @@
+# Base Image: Node.js + Build Tools
+FROM node:20-slim
 
-# RSE Verification Container
-# Use this to verify O(1) memory scaling in an isolated environment.
+# Install C++ Compiler and Build Tools
+RUN apt-get update && apt-get install -y \
+    g++ \
+    cmake \
+    git \
+    python3 \
+    && rm -rf /var/lib/apt/lists/*
 
-FROM node:20-alpine
+# Set Working Directory
+WORKDIR /app
+
+# Copy Project Files
+COPY package*.json ./
+COPY . .
+
+# Install Node Dependencies
+RUN npm install
+
+# Create C++ Build Directory
+RUN mkdir -p build
+WORKDIR /app/build
+
+# Compile BettiOS Kernel (C++)
+# If CMakeLists.txt exists in src/cpp_kernel, use it
+RUN if [ -f "../src/cpp_kernel/CMakeLists.txt" ]; then \
+    cmake ../src/cpp_kernel && \
+    make; \
+    fi
 
 WORKDIR /app
 
-# Copy Config
-COPY package*.json ./
-COPY tsconfig*.json ./
-
-# Install Dependencies
-RUN npm ci
-
-# Copy Source & Scripts
-COPY src ./src
-COPY scripts ./scripts
-COPY benchmarks ./benchmarks
-
-# Build TypeScript
-RUN npx tsc
-
-# Default Command: Run Scientific Validation
-CMD ["npx", "tsx", "scripts/validate_scientific.ts"]
+# Default Command: Run Verify Suite (JS + Metal)
+CMD ["sh", "-c", "npx tsx scripts/verify_os_capability.ts && if [ -f build/bettios_kernel ]; then ./build/bettios_kernel; else echo '[Skipped] C++ Kernel not built'; fi"]

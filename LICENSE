@@ -1,0 +1,25 @@
+PROPRIETARY SOURCE-AVAILABLE LICENSE
+
+Copyright (c) 2025 Gregory Betti. All Rights Reserved.
+
+MPORTANT: PLEASE READ THIS LICENSE CAREFULLY.
+
+1. PATENT NOTICE
+   The software architecture, algorithms, and methodologies contained herein (specifically "Recursive Symbolic Execution", "Toroidal Symbolic Topology", and "Entropy-Aware Symbolic Folding") are subject to a **Provisional Patent Application** filed by the Author.
+
+2. GRANT OF LICENSE (EVALUATION & VERIFICATION)
+   Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to view, compile, and execute the Software for the sole purposes of:
+   (a) Academic review and verification of the architectural claims.
+   (b) Personal, non-commercial evaluation.
+   (c) Contributing benchmarks or bug fixes to the original repository.
+
+3. RESTRICTIONS
+   You may NOT:
+   (a) Use the Software for any commercial purpose.
+   (b) Distribute, sublicense, or sell copies of the Software.
+   (c) Create derivative works based on the Patent Pending mechanisms for commercial distribution.
+
+4. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
+
+For Commercial Licensing inquiries or collaboration, please contact the Author.

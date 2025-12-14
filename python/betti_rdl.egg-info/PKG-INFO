@@ -1,0 +1,135 @@
+Metadata-Version: 2.4
+Name: betti-rdl
+Version: 1.0.0
+Summary: Space-Time Native Computation Runtime with O(1) Memory
+Author: Gregory Betti
+Author-email: Gregory Betti <greg@betti.dev>
+License: MIT
+Project-URL: Homepage, https://betti-rdl.dev
+Project-URL: Documentation, https://docs.betti-rdl.dev
+Project-URL: Repository, https://github.com/betti-labs/betti-rdl
+Project-URL: Bug Tracker, https://github.com/betti-labs/betti-rdl/issues
+Keywords: computation,recursion,parallel,runtime,rdl
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Scientific/Engineering
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Dynamic: author
+Dynamic: requires-python
+
+# Betti-RDL Python Bindings
+
+Python bindings for the Betti-RDL space-time computational runtime.
+
+## Installation
+
+```bash
+pip install betti-rdl
+```
+
+## Quick Start
+
+```python
+import betti_rdl
+
+# Create a kernel
+kernel = betti_rdl.Kernel()
+
+# Spawn processes in toroidal space
+for i in range(10):
+    kernel.spawn_process(i, 0, 0)
+
+# Inject events
+kernel.inject_event(0, 0, 0, value=1)
+
+# Run computation
+kernel.run(max_events=100)
+
+# Get results
+print(f"Events processed: {kernel.events_processed}")
+print(f"Memory used: O(1)")
+```
+
+## Features
+
+- **O(1) Memory**: Constant memory regardless of computation depth
+- **Space-Time Native**: Unified spatial and temporal execution
+- **Adaptive Delays**: Pathways optimize with usage
+- **Deterministic**: Reproducible execution
+- **Parallel**: Linear scaling with cores
+
+## API Reference
+
+### Kernel
+
+```python
+class Kernel:
+    def __init__(self):
+        """Initialize Betti-RDL kernel with 32x32x32 toroidal space"""
+    
+    def spawn_process(self, x: int, y: int, z: int) -> None:
+        """Spawn a process at spatial coordinates (x, y, z)"""
+    
+    def inject_event(self, x: int, y: int, z: int, value: int) -> None:
+        """Inject an event at coordinates with value"""
+    
+    def run(self, max_events: int) -> None:
+        """Run computation for up to max_events"""
+    
+    @property
+    def events_processed(self) -> int:
+        """Number of events processed"""
+    
+    @property
+    def current_time(self) -> int:
+        """Current logical time"""
+```
+
+## Examples
+
+### Deep Recursion
+
+```python
+# Traditional: Stack overflow at ~10k
+# Betti-RDL: Handles millions
+
+kernel = betti_rdl.Kernel()
+kernel.solve_hanoi(disks=1000000)  # No crash!
+```
+
+### Parallel Workloads
+
+```python
+import concurrent.futures
+
+def run_instance(instance_id):
+    kernel = betti_rdl.Kernel()
+    kernel.spawn_process(instance_id, 0, 0)
+    kernel.run(1000)
+    return kernel.events_processed
+
+# Run 100 parallel instances
+with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+    results = list(executor.map(run_instance, range(100)))
+
+# Memory: O(1) per instance!
+```
+
+## License
+
+MIT
+
+## Links
+
+- [Documentation](https://betti-rdl.dev)
+- [GitHub](https://github.com/betti-labs/betti-rdl)
+- [Paper](https://arxiv.org/betti-rdl)

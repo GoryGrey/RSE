@@ -1,0 +1,22 @@
+[package]
+name = "betti-rdl"
+version = "1.0.0"
+edition = "2021"
+authors = ["Gregory Betti <greg@betti.dev>"]
+description = "Space-Time Native Computation Runtime with O(1) Memory"
+license = "MIT"
+repository = "https://github.com/betti-labs/betti-rdl"
+homepage = "https://betti-rdl.dev"
+keywords = ["computation", "recursion", "parallel", "runtime"]
+categories = ["algorithms", "concurrency"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[example]]
+name = "basic"
+path = "examples/basic.rs"
+
+[dependencies]
+
+[build-dependencies]

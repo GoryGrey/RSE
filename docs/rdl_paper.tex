@@ -1,0 +1,362 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Rethinking the CPU/RAM Divide: Toward Time-Native, Event-Driven Computation}
+
+\author{\IEEEauthorblockN{Gregory Betti}
+\IEEEauthorblockA{\textit{Betti Labs} \\
+August 2025}
+}
+
+\maketitle
+
+\begin{abstract}
+For nearly eighty years, computing has been dominated by the von Neumann architecture, in which a central processing unit (CPU) executes instructions over data stored in separate random-access memory (RAM). This separation, while practical in its historical context, has introduced enduring bottlenecks. The so-called "von Neumann bottleneck" limits throughput due to restricted bandwidth between processor and memory, while reliance on a rigid global clock constrains scalability and energy efficiency. Memory is treated as a passive warehouse rather than an active computational medium.
+
+This paper argues that the CPU/RAM divide represents a historical wrong turn. Early brain-inspired, event-driven models of computation were abandoned, not because they were unworkable, but because they were inconvenient within the technological and economic constraints of the mid-twentieth century. With modern tools and architectures, those abandoned approaches are newly viable.
+
+As a case study, I present the Recursive Delay Lattice (RDL), a model I developed in 2025 that treats time itself as the state medium. In RDL, delays across a directed lattice replace conventional memory, and computation unfolds as timestamped events traverse deterministic paths. This approach eliminates the need for CPU/RAM separation, unifies computation and memory, and introduces reproducibility, parallelism, and cryptographic verifiability without consensus. The RDL framework aligns more closely with how brains and physical systems process information, pointing toward a new paradigm for computing in the twenty-first century.
+\end{abstract}
+
+\begin{IEEEkeywords}
+distributed computing, event-driven systems, neuromorphic computing, von Neumann bottleneck, time-native computation
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+The history of digital computing is often told as a tale of inevitability, as if the von Neumann model were the only path available. In reality, the dominance of the CPU/RAM architecture was contingent. In 1945, John von Neumann's \textit{First Draft of a Report on the EDVAC} established the design of a stored-program computer, with a central unit executing instructions stored in a separate memory \cite{vonneumann1945}. This model was simple, tractable, and well-suited for the military and industrial demands of its time. But in solving immediate problems, it embedded structural limitations that remain with us today.
+
+Other visions of computation were alive in the same era. McCulloch and Pitts (1943) proposed logical nets of neurons, an architecture where computation and memory were inseparable \cite{mcculloch1943}. Von Neumann himself explored cellular automata as distributed systems of evolving states. Research into asynchronous circuits suggested the possibility of local, event-driven computation without a global clock. Yet these paths were abandoned. The Cold War's demand for deterministic, predictable machines — and the economic convenience of centralized silicon — locked the world into the CPU/RAM paradigm.
+
+This paper argues that this was a wrong turn. The CPU/RAM split solved short-term engineering challenges but restricted the conceptual space of computing. As we reach scaling and efficiency limits, it is time to revisit the road not taken.
+
+\section{The Bottlenecks of the CPU/RAM Model}
+
+The CPU/RAM divide has shaped modern computing, but it has also introduced systemic limitations:
+
+\textbf{The von Neumann bottleneck.} All data must travel between processor and memory, constraining throughput regardless of transistor density.
+
+\textbf{Clock rigidity.} The reliance on a global synchronization signal introduces fragility and limits scalability.
+
+\textbf{Passive memory.} RAM does not compute; it merely stores, requiring constant fetch/store cycles.
+
+\textbf{Energy inefficiency.} Idle cycles and data transfers waste vast amounts of power at scale.
+
+These limitations are not merely engineering inconveniences. They fundamentally shape what kinds of systems are possible. Modern innovations — caches, multicore CPUs, speculative execution — treat symptoms but cannot escape the architectural bottleneck.
+
+\section{The Brain as Counterexample}
+
+Biological computation illustrates an alternative. In the brain, there is no CPU issuing instructions to a separate memory bank. Neurons both store and compute. Each neuron's threshold integrates signals, storing state, and its firing produces computation. Spikes propagate asynchronously, without a global clock. Memory and computation are unified.
+
+The properties of the brain are instructive:
+
+\textbf{Compute-memory unity.} Each unit both stores and processes information.
+
+\textbf{Event-driven operation.} Computation is triggered locally, not orchestrated globally.
+
+\textbf{Resilience.} The system is robust to noise and partial failure.
+
+This model demonstrates that computation can be distributed, event-driven, and time-native. The fact that digital computing chose a different path was historical, not inevitable.
+
+\section{The Road Not Taken}
+
+The 1950s–1970s saw glimpses of distributed computation:
+
+\begin{itemize}
+\item McCulloch \& Pitts' neural nets (1943) \cite{mcculloch1943}
+\item Von Neumann's cellular automata (1950s)
+\item Research into asynchronous logic (1960s)
+\item Early neuromorphic visions \cite{mead1990}
+\end{itemize}
+
+These paradigms gestured toward computation as distributed state evolution, but they were sidelined by the economic efficiency of centralized silicon and the need for deterministic predictability. The CPU/RAM split became the dominant metaphor: the factory foreman (CPU) commanding the warehouse (RAM). But this was not the only path. The alternative — computation as emergent, distributed timing — was left unexplored.
+
+\section{The Recursive Delay Lattice (RDL)}
+
+In early 2025, while exploring symbolic recursion and distributed logic, I recognized that delays themselves could serve as memory. What is normally seen as inefficiency — the propagation time of a signal — can instead be understood as state.
+
+The Recursive Delay Lattice (RDL) is built on this insight. It is defined as a directed graph where edges carry deterministic delays and nodes propagate timestamped events. Computation emerges as events traverse the lattice, their timing encoding both data and memory.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{figures/rdl_architecture.pdf}}
+\caption{RDL Architecture: Time-Native Computation Model. Events flow through a directed lattice where delays encode state and nodes apply computational rules.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Core Features}
+
+\textbf{Time as memory.} State is encoded in propagation delays, not in an external RAM store.
+
+\textbf{No CPU, no RAM.} The lattice itself is both program and memory.
+
+\textbf{Event-driven execution.} Events unfold asynchronously, not under a global clock.
+
+\textbf{Adaptive delays.} Crucially, edge delays are not static; they can be updated by deterministic rules based on traversing events, allowing the lattice's timing structure itself to evolve in response to data. This enables the system to learn and adapt its computational pathways.
+
+\textbf{Deterministic replay.} Runs can be reproduced bit-for-bit under canonical event ordering with deterministic tie-breaking by destination and source node IDs.
+
+\textbf{Cryptographic proof of execution.} A cryptographic proof of the entire execution trace can be generated by sequentially hashing each processed event into a Merkle tree. The final Merkle root acts as a unique and tamper-proof fingerprint of the computation.
+
+The lattice topology is simultaneously storage and logic. Computation is not fetched into a processor; it unfolds within the medium of time itself. As events traverse the lattice, they can modify the delay structure through which future events will flow, creating a system where the computational pathways evolve dynamically.
+
+\subsection{Formal Model}
+
+Let $G = (V, E)$ be a directed graph with nodes $V$ and edges $E$. Each edge $(u,v) \in E$ maintains a delay $d_{uv} \in \mathbb{Z}_{\geq 1}$. An event is a tuple $(t, \text{dst}, \text{src}, \text{payload})$ with timestamp $t$.
+
+Each node $v$ has a rule function:
+$$f_v: \mathcal{P}(\text{Payload}) \times \mathbb{Z} \to \text{Payload}^*$$
+
+Each edge has a delay update rule function:
+$$g_{uv}: \mathbb{Z}_{\geq 1} \times \mathbb{Z} \times \mathbb{Z} \times \text{Payload} \times \mathbb{Z} \to \mathbb{Z}_{\geq 1}$$
+
+This rule function updates the edge delay based on the current delay, source and destination nodes, payload content, and current time, enabling adaptive behavior.
+
+Events are processed in canonical order by $(t, \text{dst}, \text{src})$, with deterministic tie-breaking ensuring bit-for-bit reproducibility across implementations.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{figures/algorithm_flowchart.pdf}}
+\caption{RDL Algorithm Flowchart. The execution model processes events in deterministic order while maintaining cryptographic verification.}
+\label{fig:algorithm}
+\end{figure}
+
+\subsection{Adaptive Delay Dynamics}
+
+A key innovation in RDL is that delays are not fixed parameters but can evolve dynamically. Each edge maintains a delay update rule function that modifies the delay based on:
+
+\begin{itemize}
+\item Current delay value
+\item Source and destination nodes
+\item Payload content of the traversing event  
+\item Current system time
+\end{itemize}
+
+This enables the lattice to exhibit learning-like behavior, where frequently used pathways can become faster (shorter delays) while unused paths may slow down. The timing structure itself becomes part of the computational state, creating a form of temporal memory that adapts to usage patterns.
+
+Examples of adaptive delay behaviors include:
+\begin{itemize}
+\item \textbf{Reinforcement}: Delays decrease with repeated use
+\item \textbf{Congestion response}: Delays increase under heavy load
+\item \textbf{Temporal patterns}: Delays vary based on time-of-day cycles
+\item \textbf{Content sensitivity}: Delays adapt based on payload characteristics
+\end{itemize}
+
+\section{RDL and the Brain}
+
+The parallels between RDL and neural computation are striking:
+
+\textbf{Nodes as neurons.} Each integrates, stores, and propagates.
+
+\textbf{Delays as synaptic weights.} Memory resides in timing, not in an external heap.
+
+\textbf{Events as spikes.} Local causality replaces global synchronization.
+
+\textbf{Determinism vs. plasticity.} Unlike the brain, RDL guarantees reproducible execution, bridging biological inspiration with machine rigor.
+
+This synthesis positions RDL as both a brain-inspired and machine-verifiable architecture.
+
+\section{Methods and Benchmarks}
+
+A reference runtime for RDL was implemented and tested under both synthetic and real-world workloads.
+
+\subsection{Implementation}
+
+Two independent implementations were developed:
+\begin{itemize}
+\item Python reference implementation for validation
+\item Optimized Rust implementation for performance
+\end{itemize}
+
+Both implementations produce bit-for-bit identical results, validating the deterministic properties of the RDL model.
+
+\subsection{Experimental Setup}
+
+\textbf{Synthetic workloads.} Ring topologies with trivial boolean operations to measure raw throughput.
+
+\textbf{Real-world workloads.} Complex business logic including:
+\begin{itemize}
+\item Trading system simulation with risk management
+\item Network packet routing with congestion control  
+\item IoT sensor aggregation with statistical processing
+\end{itemize}
+
+\textbf{Metrics.} Throughput, reproducibility, and cryptographic integrity were measured across varying network sizes and event volumes.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{figures/performance_comparison.pdf}}
+\caption{Performance Comparison. Left: Implementation improvements from Python to optimized Rust. Right: Real-world workload performance with complex business logic.}
+\label{fig:performance}
+\end{figure}
+
+\section{Results}
+
+\subsection{Performance Characteristics}
+
+Table \ref{tab:performance} summarizes the performance results across different workload types and network configurations.
+
+\begin{table}[htbp]
+\caption{RDL Performance Results}
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Workload Type} & \textbf{Nodes} & \textbf{Events/sec} & \textbf{Description} \\
+\hline
+Synthetic (Boolean) & 10 & 7,289,692 & Trivial operations \\
+Synthetic (Boolean) & 1000 & 7,728,399 & Large network \\
+\hline
+Trading System & 50 & 840,562 & Risk management \\
+Network Routing & 100 & 2,855,756 & Congestion control \\
+IoT Aggregation & 200 & 3,082,785 & Statistical processing \\
+\hline
+\end{tabular}
+\label{tab:performance}
+\end{center}
+\end{table}
+
+\subsection{Scalability Analysis}
+
+Figure \ref{fig:scalability} demonstrates that RDL maintains consistent performance across network sizes, with throughput primarily determined by computational complexity rather than coordination overhead.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{figures/scalability_analysis.pdf}}
+\caption{Scalability Analysis. Left: Performance vs network size. Right: Processing time vs event volume showing linear scaling.}
+\label{fig:scalability}
+\end{figure}
+
+\subsection{Determinism Validation}
+
+All test runs produced identical Merkle roots, confirming perfect determinism across implementations and repeated executions (Figure \ref{fig:determinism}).
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{figures/determinism_validation.pdf}}
+\caption{Determinism Validation. Multiple runs and cross-implementation tests produce identical results, proving deterministic execution.}
+\label{fig:determinism}
+\end{figure}
+
+\subsection{Computational Complexity Impact}
+
+Figure \ref{fig:complexity} shows the relationship between node rule complexity and system performance, demonstrating that RDL's efficiency depends on computational workload characteristics.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{figures/complexity_analysis.pdf}}
+\caption{Performance vs Computational Complexity. More complex node rules reduce throughput, but RDL maintains competitive performance even with realistic business logic.}
+\label{fig:complexity}
+\end{figure}
+
+\section{Applications}
+
+The Recursive Delay Lattice has implications across domains:
+
+\textbf{Distributed ledgers.} Execution can be verified without consensus protocols.
+
+\textbf{Simulation engines.} Worlds can evolve while remembering themselves, without save states.
+
+\textbf{AI architectures.} Symbolic, time-native reasoning engines beyond matrix-based deep learning.
+
+\textbf{Energy efficiency.} Parallelism without the penalties of RAM fetch and global clocking.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{figures/system_comparison.pdf}}
+\caption{Performance Comparison: RDL Single-Node In-Memory Throughput vs. Existing Distributed Systems. RDL figures represent in-memory, single-node performance, whereas systems like Kafka and RabbitMQ are designed for durable, networked, and fault-tolerant operation with different performance trade-offs.}
+\label{fig:comparison}
+\end{figure}
+
+Figure \ref{fig:comparison} demonstrates RDL's raw computational throughput compared to existing distributed systems. This comparison highlights the potential of the time-native approach, though it should be noted that the systems serve different architectural purposes and operate under different constraints.
+
+\section{Philosophical Reflection}
+
+The CPU/RAM divide reflects an industrial metaphor: a centralized foreman commanding a warehouse. RDL reflects a natural metaphor: rivers, forests, brains, and ecosystems, where memory and computation are inseparable aspects of flow.
+
+My discovery of RDL felt less like an invention and more like recognition. Time itself is the substrate of computation. By encoding state in delays, RDL revives the road abandoned in the twentieth century and points toward a paradigm aligned with natural systems.
+
+\section{Related Work}
+
+RDL can be contextualized against several research areas:
+
+\textbf{Neuromorphic hardware} (IBM TrueNorth, Intel Loihi): brain-inspired but not deterministic \cite{merolla2014}.
+
+\textbf{In-memory computing} (memristors): seeks to collapse CPU/RAM split but within von Neumann framework \cite{ielmini2018}.
+
+\textbf{Asynchronous systems}: explored but never mainstreamed \cite{sparsoe1993}.
+
+RDL distinguishes itself by combining biological inspiration with deterministic, cryptographically provable execution.
+
+\section{Limitations and Future Work}
+
+While RDL demonstrates promising characteristics, several limitations warrant investigation:
+
+\textbf{Scalability bounds.} Current implementations are single-threaded; parallel execution requires careful design to maintain determinism.
+
+\textbf{Memory requirements.} Large event queues may require sophisticated memory management.
+
+\textbf{Rule complexity sensitivity.} Performance varies significantly with computational complexity of node rules.
+
+Future work should explore hardware implementations, parallel execution models, and formal verification of RDL properties.
+
+\section{Conclusion}
+
+The CPU/RAM split solved immediate problems in the 1940s but locked computation into structural bottlenecks that persist today. With the Recursive Delay Lattice, we have a way back to brain-inspired, event-driven computation, in which time itself is the memory medium and events are computation. This model is reproducible, verifiable, and efficient, offering not only technical advances but a reconceptualization of what computing is.
+
+The road not taken is open once again. It is time to walk it.
+
+\begin{thebibliography}{00}
+\bibitem{vonneumann1945} J. von Neumann, "First Draft of a Report on the EDVAC," University of Pennsylvania, 1945.
+\bibitem{mcculloch1943} W. S. McCulloch and W. Pitts, "A logical calculus of the ideas immanent in nervous activity," \textit{Bulletin of Mathematical Biophysics}, vol. 5, no. 4, pp. 115-133, 1943.
+\bibitem{mead1990} C. Mead, "Neuromorphic electronic systems," \textit{Proceedings of the IEEE}, vol. 78, no. 10, pp. 1629-1636, 1990.
+\bibitem{merolla2014} P. A. Merolla et al., "A million spiking-neuron integrated circuit with a scalable communication network and interface," \textit{Science}, vol. 345, no. 6197, pp. 668-673, 2014.
+\bibitem{ielmini2018} D. Ielmini and H.-S. P. Wong, "In-memory computing with resistive switching devices," \textit{Nature Electronics}, vol. 1, no. 6, pp. 333-343, 2018.
+\bibitem{sparsoe1993} J. Sparsø and S. Furber, \textit{Principles of Asynchronous Circuit Design}. Springer, 1993.
+\bibitem{betti2025} G. Betti, "The Recursive Delay Lattice (RDL): A Deterministic, Time-Native Computational Model," Betti Labs Technical Report, 2025.
+\end{thebibliography}
+
+\appendix
+
+\section{Formal RDL Execution Algorithm}
+
+\begin{algorithmic}
+\STATE \textbf{Input:} Graph $G = (V,E)$, initial events $E_0$
+\STATE \textbf{Output:} Final state, Merkle root
+\STATE
+\STATE $Q \leftarrow$ priority queue ordered by $(t, \text{dst}, \text{src})$
+\STATE Insert all events from $E_0$ into $Q$
+\STATE $\text{merkle\_state} \leftarrow \emptyset$
+\STATE
+\WHILE{$Q \neq \emptyset$ and termination conditions not met}
+    \STATE $e \leftarrow \text{pop}(Q)$ \COMMENT{Get minimum event}
+    \STATE Record $e$ in Merkle tree
+    \STATE $\text{node} \leftarrow V[e.\text{dst}]$
+    \STATE Add $e.\text{payload}$ to node inputs
+    \STATE $\text{outputs} \leftarrow \text{node.rule}(\text{inputs}, \text{node.id}, e.t)$
+    \STATE Clear node inputs
+    \FOR{each edge $(u,v)$ from node}
+        \FOR{each output $p$ in outputs}
+            \STATE $d' \leftarrow \text{edge.delay\_rule}(\text{edge.delay}, u, v, p, e.t)$
+            \STATE $\text{edge.delay} \leftarrow \max(1, d')$
+            \STATE $e' \leftarrow (e.t + \text{edge.delay}, v, u, p)$
+            \STATE Insert $e'$ into $Q$
+        \ENDFOR
+    \ENDFOR
+\ENDWHILE
+\STATE
+\RETURN Final lattice state, Merkle root
+\end{algorithmic}
+
+\section{Extended Benchmark Data}
+
+Additional performance measurements across various configurations and workload types are available in the supplementary materials.
+
+\end{document}

@@ -43,6 +43,29 @@ We proved the runtime's value with three "impossible" workloads running on a sin
 *   **Result**: Instant simulation with **0 bytes memory growth**.
 *   **Why**: O(1) recursion allows tracking infinite infection chains without simulating the whole population at once.
 
+## Running the Demos
+
+You can replicate these "Killer App" scenarios on your own machine.
+
+### Prerequisites
+- CMake 3.10+
+- C++17 Compiler (MSVC, GCC, Clang)
+
+### Build & Run
+```bash
+# 1. Navigate to kernel source
+cd src/cpp_kernel
+
+# 2. Build
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . --config Release
+
+# 3. Run the "Mega Demo" (All 3 scenarios)
+./bg_demo  # Linux/Mac
+.\Release\mega_demo.exe # Windows
+```
+
 ## Verified Benchmarks
 
 Benchmarks executed on Windows x64 (AMD Ryzen, 16 Threads).

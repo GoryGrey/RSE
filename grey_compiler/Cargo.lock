@@ -137,6 +137,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a8241f3ebb85c056b509d4327ad0358fbbba6ffb340bf388f26350aeda225b1"
 
 [[package]]
+name = "betti-rdl"
+version = "1.0.0"
+
+[[package]]
 name = "bitflags"
 version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -266,6 +270,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
 
 [[package]]
+name = "grey_backends"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "betti-rdl",
+ "grey_ir",
+ "grey_lang",
+ "log",
+ "miette",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "grey_ir"
+version = "0.1.0"
+dependencies = [
+ "grey_lang",
+ "miette",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "grey_lang"
 version = "0.1.0"
 dependencies = [
@@ -292,6 +324,8 @@ dependencies = [
  "anyhow",
  "clap",
  "env_logger",
+ "grey_backends",
+ "grey_ir",
  "grey_lang",
  "log",
  "miette",

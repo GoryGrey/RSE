@@ -13,6 +13,7 @@ pub enum Token {
     Module,
     Process,
     Event,
+    Const,
     Fn,
     Let,
     If,

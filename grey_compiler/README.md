@@ -1,373 +1,357 @@
-# Grey Compiler Frontend
+# Grey Compiler Backend System
 
-A Rust-based compiler frontend for the Grey programming language, implementing O(1) memory guarantees and deterministic execution on a 32³ toroidal computational substrate.
+This document describes the backend infrastructure for the Grey programming language compiler, with specific focus on the Betti RDL backend for executing Grey programs on the Betti runtime system.
 
 ## Overview
 
-The Grey compiler frontend provides a complete compilation pipeline from source code to validated typed programs, ensuring adherence to the language's spatial and temporal constraints.
+The Grey compiler uses a multi-stage architecture:
 
-### Key Features
-
-- **Lexical Analysis**: UTF-8 aware tokenization with comprehensive error recovery
-- **Parsing**: Recursive descent parser generating rich AST representations
-- **Type System**: Static type checking with ownership and reference semantics
-- **O(1) Validation**: Static analysis ensuring bounded memory usage and computation
-- **Developer Tools**: CLI with check, format, and REPL functionality
+1. **Parsing**: Grey source code → AST
+2. **Type Checking**: AST → Typed AST
+3. **IR Generation**: Typed AST → Intermediate Representation (IR)
+4. **Code Generation**: IR → Backend-specific output
+5. **Execution**: Runtime-specific execution and telemetry
 
 ## Architecture
 
+### Workspace Structure
+
 ```
 grey_compiler/
-├── Cargo.toml                    # Workspace root
 ├── crates/
-│   ├── grey_lang/                # Core language library
-│   │   ├── src/
-│   │   │   ├── lexer.rs          # Lexical analysis
-│   │   │   ├── parser.rs         # Parsing & AST construction
-│   │   │   ├── ast.rs            # Abstract Syntax Tree definitions
-│   │   │   ├── types.rs          # Type system & checking
-│   │   │   ├── constraints.rs    # O(1) constraint validation
-│   │   │   ├── diagnostics.rs    # Error reporting & diagnostics
-│   │   │   └── lib.rs            # Main library interface
-│   │   └── Cargo.toml
-│   └── greyc_cli/                # Command-line interface
-│       ├── src/
-│       │   └── main.rs           # CLI implementation
-│       └── Cargo.toml
-├── tests/                        # Integration tests
-└── README.md                     # This file
+│   ├── grey_lang/          # Core language processing
+│   ├── grey_ir/            # Intermediate representation
+│   ├── grey_backends/      # Backend infrastructure
+│   └── greyc_cli/          # Command-line interface
+├── tests/                  # Integration tests
+└── scripts/                # Utility scripts and harnesses
 ```
 
-## Getting Started
+### Core Components
 
-### Prerequisites
+#### 1. IR (Intermediate Representation)
 
-- Rust 1.70+ (2021 edition)
-- Cargo package manager
+The `grey_ir` crate provides a canonical intermediate representation suitable for backend code generation:
 
-### Building
+- **Program Structure**: Top-level organization with processes, events, and constants
+- **Process Model**: Grid-based spatial computation with 3D coordinates
+- **Event System**: Typed event definitions with field declarations
+- **Resource Bounds**: O(1) memory constraints validation
+- **Serialization**: JSON support for cross-platform compatibility
+
+Key types:
+- `IrProgram`: Top-level program structure
+- `IrProcess`: Process definitions with coordinates and state
+- `IrEvent`: Event type definitions
+- `IrTransition`: State machine transitions
+- `Coord`: 3D coordinate system (0-31 per dimension)
+
+#### 2. Backend Infrastructure
+
+The `grey_backends` crate provides a trait-based backend system:
+
+- **CodeGenerator Trait**: Standard interface for all backends
+- **Output Management**: File generation, runtime configuration, metadata
+- **Execution Framework**: Telemetry collection and validation
+- **Utilities**: Process placement, coordinate validation, resource checking
+
+#### 3. Betti RDL Backend
+
+The Betti RDL backend (`grey_backends::betti_rdl`) implements the CodeGenerator trait to:
+
+- Generate executable Rust code using the `betti-rdl` FFI crate
+- Configure process placement in 2D/3D coordinate space
+- Handle deterministic event ordering
+- Collect runtime telemetry (events processed, execution time, process states)
+- Validate resource constraints
+
+## Usage
+
+### Command-Line Interface
+
+#### Basic Compilation and Execution
 
 ```bash
-# Build the entire workspace
-cd grey_compiler
-cargo build
+# Compile Grey source to Betti RDL and run
+greyc emit-betti program.grey --run
 
-# Build just the library
-cargo build -p grey_lang
+# Compile without execution
+greyc emit-betti program.grey
 
-# Build the CLI
-cargo build -p greyc_cli
+# Configure execution parameters
+greyc emit-betti program.grey --run --max-events 5000 --telemetry
 ```
 
-### Testing
+#### CLI Options
 
-```bash
-# Run all tests
-cargo test
-
-# Run tests for specific crate
-cargo test -p grey_lang
-cargo test -p greyc_cli
-
-# Run with verbose output
-cargo test -v
-```
-
-## Usage Examples
-
-### Command Line Interface
-
-#### Check a Grey source file:
-```bash
-cargo run --bin greyc check example.grey
-```
-
-#### Format a source file:
-```bash
-cargo run --bin greyc format input.grey --output formatted.grey
-```
-
-#### Start the REPL:
-```bash
-cargo run --bin greyc repl
-```
+- `--run`: Execute the generated Betti RDL workload
+- `--max-events N`: Maximum events to process (default: 1000)
+- `--telemetry`: Enable detailed telemetry output
 
 ### Programmatic Usage
 
-#### Parse and compile Grey source:
+#### Compile and Execute a Grey Program
+
 ```rust
 use grey_lang::compile;
+use grey_ir::{IrBuilder, IrProgram};
+use grey_backends::betti_rdl::{BettiRdlBackend, BettiConfig};
+use grey_backends::CodeGenerator;
 
-fn main() -> Result<(), grey_lang::diagnostics::Diagnostic> {
-    let source = r#"
-        module hello_world {
-            process Greeter {
-                greeting: string;
-                
-                fn new() -> Greeter {
-                    return Greeter {
-                        greeting: "Hello, World!"
-                    };
-                }
-                
-                fn greet() -> string {
-                    return self.greeting;
-                }
+// 1. Compile Grey source
+let source = r#"
+    module Demo {
+        event Message {
+            text: String,
+        }
+        
+        process Node {
+            message_count: Int,
+            method init() {
+                this.message_count = 0;
             }
         }
-    "#;
-    
-    let typed_program = compile(source)?;
-    println!("✅ Compilation successful!");
-    
-    Ok(())
-}
+    }
+"#;
+
+let typed_program = compile(source)?;
+
+// 2. Build IR
+let mut ir_builder = IrBuilder::new();
+let ir_program = ir_builder.build_program("demo", &typed_program)?;
+
+// 3. Configure backend
+let backend = BettiRdlBackend::new(BettiConfig {
+    max_events: 1000,
+    telemetry_enabled: true,
+    ..Default::default()
+});
+
+// 4. Generate code
+let output = backend.generate_code(ir_program)?;
+
+// 5. Execute
+let telemetry = backend.execute(&output)?;
+
+println!("Processed {} events", telemetry.events_processed);
 ```
 
-#### Individual compilation phases:
+#### Custom Backend Configuration
+
 ```rust
-use grey_lang::{parse_source, type_check_program, validate_program};
+use grey_backends::{ProcessPlacement, EventOrdering};
 
-fn compile_phases(source: &str) -> Result<(), grey_lang::diagnostics::Diagnostic> {
-    // Phase 1: Parse
-    let program = parse_source(source)?;
-    
-    // Phase 2: Type check
-    let typed_program = type_check_program(&program)?;
-    
-    // Phase 3: Validate O(1) constraints
-    validate_program(&typed_program)?;
-    
-    println!("✅ All phases completed successfully!");
-    Ok(())
-}
+let config = BettiConfig {
+    process_placement: ProcessPlacement::GridLayout { spacing: 4 },
+    max_events: 5000,
+    telemetry_enabled: true,
+    validate_coordinates: true,
+};
 ```
 
-## Language Features Supported
+## Integration Testing
 
-### ✅ Implemented
+### Betti Integration Tests
 
-- **Module System**: Module declarations with dependencies
-- **Process Definitions**: Process types with fields and methods
-- **Event System**: Event types and handlers
-- **Type System**: Primitive types, references, generics
-- **Expression Parsing**: Arithmetic, boolean, control flow
-- **Basic Type Checking**: Type inference and validation
-- **O(1) Memory Analysis**: Spatial constraint validation
-- **Ownership Rules**: Single ownership enforcement
-- **CLI Tools**: Check, format, REPL
+Located in `grey_compiler/tests/betti_integration.rs`, these tests provide:
 
-### 🚧 In Progress
+- **Compilation Validation**: Ensure Grey programs compile successfully
+- **IR Building**: Verify IR construction from typed AST
+- **Code Generation**: Validate generated Betti RDL code structure
+- **Execution Testing**: Run workloads and collect telemetry
+- **Configuration Testing**: Verify backend configuration options
 
-- **Advanced Type Inference**: Generic type instantiation
-- **Loop Bound Analysis**: Unbounded loop detection
-- **Recursion Validation**: Termination analysis
-- **Code Formatting**: AST-based pretty printing
-- **Backend Integration**: Code generation for multiple targets
+Run with:
+```bash
+cd grey_compiler
+cargo test betti_integration
+```
 
-### 📋 Planned
+### Demo Programs
 
-- **Language Server Protocol**: IDE integration
-- **Advanced Optimizations**: Spatial and temporal optimizations
-- **WASM Backend**: WebAssembly compilation target
-- **C++ Backend**: Native code generation
-- **LLVM Backend**: Cross-platform compilation
+The integration tests include reduced versions of key demo programs:
 
-## Example Programs
+- **Logistics Demo**: Package shipping and delivery tracking
+- **Contagion Demo**: Disease spread simulation
 
-### Basic Process Definition
+These demonstrate the core process/event model and provide validation targets.
 
-```grey
-module counter_demo {
-    process Counter {
-        count: int,
-        max: int,
-        
-        fn new(initial: int, limit: int) -> Counter {
-            return Counter {
-                count: initial,
-                max: limit
-            };
-        }
-        
-        fn increment() -> bool {
-            if self.count < self.max {
-                self.count = self.count + 1;
-                return true;
-            }
-            return false;
-        }
-        
-        fn get_count() -> int {
-            return self.count;
-        }
+## Comparison Harness
+
+### Purpose
+
+The comparison harness (`grey_compiler/scripts/comparison_harness.rs`) enables:
+
+- **Parity Testing**: Compare Grey-compiled vs C++ reference implementations
+- **Deterministic Validation**: Use shared seeds for reproducible comparisons
+- **Performance Analysis**: Compare execution times and resource usage
+- **State Verification**: Ensure process states match between implementations
+
+### Usage
+
+```rust
+use grey_compiler::scripts::comparison_harness::{BettiComparisonHarness, ComparisonConfig};
+
+// Configure comparison
+let config = ComparisonConfig {
+    seed: 42,
+    max_events: 1000,
+    cpp_demo_path: Some(PathBuf::from("path/to/reference/demo")),
+    ..Default::default()
+};
+
+let harness = BettiComparisonHarness::new(config);
+let result = harness.run_comparison(grey_program)?;
+
+if result.parity_achieved {
+    println!("✅ Deterministic parity achieved!");
+} else {
+    println!("❌ Parity not achieved");
+    for diff in &result.state_differences {
+        println!("  {}", diff);
     }
 }
 ```
 
-### Event-Driven Communication
+### Quick Comparison
 
-```grey
-module message_demo {
-    event Message {
-        from: coord,
-        to: coord,
-        payload: string,
-        timestamp: timestamp
+For simple validation without C++ reference:
+
+```rust
+use grey_compiler::scripts::comparison_harness::quick_compare;
+
+let result = quick_compare(grey_program, 42)?;
+println!("Processed {} events", result.grey_result.events_processed);
+```
+
+## Extending the Backend System
+
+### Adding New Backends
+
+1. **Implement CodeGenerator Trait**:
+
+```rust
+use grey_backends::{CodeGenerator, CodeGenOutput, BackendError};
+
+pub struct MyBackend {
+    // Configuration
+}
+
+impl CodeGenerator for MyBackend {
+    fn generate_code(&self, program: &IrProgram) -> Result<CodeGenOutput, BackendError> {
+        // Generate backend-specific code
     }
     
-    process Messenger {
-        position: coord,
-        inbox: queue<Message, 100>,
-        
-        fn new(pos: coord) -> Messenger {
-            return Messenger {
-                position: pos,
-                inbox: queue::new(100)
-            };
-        }
-        
-        handle Message(msg: Message) {
-            if msg.to == self.position {
-                self.inbox.push(msg);
-                self.process_message(msg);
-            }
-        }
-        
-        fn process_message(msg: Message) {
-            // Handle received message
-            let response = format!("Received: {}", msg.payload);
-            emit Message {
-                from: self.position,
-                to: msg.from,
-                payload: response,
-                timestamp: now()
-            } to msg.from;
-        }
+    fn execute(&self, output: &CodeGenOutput) -> Result<ExecutionTelemetry, BackendError> {
+        // Execute generated code and collect telemetry
+    }
+    
+    fn config_options(&self) -> HashMap<String, ConfigOption> {
+        // Define configuration options
     }
 }
 ```
 
-### O(1) Memory Pattern
+2. **Add to CLI**:
 
-```grey
-module toroidal_demo {
-    const GRID_SIZE = 32;
-    
-    process GridNode {
-        coord: coord,
-        neighbors: [27] of ProcessRef<GridNode>,
-        state: GridState,
-        
-        fn new(x: int, y: int, z: int) -> GridNode {
-            let position = coord { x: x, y: y, z: z };
-            return GridNode {
-                coord: position,
-                neighbors: [27] of ProcessRef::null(),
-                state: GridState::Idle
-            };
-        }
-        
-        fn initialize_neighbors() {
-            // O(1) neighbor access - fixed 27 neighbors in toroidal space
-            let mut idx = 0;
-            for dx in -1..=1 {
-                for dy in -1..=1 {
-                    for dz in -1..=1 {
-                        if dx != 0 || dy != 0 || dz != 0 {
-                            let neighbor_coord = wrap_coord(
-                                self.coord.x + dx,
-                                self.coord.y + dy, 
-                                self.coord.z + dz
-                            );
-                            self.neighbors[idx] = lookup_process(neighbor_coord);
-                            idx = idx + 1;
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+Update `greyc_cli/src/main.rs` to include the new backend option.
+
+3. **Add Tests**: Create integration tests for the new backend.
+
+### IR Extensions
+
+To extend the IR with new features:
+
+1. **Add Types**: Define new IR types in `grey_ir/src/lib.rs`
+2. **Update Builder**: Extend `IrBuilder` to construct the new IR constructs
+3. **Validate**: Add validation logic in backend utilities
+4. **Test**: Add comprehensive tests
+
+## Best Practices
+
+### Process Placement
+
+- Use **GridLayout** for most applications (good spatial distribution)
+- Use **SingleNode** for simple single-process programs
+- Use **Custom** for specific spatial requirements
+
+### Resource Management
+
+- Monitor **event counts** to detect runaway workloads
+- Track **execution time** for performance regression detection
+- Use **telemetry enabled** for development, disabled for production
+
+### Deterministic Testing
+
+- Always use **explicit seeds** for reproducible tests
+- Compare **process states** for functional correctness
+- Monitor **memory usage** for resource leak detection
+
+## Limitations and Caveats
+
+### Current Limitations
+
+1. **Limited Event Injection**: Initial events must be injected programmatically
+2. **Basic State Management**: Process state is limited to simple field updates
+3. **Coordinate Bounds**: Fixed to 0-31 range per dimension
+4. **Single Runtime**: Currently only Betti RDL backend is implemented
+
+### Performance Considerations
+
+- **Grid Layout**: Use appropriate spacing to avoid coordinate collisions
+- **Event Batching**: Process events in batches for better throughput
+- **Memory Tracking**: Enable only when needed to avoid overhead
+
+### Future Enhancements
+
+- **Multi-runtime Support**: Add backends for other runtime systems
+- **Advanced State Machines**: Support complex state transition logic
+- **Distributed Execution**: Support for multi-node deployments
+- **Real-time Telemetry**: Streaming telemetry for long-running workloads
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Compilation Errors**: Ensure all dependencies are properly linked
+2. **Coordinate Validation**: Check that process coordinates are within bounds
+3. **Resource Constraints**: Verify processes/events don't exceed limits
+4. **Execution Timeouts**: Increase timeout or reduce max_events
+
+### Debug Mode
+
+Enable detailed logging:
+```bash
+RUST_LOG=debug greyc emit-betti program.grey --run
 ```
 
-## O(1) Constraint Validation
+### Telemetry Analysis
 
-The compiler validates the following constraints:
+When execution completes, examine:
+- **Events Processed**: Should be > 0 for active workloads
+- **Execution Time**: Indicates computational complexity
+- **Process States**: Final state of all processes
+- **Memory Usage**: Resource consumption tracking
 
-### Spatial Constraints
-- **Maximum Processes**: 32³ = 32,768 processes
-- **Memory Usage**: Bounded by toroidal space capacity
-- **Collection Sizes**: All collections must have compile-time bounds
+## API Reference
 
-### Temporal Constraints
-- **Loop Bounds**: All loops must have finite iteration bounds
-- **Recursion**: Recursive calls must be bounded by base cases
-- **Event Processing**: Event queues must have bounded size
+### Key Types
 
-### Ownership Rules
-- **Single Ownership**: Each process owned by exactly one coordinate
-- **No Shared Mutable State**: Processes communicate via events only
-- **Move Semantics**: Ownership transfer is explicit
+- `IrProgram`: Program structure with processes, events, constants
+- `BettiRdlBackend`: Main backend for Betti RDL execution
+- `ExecutionTelemetry`: Runtime execution metrics
+- `ComparisonResult`: Parity comparison results
 
-## Error Messages
+### Configuration
 
-The compiler provides rich diagnostic messages with source locations:
+- `BettiConfig`: Backend configuration options
+- `ComparisonConfig`: Harness configuration for parity testing
+- `RuntimeConfig`: Runtime execution parameters
 
-```
-❌ Compilation failed:
-E004: Validation error: Unbounded loop detected
-  --> example.grey:25:15
-   |
-25 | while true {
-   |           ^^^^
-   |
-   = help: Consider using toroidal transformation or bounded loops
-```
+### CLI Commands
 
-## Development
+- `greyc emit-betti`: Compile Grey to Betti RDL format
+- `greyc check`: Validate Grey source without compilation
+- `greyc repl`: Interactive Grey evaluation
 
-### Adding New Features
-
-1. **Lexer Updates**: Modify `lexer.rs` for new tokens
-2. **Parser Extensions**: Update `parser.rs` for new syntax
-3. **Type System**: Enhance `types.rs` for new type features
-4. **Validation**: Extend `constraints.rs` for new O(1) rules
-
-### Testing Strategy
-
-- **Unit Tests**: Individual component testing
-- **Integration Tests**: End-to-end compilation pipeline
-- **Property Tests**: Invariant preservation
-- **Performance Tests**: O(1) constraint verification
-
-### Code Style
-
-- Follow Rust standard formatting (`cargo fmt`)
-- Use semantic naming and comprehensive documentation
-- Maintain backwards compatibility for public APIs
-- Add tests for all public functions
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make changes with tests
-4. Run the test suite: `cargo test`
-5. Format code: `cargo fmt`
-6. Submit a pull request
-
-## License
-
-This project is part of the Grey language ecosystem. See the main project license for details.
-
-## Resources
-
-- [Grey Language Specification](docs/grey_language_spec.md)
-- [Grey Compiler Architecture](docs/grey_compiler_architecture.md)
-- [Betti-RDL Runtime Documentation](src/cpp_kernel/README.md)
-- [Design Principles](../The%20General%20Theory%20of%20Recursive%20Symbolic.md)
-
----
-
-**Status**: Frontend scaffolding complete. Ready for backend integration and advanced validation features.
+For detailed API documentation, see the individual crate documentation with `cargo doc --open`.

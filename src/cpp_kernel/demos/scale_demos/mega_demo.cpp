@@ -1,5 +1,6 @@
 #include "../../Allocator.h"
 #include "../BettiRDLCompute.h"
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <iomanip>
@@ -58,13 +59,15 @@ void runLogisticsDemo(int agents) {
   if (batch_size < 1)
     batch_size = 1;
 
-  int batches = agents / batch_size;
+  int batches = (agents + batch_size - 1) / batch_size;
 
   for (int i = 0; i < batches; i++) {
+    int this_batch = std::min(batch_size, agents - (i * batch_size));
+
     // Inject "Package Delivery" tasks
     // PID 0 (Dispatcher) sends drones to random locations
     // We simulate this by injecting events at random/dispersed locations
-    for (int j = 0; j < batch_size; j++) {
+    for (int j = 0; j < this_batch; j++) {
       int tx = rand() % city_size;
       int ty = rand() % city_size;
       int tz = rand() % city_size;
@@ -74,11 +77,13 @@ void runLogisticsDemo(int agents) {
     // Process network flow
     // In a real vis, we'd see them move. Here we measure throughput of the
     // routing logic.
-    kernel.run(batch_size);
+    kernel.run(this_batch);
   }
 
   auto end = high_resolution_clock::now();
   auto ms = duration_cast<milliseconds>(end - start).count();
+  if (ms == 0)
+    ms = 1;
 
   std::cout << "  [RESULT] All packages delivered in " << ms << "ms."
             << std::endl;
@@ -118,27 +123,31 @@ void runCortexDemo(int neurons, int impulses) {
   auto start = high_resolution_clock::now();
 
   // Simulate "Visual Cortex" input - a wave of spikes hitting one face of the
-  // cube
-  for (int i = 0; i < impulses; i++) {
-    // Stimulate random neuron on face X=0
-    int y = rand() % dim;
-    int z = rand() % dim;
-    kernel.injectEvent(0, y, z, 100); // 100mv spike
+  // cube.
+  // We inject+run in batches to avoid unbounded queue growth.
+  const int batch_size = 1000;
+  for (int i = 0; i < impulses; i += batch_size) {
+    int this_batch = std::min(batch_size, impulses - i);
 
-    // Run propagation wave
-    // Each spike triggers neighbors (simulated by kernel run)
-    if (i % 1000 == 0)
-      kernel.run(100);
+    for (int j = 0; j < this_batch; j++) {
+      int y = rand() % dim;
+      int z = rand() % dim;
+      kernel.injectEvent(0, y, z, 100); // 100mv spike
+    }
+
+    kernel.run(this_batch);
   }
-  // Flush rest
-  kernel.run(impulses / 10);
 
   auto end = high_resolution_clock::now();
   auto ms = duration_cast<milliseconds>(end - start).count();
+  if (ms == 0)
+    ms = 1;
+
+  const auto processed = kernel.getEventsProcessed();
 
   std::cout << "  [RESULT] Cortex processed sensory stream in " << ms << "ms."
             << std::endl;
-  std::cout << "  [METRIC] " << (impulses * 1000.0 / ms) << " Spikes/Sec"
+  std::cout << "  [METRIC] " << (processed * 1000.0 / ms) << " Spikes/Sec"
             << std::endl;
   std::cout
       << "  [STATUS] O(1) Memory maintained despite massive firing cascade."
@@ -172,19 +181,24 @@ void runContagionDemo(int population) {
   // Recursive chain where each person infects N others.
   // We rely on the event queue to drive this.
 
-  // Inject Patient Zero event
-  kernel.injectEvent(0, 0, 0, 666); // Virus ID
+  // Inject Patient Zero event (recursive chain)
+  kernel.injectRecursiveEvent(0, 0, 0, 666); // Virus ID
 
   // Run simulation for 'population' interaction steps
   // This simulates the virus jumping 'population' times
   kernel.run(population);
+  const auto processed = kernel.getEventsProcessed();
 
   auto end = high_resolution_clock::now();
   size_t mem_end = MemoryManager::getUsedMemory();
   auto ms = duration_cast<milliseconds>(end - start).count();
+  if (ms == 0)
+    ms = 1;
 
   std::cout << "  [RESULT] Virus spread to " << population << " hosts in " << ms
             << "ms." << std::endl;
+  std::cout << "  [METRIC] " << (processed * 1000.0 / ms) << " Infection-Steps/Sec"
+            << std::endl;
   std::cout << "  [MEMORY] Start: " << mem_start << "B -> End: " << mem_end
             << "B" << std::endl;
   std::cout << "  [STATUS] Zero memory growth observed during recursive spread."

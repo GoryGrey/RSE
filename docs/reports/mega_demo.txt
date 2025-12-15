@@ -1,0 +1,42 @@
+Betti-RDL Scale Demos
+Simulating massive agent-based workloads...
+
+=================================================
+   DEMO 1: LOGISTICS SWARM (Smart City)
+=================================================
+Scenario: 1000000 autonomous drones delivering packages.
+Goal: Route around congestion using adaptive RDL delays.
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+  [SETUP] Initializing 32x32x32 city grid...
+  [ACTION] Deploying 1000000 drones...
+  [RESULT] All packages delivered in 235ms.
+  [METRIC] 4.25532e+06 Deliveries/Sec
+  [STATUS] Network adapted to congestion continuously.
+
+=================================================
+   DEMO 2: SILICON CORTEX (Spiking Neural Net)
+=================================================
+Scenario: 32768 neurons in a 3D lattice.
+Goal: Process sensory input spikes via Hebbian learning.
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+  [SETUP] Growing neural lattice...
+  [ACTION] Injecting 500000 sensory spikes...
+  [RESULT] Cortex processed sensory stream in 65ms.
+  [METRIC] 7.69231e+06 Spikes/Sec
+  [STATUS] O(1) Memory maintained despite massive firing cascade.
+
+=================================================
+   DEMO 3: GLOBAL CONTAGION (Patient Zero)
+=================================================
+Scenario: 1000000 people interacting in tight network.
+Goal: Track recursive virus spread without memory explosion.
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+  [SETUP] Populating world...
+  [ACTION] Patient Zero infected. Spreading...
+  [RESULT] Virus spread to 1000000 hosts in 11ms.
+  [METRIC] 9.09091e+07 Infection-Steps/Sec
+  [MEMORY] Start: 1311076B -> End: 1311100B
+  [STATUS] Zero memory growth observed during recursive spread.

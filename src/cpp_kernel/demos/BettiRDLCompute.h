@@ -3,8 +3,10 @@
 #include "../ToroidalSpace.h"
 #include <chrono>
 #include <functional>
+#include <iostream>
 #include <map>
 #include <queue>
+#include <unordered_map>
 
 // Enhanced Betti-RDL with Real Computation
 // Adds actual algorithm execution, not just event propagation
@@ -14,6 +16,7 @@ struct ComputeEvent {
   int dst_node;
   int src_node;
   int value; // Actual data payload
+  bool recursive;
 
   bool operator>(const ComputeEvent &other) const {
     if (timestamp != other.timestamp)
@@ -39,11 +42,15 @@ private:
   std::priority_queue<ComputeEvent, std::vector<ComputeEvent>,
                       std::greater<ComputeEvent>>
       event_queue;
-  std::map<int, int> process_states; // pid -> accumulated value
+
+  std::unordered_map<int, int> node_to_pid;    // node_id -> pid
+  std::unordered_map<int, int> process_states; // pid -> accumulated value
 
   unsigned long long current_time = 0;
   unsigned long long events_processed = 0;
   int process_counter = 0;
+
+  static int encodeNode(int x, int y, int z) { return x * 1024 + y * 32 + z; }
 
 public:
   BettiRDLCompute() {
@@ -54,15 +61,29 @@ public:
   void spawnProcess(int x, int y, int z) {
     ComputeProcess *p = new ComputeProcess(++process_counter, x, y, z);
     space.addProcess((Process *)p, x, y, z);
+
     process_states[p->pid] = 0;
+    node_to_pid[encodeNode(x, y, z)] = p->pid;
   }
 
   void injectEvent(int dst_x, int dst_y, int dst_z, int value) {
     ComputeEvent evt;
     evt.timestamp = current_time;
-    evt.dst_node = dst_x * 1024 + dst_y * 32 + dst_z;
+    evt.dst_node = encodeNode(dst_x, dst_y, dst_z);
     evt.src_node = 0;
     evt.value = value;
+    evt.recursive = false;
+
+    event_queue.push(evt);
+  }
+
+  void injectRecursiveEvent(int dst_x, int dst_y, int dst_z, int initial_value) {
+    ComputeEvent evt;
+    evt.timestamp = current_time;
+    evt.dst_node = encodeNode(dst_x, dst_y, dst_z);
+    evt.src_node = 0;
+    evt.value = initial_value;
+    evt.recursive = true;
 
     event_queue.push(evt);
   }
@@ -82,27 +103,36 @@ public:
     int dst_y = (evt.dst_node % 1024) / 32;
     int dst_z = evt.dst_node % 32;
 
-    // REAL COMPUTATION: Accumulate value
-    int pid = dst_x * 100 + dst_y * 10 + dst_z; // Simple pid mapping
-    if (process_states.find(pid) != process_states.end()) {
-      process_states[pid] += evt.value;
+    // REAL COMPUTATION: accumulate payload into the destination process state
+    auto pid_it = node_to_pid.find(evt.dst_node);
+    if (pid_it != node_to_pid.end()) {
+      process_states[pid_it->second] += evt.value;
     }
 
-    // Propagate to neighbors (with computation)
-    int next_x = (dst_x + 1) % 32;
-    if (next_x < 10) { // Only propagate within our 10-node ring
-      ComputeEvent new_evt;
-      new_evt.timestamp = current_time + 1; // Fixed delay for simplicity
-      new_evt.dst_node = next_x * 1024;
-      new_evt.src_node = evt.dst_node;
-      new_evt.value = evt.value + 1; // Increment value (computation!)
-
-      event_queue.push(new_evt);
+    if (!evt.recursive) {
+      return;
     }
+
+    // Recursion-as-replacement: emit exactly one follow-up event.
+    // This keeps the queue size constant for a single recursive chain.
+    ComputeEvent new_evt;
+    new_evt.timestamp = current_time + 1;
+    new_evt.dst_node = encodeNode(dst_x, dst_y, dst_z);
+    new_evt.src_node = evt.dst_node;
+    new_evt.value = evt.value + 1;
+    new_evt.recursive = true;
+
+    event_queue.push(new_evt);
   }
 
   void run(int max_events) {
-    while (events_processed < max_events && !event_queue.empty()) {
+    if (max_events <= 0)
+      return;
+
+    unsigned long long target_events =
+        events_processed + static_cast<unsigned long long>(max_events);
+
+    while (events_processed < target_events && !event_queue.empty()) {
       tick();
     }
   }

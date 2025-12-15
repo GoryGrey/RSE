@@ -1,0 +1,23 @@
+==================================================
+   BETTI-RDL NODE.JS EXAMPLE
+==================================================
+
+[SETUP] Creating Betti-RDL kernel...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[SETUP] Spawning 10 processes...
+[INJECT] Sending events with values 1, 2, 3...
+
+[COMPUTE] Running distributed counter...
+
+[RESULTS]
+  Events processed: 3
+  Current time: 0
+  Active processes: 10
+
+[VALIDATION]
+  [OK] O(1) memory maintained
+  [OK] Real computation performed
+  [OK] Deterministic execution
+
+==================================================

@@ -20,18 +20,19 @@ void betti_rdl_inject_event(BettiRDLCompute *kernel, int x, int y, int z,
   }
 }
 
-void betti_rdl_run(BettiRDLCompute *kernel, int max_events) {
+int betti_rdl_run(BettiRDLCompute *kernel, int max_events) {
   if (kernel) {
-    kernel->run(max_events);
+    return kernel->run(max_events);
   }
+  return 0;
 }
 
-unsigned long long
+uint64_t
 betti_rdl_get_events_processed(const BettiRDLCompute *kernel) {
   return kernel ? kernel->getEventsProcessed() : 0;
 }
 
-unsigned long long betti_rdl_get_current_time(const BettiRDLCompute *kernel) {
+uint64_t betti_rdl_get_current_time(const BettiRDLCompute *kernel) {
   return kernel ? kernel->getCurrentTime() : 0;
 }
 

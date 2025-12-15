@@ -33,7 +33,8 @@ int main() {
 
   // Run computation
   std::cout << "\n[COMPUTE] Running distributed counter..." << std::endl;
-  kernel.run(100);
+  int events_processed = kernel.run(100);
+  (void)events_processed;
 
   auto end = std::chrono::high_resolution_clock::now();
   size_t mem_after = MemoryManager::getUsedMemory();

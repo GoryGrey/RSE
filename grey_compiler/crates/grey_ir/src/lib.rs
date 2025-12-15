@@ -270,10 +270,9 @@ impl IrBuilder {
     }
     
     fn build_constant(&self, expr: &grey_lang::types::TypedExpression) -> Result<IrValue> {
-        match expr {
-            grey_lang::types::TypedExpression::Integer(i) => Ok(IrValue::Integer(*i)),
-            grey_lang::types::TypedExpression::String(s) => Ok(IrValue::String(s.clone())),
-            grey_lang::types::TypedExpression::Boolean(b) => Ok(IrValue::Boolean(*b)),
+        match &expr.expression {
+            grey_lang::ast::Expression::Integer(i) => Ok(IrValue::Integer(*i)),
+            grey_lang::ast::Expression::String(s) => Ok(IrValue::String(s.clone())),
             _ => Err(IrError::TypeMismatch("Unsupported constant type".to_string())),
         }
     }

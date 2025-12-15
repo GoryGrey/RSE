@@ -24,3 +24,5 @@ vendor/   # Go
 
 # Logs
 *.log
+
+output/

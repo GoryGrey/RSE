@@ -1,0 +1,34 @@
+{
+    "name": "@betti-labs/cog",
+    "version": "0.1.0",
+    "description": "The Personal World Engine - Local Betti-RDL Cluster Manager",
+    "main": "dist/index.js",
+    "bin": {
+        "cog": "./dist/index.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/index.js"
+    },
+    "keywords": [
+        "cog",
+        "serverless",
+        "local",
+        "rdl"
+    ],
+    "author": "Betti Labs",
+    "license": "MIT",
+    "dependencies": {
+        "chalk": "^4.1.2",
+        "commander": "^11.0.0",
+        "fastify": "^5.6.2",
+        "inquirer": "^8.0.0",
+        "ora": "^5.4.1",
+        "ws": "^8.18.3"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "@types/ws": "^8.18.1",
+        "typescript": "^5.0.0"
+    }
+}

@@ -1,0 +1,5 @@
+{
+    "name": "genesis-sim",
+    "version": "1.0.0",
+    "entry": "src/sim.js"
+}

@@ -1,5 +1,7 @@
 # Build artifacts
 build/
+build-*/
+build-asan/
 *.exe
 *.dll
 *.lib
@@ -10,19 +12,34 @@ build/
 *.pyd
 *.node
 
+# Benchmark outputs
+benchmark_results.*
+perf.txt
+perf.data
+perf.data.old
+
 # Language specific
 __pycache__/
 *.pyc
 node_modules/
 target/   # Rust
 vendor/   # Go
+*.egg-info/
+dist/
+*.whl
 
 # IDEs
 .vscode/
 .idea/
 *.swp
+*.swo
 
 # Logs
 *.log
+log/
+
+# OS specific
+.DS_Store
+Thumbs.db
 
 output/

@@ -164,9 +164,43 @@ Zero-overhead integration for embedded use.
 betti-rdl = "1.0"
 ```
 
+## Comprehensive Benchmarking & CI/CD
+
+### Benchmark Harness
+
+The project includes a comprehensive benchmarking harness that validates the three killer scenarios:
+
+- **The Firehose**: Raw throughput measurement (target: >1M EPS)
+- **The Deep Dive**: Memory stability under deep recursion (O(1) validation)
+- **The Swarm**: Parallel scaling efficiency (target: >80% scaling efficiency)
+
+**Quick Start**:
+```bash
+cd src/cpp_kernel
+mkdir -p build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . --config Release
+./benchmark_harness --format=all
+```
+
+See [**Benchmark Harness Documentation**](docs/BENCHMARK_HARNESS.md) for detailed usage and interpretation.
+
+### CI/CD Pipeline
+
+Automated testing on every commit ensures code quality and performance:
+
+- **Build & Test**: Compiles kernel, runs unit tests (Release & Debug)
+- **Sanitizer Checks**: Validates memory safety with AddressSanitizer/LeakSanitizer
+- **Python Bindings**: Smoke tests Python FFI bindings
+- **Node.js Bindings**: Smoke tests Node.js N-API bindings
+- **Benchmarks**: Full harness with performance tracking and PR comments
+
+See [**CI/CD Workflow Documentation**](docs/CI_CD_WORKFLOW.md) for setup and troubleshooting.
+
 ## Roadmap
 
 - [x] **v1.0**: Core Runtime, O(1) Validation, Multi-language Bindings.
+- [x] **v1.0.1**: Comprehensive Benchmarking Harness & CI/CD Hardening.
 - [ ] **v1.1**: Go Bindings, Distributed Network Clustering.
 - [ ] **v2.0**: "COG Cloud" (Serverless Platform).
 

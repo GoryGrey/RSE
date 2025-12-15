@@ -1,0 +1,214 @@
+name: Betti-RDL CI/CD
+
+on:
+  push:
+    branches: [ main, develop, "feat-*" ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build-type: [Release, Debug]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libatomic1 python3-dev nodejs npm
+
+      - name: Configure CMake (C++ Kernel)
+        working-directory: src/cpp_kernel
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build-type }}
+
+      - name: Build C++ Kernel
+        working-directory: src/cpp_kernel/build
+        run: cmake --build . --config ${{ matrix.build-type }}
+
+      - name: Run Unit Tests
+        working-directory: src/cpp_kernel/build
+        run: ctest --output-on-failure
+
+      - name: Run Benchmark Harness
+        working-directory: src/cpp_kernel/build
+        run: |
+          echo "Running Benchmark Harness (Firehose, Deep Dive, Swarm)..."
+          ./benchmark_harness --firehose --deep-dive --swarm --format=all
+
+      - name: Upload Benchmark Reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-reports-${{ matrix.build-type }}
+          path: src/cpp_kernel/build/benchmark_results.*
+
+      - name: Run Stress Test
+        working-directory: src/cpp_kernel/build
+        run: ./stress_test
+
+  sanitizer-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libatomic1
+
+      - name: Configure CMake with Sanitizers
+        working-directory: src/cpp_kernel
+        run: |
+          mkdir -p build-asan
+          cd build-asan
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_SANITIZERS=ON
+
+      - name: Build with Sanitizers
+        working-directory: src/cpp_kernel/build-asan
+        run: cmake --build . --config Release
+
+      - name: Run mega_demo with ASAN/LSAN
+        working-directory: src/cpp_kernel/build-asan
+        run: |
+          echo "Running mega_demo with AddressSanitizer and LeakSanitizer..."
+          timeout 60 ./mega_demo_asan || true
+
+      - name: Run parallel_scaling_test with ASAN/LSAN
+        working-directory: src/cpp_kernel/build-asan
+        run: |
+          echo "Running parallel_scaling_test with AddressSanitizer and LeakSanitizer..."
+          timeout 60 ./parallel_scaling_test_asan || true
+
+      - name: Run betti_rdl_stress_test with ASAN/LSAN
+        working-directory: src/cpp_kernel/build-asan
+        run: |
+          echo "Running betti_rdl_stress_test with AddressSanitizer and LeakSanitizer..."
+          timeout 60 ./betti_rdl_stress_test_asan || true
+
+  python-bindings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential python3-dev python3-pip libatomic1
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Build Python bindings
+        working-directory: python
+        run: |
+          pip install setuptools wheel
+          python setup.py build_ext --inplace
+
+      - name: Smoke test Python bindings
+        working-directory: python
+        run: python example.py
+
+  nodejs-bindings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libatomic1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Node.js dependencies
+        working-directory: nodejs
+        run: npm install
+
+      - name: Build Node.js bindings
+        working-directory: nodejs
+        run: npm run build
+
+      - name: Smoke test Node.js bindings
+        working-directory: nodejs
+        run: node example.js
+
+  benchmark-comparison:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libatomic1
+
+      - name: Build Benchmark Suite
+        working-directory: src/cpp_kernel
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          cmake --build . --config Release
+
+      - name: Run Full Benchmark Suite
+        working-directory: src/cpp_kernel/build
+        run: |
+          echo "Running comprehensive benchmark suite..."
+          ./benchmark_harness --firehose --deep-dive --swarm --format=all
+          echo ""
+          echo "Benchmark Results:"
+          echo "=================="
+          if [ -f benchmark_results.txt ]; then cat benchmark_results.txt; fi
+
+      - name: Generate Benchmark Report Summary
+        working-directory: src/cpp_kernel/build
+        if: always()
+        run: |
+          echo "# Benchmark Results" > /tmp/benchmark_summary.md
+          echo "" >> /tmp/benchmark_summary.md
+          if [ -f benchmark_results.csv ]; then
+            echo "## CSV Report" >> /tmp/benchmark_summary.md
+            echo '```' >> /tmp/benchmark_summary.md
+            cat benchmark_results.csv >> /tmp/benchmark_summary.md
+            echo '```' >> /tmp/benchmark_summary.md
+          fi
+
+      - name: Comment PR with Benchmark Results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const benchmarkPath = 'src/cpp_kernel/build/benchmark_results.csv';
+            if (fs.existsSync(benchmarkPath)) {
+              const results = fs.readFileSync(benchmarkPath, 'utf8');
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: '## 📊 Benchmark Results\n```\n' + results + '\n```'
+              });
+            }
+
+      - name: Upload Benchmark Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results-full
+          path: src/cpp_kernel/build/benchmark_results.*

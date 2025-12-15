@@ -38,15 +38,29 @@ void testThroughput() {
 
   BettiRDLKernel kernel;
 
-  // Create ring of 100 nodes
+  auto coordsForNode = [](int i, int &x, int &y, int &z) {
+    x = i % 32;
+    y = (i / 32) % 32;
+    z = 0;
+  };
+
+  // Create ring of 100 nodes (mapped into the 32x32 plane to avoid torus wrap
+  // collisions)
   for (int i = 0; i < 100; i++) {
-    kernel.spawnProcess(i, 0, 0);
-    kernel.createEdge(i, 0, 0, (i + 1) % 100, 0, 0, 1);
+    int x1, y1, z1;
+    int x2, y2, z2;
+    coordsForNode(i, x1, y1, z1);
+    coordsForNode((i + 1) % 100, x2, y2, z2);
+
+    kernel.spawnProcess(x1, y1, z1);
+    kernel.createEdge(x1, y1, z1, x2, y2, z2, 1);
   }
 
   // Inject 100 initial events
   for (int i = 0; i < 100; i++) {
-    kernel.injectEvent(i, 0, 0, i, 0, 0, 1);
+    int x, y, z;
+    coordsForNode(i, x, y, z);
+    kernel.injectEvent(x, y, z, x, y, z, 1);
   }
 
   auto start = std::chrono::high_resolution_clock::now();
@@ -150,13 +164,28 @@ void testSustainedLoad() {
 
   BettiRDLKernel kernel;
 
-  // Ring topology
+  auto coordsForNode = [](int i, int &x, int &y, int &z) {
+    x = i % 32;
+    y = (i / 32) % 32;
+    z = 0;
+  };
+
+  // Ring topology (mapped into the 32x32 plane to avoid torus wrap collisions)
   for (int i = 0; i < 50; i++) {
-    kernel.spawnProcess(i, 0, 0);
-    kernel.createEdge(i, 0, 0, (i + 1) % 50, 0, 0, 1);
+    int x1, y1, z1;
+    int x2, y2, z2;
+    coordsForNode(i, x1, y1, z1);
+    coordsForNode((i + 1) % 50, x2, y2, z2);
+
+    kernel.spawnProcess(x1, y1, z1);
+    kernel.createEdge(x1, y1, z1, x2, y2, z2, 1);
   }
 
-  kernel.injectEvent(0, 0, 0, 0, 0, 0, 1);
+  {
+    int x, y, z;
+    coordsForNode(0, x, y, z);
+    kernel.injectEvent(x, y, z, x, y, z, 1);
+  }
 
   size_t mem_start = MemoryManager::getUsedMemory();
   auto time_start = std::chrono::high_resolution_clock::now();

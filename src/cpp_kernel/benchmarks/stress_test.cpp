@@ -44,26 +44,29 @@ void runFirehose(int event_count) {
   auto start = high_resolution_clock::now();
 
   // Burst injection
-  // In a real scenario, run() would process the queue.
-  // Here we inject and run in batches to simulate continuous load.
+  // For bounded queues, we must drain the induced propagation chain per injected
+  // event (x: 0 -> 9), otherwise the queue monotonically accumulates.
   int batch_size = 1000;
   int batches = event_count / batch_size;
+  int chain_length = 10;
 
   for (int i = 0; i < batches; i++) {
     // Inject batch
     for (int j = 0; j < batch_size; j++) {
       kernel.injectEvent(0, 0, 0, i * batch_size + j);
     }
-    // Process batch
-    kernel.run(batch_size);
+    // Drain the full chain to keep queue size bounded
+    kernel.run(batch_size * chain_length);
   }
 
   auto end = high_resolution_clock::now();
   auto duration_ms = duration_cast<milliseconds>(end - start).count();
   double seconds = duration_ms / 1000.0;
-  double eps = event_count / seconds;
+  double events_processed = static_cast<double>(kernel.getEventsProcessed());
+  double eps = events_processed / seconds;
 
-  std::cout << "  Events: " << event_count << std::endl;
+  std::cout << "  Events (processed): " << static_cast<long long>(events_processed)
+            << std::endl;
   std::cout << "  Time:   " << seconds << "s" << std::endl;
   std::cout << "  Speed:  " << std::fixed << std::setprecision(2) << eps
             << " Events/Sec" << std::endl;
@@ -115,16 +118,21 @@ void runDeepDive(int depth) {
 // Goal: Verify parallel scaling
 // ----------------------------------------------------------------------------
 void workerThread(int id, int events, std::atomic<long> &total_events) {
+  (void)id;
+
   BettiRDLCompute kernel;
   kernel.spawnProcess(0, 0, 0);
-  kernel.injectEvent(0, 0, 0, 1);
 
-  // Simplistic run loop
+  // Ensure the event queue does not monotonically accumulate.
+  // Each injected event induces a bounded propagation chain (x: 0 -> 9).
+  constexpr int chain_length = 10;
+
   for (int i = 0; i < events; i++) {
     kernel.injectEvent(0, 0, 0, i);
-    kernel.run(1);
+    kernel.run(chain_length);
   }
-  total_events += events;
+
+  total_events += static_cast<long>(kernel.getEventsProcessed());
 }
 
 void runSwarm(int thread_count, int events_per_thread) {

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <new>
 #include "Allocator.h"
 #include "ToroidalSpace.h"
 
@@ -25,15 +26,22 @@ public:
     }
 
     void spawnProcess() {
-        // Use custom 'new' (intercepted by Allocator.h)
-        Process* p = new Process(++pid_counter);
-        
-        // Random placement
-        p->x = rand() % 32;
-        p->y = rand() % 32;
-        p->z = rand() % 32;
+        void* mem = MemoryManager::getAllocator().allocateProcess(sizeof(Process));
+        if (!mem) {
+            panic("Process pool exhausted");
+        }
 
-        space.addProcess(p, p->x, p->y, p->z);
+        Process* p = new (mem) Process(++pid_counter);
+
+        // Deterministic placement (avoids per-voxel overflow and makes iteration deterministic)
+        size_t idx = static_cast<size_t>(p->pid - 1) % (32 * 32 * 32);
+        p->x = static_cast<int>(idx % 32);
+        p->y = static_cast<int>((idx / 32) % 32);
+        p->z = static_cast<int>(idx / (32 * 32));
+
+        if (!space.addProcess(p, p->x, p->y, p->z)) {
+            panic("ToroidalSpace voxel capacity exceeded");
+        }
     }
 
     void tick() {

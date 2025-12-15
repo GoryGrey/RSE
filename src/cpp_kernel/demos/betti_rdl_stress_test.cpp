@@ -16,13 +16,15 @@ void printHeader(const std::string &title) {
 
 void printMetrics(const std::string &test_name, unsigned long long events,
                   unsigned long long time_units, size_t processes, size_t edges,
-                  long long mem_delta, double duration_ms) {
+                  long long mem_delta, size_t peak_rss, size_t current_rss, double duration_ms) {
   std::cout << "\n[" << test_name << " RESULTS]" << std::endl;
   std::cout << "    > Events Processed: " << events << std::endl;
   std::cout << "    > Time Units: " << time_units << std::endl;
   std::cout << "    > Processes: " << processes << std::endl;
   std::cout << "    > Edges: " << edges << std::endl;
   std::cout << "    > Memory Delta: " << mem_delta << " bytes" << std::endl;
+  std::cout << "    > Peak RSS: " << (peak_rss / 1024.0 / 1024.0) << " MB" << std::endl;
+  std::cout << "    > Current RSS: " << (current_rss / 1024.0 / 1024.0) << " MB" << std::endl;
   std::cout << "    > Duration: " << std::fixed << std::setprecision(2)
             << duration_ms << "ms" << std::endl;
   std::cout << "    > Events/sec: " << std::fixed << std::setprecision(0)
@@ -36,6 +38,7 @@ void testThroughput() {
   printHeader("TEST 1: THROUGHPUT");
   std::cout << "Processing 1 million events in a ring topology" << std::endl;
 
+  MemoryManager::resetSystemPeak();
   BettiRDLKernel kernel;
 
   auto coordsForNode = [](int i, int &x, int &y, int &z) {
@@ -70,12 +73,15 @@ void testThroughput() {
 
   auto end = std::chrono::high_resolution_clock::now();
   size_t mem_after = MemoryManager::getUsedMemory();
+  size_t peak_rss = MemoryManager::getSystemPeakRSS();
+  size_t current_rss = MemoryManager::getSystemRSS();
 
   auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
   printMetrics("THROUGHPUT", events_processed_in_run,
                kernel.getCurrentTime(), 100, 100, mem_after - mem_before,
+               peak_rss, current_rss,
                duration.count());
 }
 
@@ -88,6 +94,7 @@ void testScalability() {
   int event_counts[] = {1000, 10000, 100000, 1000000};
 
   for (int count : event_counts) {
+    MemoryManager::resetSystemPeak();
     BettiRDLKernel kernel;
 
     // Small ring
@@ -105,12 +112,16 @@ void testScalability() {
 
     auto end = std::chrono::high_resolution_clock::now();
     size_t mem_after = MemoryManager::getUsedMemory();
+    size_t current_rss = MemoryManager::getSystemRSS();
+    size_t peak_rss = MemoryManager::getSystemPeakRSS();
     auto duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
     std::cout << "\n  [" << count << " events]" << std::endl;
     std::cout << "    Memory Delta: " << (mem_after - mem_before) << " bytes"
               << std::endl;
+    std::cout << "    Peak RSS: " << (peak_rss / 1024.0 / 1024.0) << " MB" << std::endl;
+    std::cout << "    Current RSS: " << (current_rss / 1024.0 / 1024.0) << " MB" << std::endl;
     std::cout << "    Duration: " << duration.count() << "ms" << std::endl;
     std::cout << "    Events/sec: " << (events_in_run * 1000.0 / duration.count())
               << std::endl;
@@ -122,6 +133,7 @@ void testLargeTopology() {
   printHeader("TEST 3: LARGE TOPOLOGY");
   std::cout << "Creating 1000 processes in 3D space" << std::endl;
 
+  MemoryManager::resetSystemPeak();
   BettiRDLKernel kernel;
 
   // Create 10x10x10 cube
@@ -149,11 +161,14 @@ void testLargeTopology() {
 
   auto end = std::chrono::high_resolution_clock::now();
   size_t mem_after = MemoryManager::getUsedMemory();
+  size_t current_rss = MemoryManager::getSystemRSS();
+  size_t peak_rss = MemoryManager::getSystemPeakRSS();
   auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
   printMetrics("LARGE TOPOLOGY", events_in_run,
                kernel.getCurrentTime(), 1000, 3000, mem_after - mem_before,
+               peak_rss, current_rss,
                duration.count());
 }
 
@@ -162,6 +177,7 @@ void testSustainedLoad() {
   printHeader("TEST 4: SUSTAINED LOAD");
   std::cout << "Running for extended period to check memory leaks" << std::endl;
 
+  MemoryManager::resetSystemPeak();
   BettiRDLKernel kernel;
 
   auto coordsForNode = [](int i, int &x, int &y, int &z) {
@@ -199,21 +215,26 @@ void testSustainedLoad() {
     int events_in_batch = kernel.run(batch_size);
     total_events += events_in_batch;
     size_t mem_current = MemoryManager::getUsedMemory();
+    size_t rss = MemoryManager::getSystemRSS();
 
     std::cout << "  Batch " << (batch + 1) << "/" << num_batches
               << ": Events (this batch)=" << events_in_batch
               << ", Events (lifetime)=" << kernel.getEventsProcessed()
               << ", Memory=" << (mem_current - mem_start) << " bytes"
+              << ", RSS=" << (rss / 1024.0 / 1024.0) << " MB"
               << std::endl;
   }
 
   auto time_end = std::chrono::high_resolution_clock::now();
   size_t mem_end = MemoryManager::getUsedMemory();
+  size_t current_rss = MemoryManager::getSystemRSS();
+  size_t peak_rss = MemoryManager::getSystemPeakRSS();
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
       time_end - time_start);
 
   printMetrics("SUSTAINED LOAD", total_events,
                kernel.getCurrentTime(), 50, 50, mem_end - mem_start,
+               peak_rss, current_rss,
                duration.count());
 }
 

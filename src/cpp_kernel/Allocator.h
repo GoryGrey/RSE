@@ -11,6 +11,16 @@
 #include <mutex>
 #include <stdexcept>
 #include <type_traits>
+#include <unistd.h>
+#if defined(__linux__)
+  #include <sys/resource.h>
+  #include <stdio.h>
+#elif defined(__APPLE__)
+  #include <mach/mach.h>
+#elif defined(_WIN32)
+  #include <windows.h>
+  #include <psapi.h>
+#endif
 
 // Bounded Arena Allocator for BettiOS
 // Pre-reserves exact memory for 32³ lattice, processes, events, and edges
@@ -477,6 +487,17 @@ void operator delete(void* p, size_t) noexcept {
 // ============================================================================
 
 class MemoryManager {
+private:
+    static std::atomic<size_t> manual_peak_rss;
+
+    static void updatePeak(size_t current_rss) {
+        size_t peak = manual_peak_rss.load(std::memory_order_relaxed);
+        while (current_rss > peak && 
+               !manual_peak_rss.compare_exchange_weak(peak, current_rss, std::memory_order_relaxed)) {
+            peak = manual_peak_rss.load(std::memory_order_relaxed);
+        }
+    }
+
 public:
     // Kernel pools only (process/event/edge).
     static size_t getUsedMemory() {
@@ -496,8 +517,54 @@ public:
         return BoundedArenaAllocator::getInstance().getGenericPoolUsage();
     }
 
+    static size_t getSystemRSS() {
+#if defined(__linux__)
+        long rss = 0L;
+        FILE* fp = NULL;
+        if ((fp = fopen("/proc/self/statm", "r")) == NULL)
+            return (size_t)0L;
+        if (fscanf(fp, "%*s%ld", &rss) != 1) {
+            fclose(fp);
+            return (size_t)0L;
+        }
+        fclose(fp);
+        size_t current_rss = (size_t)rss * (size_t)sysconf(_SC_PAGESIZE);
+        updatePeak(current_rss);
+        return current_rss;
+#elif defined(__APPLE__)
+        struct mach_task_basic_info info;
+        mach_msg_type_number_t infoCount = MACH_TASK_BASIC_INFO_COUNT;
+        if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
+                    (task_info_t)&info, &infoCount) != KERN_SUCCESS)
+            return (size_t)0L;
+        size_t current_rss = (size_t)info.resident_size;
+        updatePeak(current_rss);
+        return current_rss;
+#elif defined(_WIN32)
+        PROCESS_MEMORY_COUNTERS pmc;
+        if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
+            size_t current_rss = (size_t)pmc.WorkingSetSize;
+            updatePeak(current_rss);
+            return current_rss;
+        }
+        return (size_t)0L;
+#else
+        return (size_t)0L;
+#endif
+    }
+
+    static size_t getSystemPeakRSS() {
+        return manual_peak_rss.load(std::memory_order_relaxed);
+    }
+
+    static void resetSystemPeak() {
+        manual_peak_rss.store(getSystemRSS(), std::memory_order_relaxed);
+    }
+
     static void fold() {
         std::cout << "[Metal] Memory Manager: Folding Entropy..." << std::endl;
+        // In a real kernel, this would defragment memory
+        // Here we just print stats
         BoundedArenaAllocator::getInstance().printAllStats();
     }
 
@@ -505,3 +572,5 @@ public:
         return BoundedArenaAllocator::getInstance();
     }
 };
+
+std::atomic<size_t> MemoryManager::manual_peak_rss{0};

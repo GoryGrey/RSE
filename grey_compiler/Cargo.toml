@@ -2,6 +2,8 @@
 members = [
     "crates/grey_lang",
     "crates/greyc_cli",
+    "crates/grey_ir",
+    "crates/grey_backends",
     "crates/*",
 ]
 

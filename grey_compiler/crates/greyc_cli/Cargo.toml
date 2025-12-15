@@ -14,6 +14,10 @@ clap = { version = "4.0", features = ["derive"] }
 # Grey language library
 grey_lang = { path = "../grey_lang" }
 
+# IR and backend systems
+grey_ir = { path = "../grey_ir" }
+grey_backends = { path = "../grey_backends" }
+
 # Error handling
 anyhow = "1.0"
 miette = { version = "5.0", features = ["fancy"] }

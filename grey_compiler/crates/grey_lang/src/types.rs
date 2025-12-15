@@ -3,7 +3,7 @@
 //! This module provides basic type checking for Grey programs.
 
 use crate::ast::*;
-use crate::diagnostics::{Diagnostic, DiagnosticError};
+use crate::diagnostics::Diagnostic;
 
 /// Typed program with all types resolved
 #[derive(Debug, Clone, PartialEq)]
@@ -239,7 +239,7 @@ impl TypeChecker {
         // Type check parameters
         let mut typed_parameters = Vec::new();
         for param in &function.parameters {
-            let converted_type = self.convert_ast_type(param.param_type)?;
+            let converted_type = self.convert_ast_type(&param.param_type)?;
             let typed_param = TypedFunctionParameter {
                 name: param.name.clone(),
                 param_type: converted_type,

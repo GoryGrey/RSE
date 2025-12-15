@@ -56,7 +56,7 @@ pub struct SpannedToken {
 /// Main lexing function
 pub fn lex(source: &str) -> Result<Vec<SpannedToken>, Box<dyn Diagnostic>> {
     let mut tokens = Vec::new();
-    let mut chars: Vec<char> = source.chars().collect();
+    let chars: Vec<char> = source.chars().collect();
     let mut pos = 0;
     
     while pos < chars.len() {
@@ -160,33 +160,53 @@ pub fn lex(source: &str) -> Result<Vec<SpannedToken>, Box<dyn Diagnostic>> {
                     span: (start, pos),
                 });
             }
-            // Coordinate literal
+            // Coordinate literal (e.g. "<1, 2>") or '<' operator
             '<' => {
                 let start = pos;
-                pos += 1;
-                
-                // Skip whitespace
-                while pos < chars.len() && chars[pos].is_ascii_whitespace() {
+
+                // Try to lex a coordinate literal: '<' ... '>' with only digits, minus, commas, and
+                // whitespace inside. If it doesn't match, fall back to a LessThan token.
+                let mut i = pos + 1;
+                while i < chars.len() && chars[i].is_ascii_whitespace() {
+                    i += 1;
+                }
+
+                let mut saw_digit = false;
+                while i < chars.len() {
+                    let ch = chars[i];
+                    if ch.is_ascii_digit() {
+                        saw_digit = true;
+                        i += 1;
+                        continue;
+                    }
+                    if ch == '-' || ch == ',' || ch.is_ascii_whitespace() {
+                        i += 1;
+                        continue;
+                    }
+                    if ch == '>' && saw_digit {
+                        pos = i + 1;
+                        tokens.push(SpannedToken {
+                            token: Token::CoordLiteral,
+                            span: (start, pos),
+                        });
+                        break;
+                    }
+
+                    tokens.push(SpannedToken {
+                        token: Token::LessThan,
+                        span: (pos, pos + 1),
+                    });
+                    pos += 1;
+                    break;
+                }
+
+                if i >= chars.len() {
+                    tokens.push(SpannedToken {
+                        token: Token::LessThan,
+                        span: (pos, pos + 1),
+                    });
                     pos += 1;
                 }
-                
-                // Skip numbers and punctuation
-                while pos < chars.len() && 
-                     (chars[pos].is_ascii_digit() || 
-                      chars[pos] == ',' || 
-                      chars[pos] == '>') {
-                    pos += 1;
-                }
-                
-                // Skip closing >
-                if pos < chars.len() && chars[pos] == '>' {
-                    pos += 1;
-                }
-                
-                tokens.push(SpannedToken {
-                    token: Token::CoordLiteral,
-                    span: (start, pos),
-                });
             }
             // Single character tokens
             '(' => {
@@ -291,13 +311,6 @@ pub fn lex(source: &str) -> Result<Vec<SpannedToken>, Box<dyn Diagnostic>> {
             '/' => {
                 tokens.push(SpannedToken {
                     token: Token::Slash,
-                    span: (pos, pos + 1),
-                });
-                pos += 1;
-            }
-            '<' => {
-                tokens.push(SpannedToken {
-                    token: Token::LessThan,
                     span: (pos, pos + 1),
                 });
                 pos += 1;

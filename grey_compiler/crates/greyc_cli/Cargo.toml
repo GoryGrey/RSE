@@ -1,0 +1,30 @@
+[package]
+name = "greyc_cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "greyc"
+path = "src/main.rs"
+
+[dependencies]
+# CLI framework
+clap = { version = "4.0", features = ["derive"] }
+
+# Grey language library
+grey_lang = { path = "../grey_lang" }
+
+# Error handling
+anyhow = "1.0"
+miette = { version = "5.0", features = ["fancy"] }
+
+# File system
+walkdir = "2.0"
+
+# Logging
+log = "0.4"
+env_logger = "0.10"
+
+# Utilities
+serde_json = "1.0"
+pathdiff = "0.2"

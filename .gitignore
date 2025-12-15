@@ -15,6 +15,7 @@ __pycache__/
 *.pyc
 node_modules/
 target/   # Rust
+grey_compiler/target/  # Grey compiler specific
 vendor/   # Go
 
 # IDEs

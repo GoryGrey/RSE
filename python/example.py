@@ -28,7 +28,8 @@ def main():
     
     # Run computation
     print("\n[COMPUTE] Running distributed counter...")
-    kernel.run(max_events=100)
+    events_in_run = kernel.run(max_events=100)
+    print(f"  Processed {events_in_run} events in this run.")
     
     # Display results
     print("\n[RESULTS]")

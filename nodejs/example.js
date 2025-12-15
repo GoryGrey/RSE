@@ -22,7 +22,8 @@ kernel.injectEvent(0, 0, 0, 3);
 
 // Run computation
 console.log('\n[COMPUTE] Running distributed counter...');
-kernel.run(100);
+const eventsInRun = kernel.run(100);
+console.log(`  Processed ${eventsInRun} events in this run.`);
 
 // Display results
 console.log('\n[RESULTS]');

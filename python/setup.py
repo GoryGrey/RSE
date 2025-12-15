@@ -11,6 +11,7 @@ ext_modules = [
         include_dirs=["../src/cpp_kernel"],
         define_macros=[("VERSION_INFO", __version__)],
         cxx_std=17,
+        extra_link_args=["-latomic"],
     ),
 ]
 

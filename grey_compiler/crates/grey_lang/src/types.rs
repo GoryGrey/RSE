@@ -3,7 +3,7 @@
 //! This module provides basic type checking for Grey programs.
 
 use crate::ast::*;
-use crate::diagnostics::{Diagnostic, DiagnosticError};
+use crate::diagnostics::Diagnostic;
 
 /// Typed program with all types resolved
 #[derive(Debug, Clone, PartialEq)]

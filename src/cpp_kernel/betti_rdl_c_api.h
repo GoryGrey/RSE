@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stddef.h>
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,12 +31,18 @@ BETTI_RDL_API void betti_rdl_spawn_process(BettiRDLCompute* kernel, int x, int y
 BETTI_RDL_API void betti_rdl_inject_event(BettiRDLCompute* kernel, int x, int y, int z, int value);
 
 // Execution
-BETTI_RDL_API void betti_rdl_run(BettiRDLCompute* kernel, int max_events);
+// Processes at most max_events NEW events (not based on lifetime total)
+// Returns the number of events processed in this call
+BETTI_RDL_API int betti_rdl_run(BettiRDLCompute* kernel, int max_events);
 
 // Queries
-BETTI_RDL_API unsigned long long betti_rdl_get_events_processed(const BettiRDLCompute* kernel);
-BETTI_RDL_API unsigned long long betti_rdl_get_current_time(const BettiRDLCompute* kernel);
+// Get lifetime total events processed across all run() calls
+BETTI_RDL_API uint64_t betti_rdl_get_events_processed(const BettiRDLCompute* kernel);
+// Get current simulation time
+BETTI_RDL_API uint64_t betti_rdl_get_current_time(const BettiRDLCompute* kernel);
+// Get number of active processes
 BETTI_RDL_API size_t betti_rdl_get_process_count(const BettiRDLCompute* kernel);
+// Get state of a specific process
 BETTI_RDL_API int betti_rdl_get_process_state(const BettiRDLCompute* kernel, int pid);
 
 #ifdef __cplusplus

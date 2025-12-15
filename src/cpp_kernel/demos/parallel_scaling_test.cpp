@@ -22,7 +22,7 @@ void runSingleInstance(int instance_id, int events) {
   kernel.injectEvent(0, instance_id, 0, instance_id);
 
   // Run computation
-  kernel.run(events);
+  (void)kernel.run(events);
 }
 
 void testParallelScaling(int num_instances, int events_per_instance) {

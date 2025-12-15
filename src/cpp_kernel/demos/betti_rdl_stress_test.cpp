@@ -66,7 +66,7 @@ void testThroughput() {
   auto start = std::chrono::high_resolution_clock::now();
   size_t mem_before = MemoryManager::getUsedMemory();
 
-  kernel.run(1000000);
+  int events_processed_in_run = kernel.run(1000000);
 
   auto end = std::chrono::high_resolution_clock::now();
   size_t mem_after = MemoryManager::getUsedMemory();
@@ -74,7 +74,7 @@ void testThroughput() {
   auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-  printMetrics("THROUGHPUT", kernel.getEventsProcessed(),
+  printMetrics("THROUGHPUT", events_processed_in_run,
                kernel.getCurrentTime(), 100, 100, mem_after - mem_before,
                duration.count());
 }
@@ -101,7 +101,7 @@ void testScalability() {
     size_t mem_before = MemoryManager::getUsedMemory();
     auto start = std::chrono::high_resolution_clock::now();
 
-    kernel.run(count);
+    int events_in_run = kernel.run(count);
 
     auto end = std::chrono::high_resolution_clock::now();
     size_t mem_after = MemoryManager::getUsedMemory();
@@ -112,7 +112,7 @@ void testScalability() {
     std::cout << "    Memory Delta: " << (mem_after - mem_before) << " bytes"
               << std::endl;
     std::cout << "    Duration: " << duration.count() << "ms" << std::endl;
-    std::cout << "    Events/sec: " << (count * 1000.0 / duration.count())
+    std::cout << "    Events/sec: " << (events_in_run * 1000.0 / duration.count())
               << std::endl;
   }
 }
@@ -145,14 +145,14 @@ void testLargeTopology() {
   auto start = std::chrono::high_resolution_clock::now();
   size_t mem_before = MemoryManager::getUsedMemory();
 
-  kernel.run(100000);
+  int events_in_run = kernel.run(100000);
 
   auto end = std::chrono::high_resolution_clock::now();
   size_t mem_after = MemoryManager::getUsedMemory();
   auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-  printMetrics("LARGE TOPOLOGY", kernel.getEventsProcessed(),
+  printMetrics("LARGE TOPOLOGY", events_in_run,
                kernel.getCurrentTime(), 1000, 3000, mem_after - mem_before,
                duration.count());
 }
@@ -193,13 +193,16 @@ void testSustainedLoad() {
   // Run in batches, checking memory each time
   int batch_size = 100000;
   int num_batches = 10;
+  unsigned long long total_events = 0;
 
   for (int batch = 0; batch < num_batches; batch++) {
-    kernel.run(batch_size);
+    int events_in_batch = kernel.run(batch_size);
+    total_events += events_in_batch;
     size_t mem_current = MemoryManager::getUsedMemory();
 
     std::cout << "  Batch " << (batch + 1) << "/" << num_batches
-              << ": Events=" << kernel.getEventsProcessed()
+              << ": Events (this batch)=" << events_in_batch
+              << ", Events (lifetime)=" << kernel.getEventsProcessed()
               << ", Memory=" << (mem_current - mem_start) << " bytes"
               << std::endl;
   }
@@ -209,7 +212,7 @@ void testSustainedLoad() {
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
       time_end - time_start);
 
-  printMetrics("SUSTAINED LOAD", kernel.getEventsProcessed(),
+  printMetrics("SUSTAINED LOAD", total_events,
                kernel.getCurrentTime(), 50, 50, mem_end - mem_start,
                duration.count());
 }
@@ -236,13 +239,13 @@ void testComparison() {
   kernel.injectEvent(0, 0, 0, 0, 0, 0, 1);
 
   auto start = std::chrono::high_resolution_clock::now();
-  kernel.run(1000000);
+  int events_processed = kernel.run(1000000);
   auto end = std::chrono::high_resolution_clock::now();
 
   auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
   double events_per_sec =
-      kernel.getEventsProcessed() * 1000.0 / duration.count();
+      events_processed * 1000.0 / duration.count();
 
   std::cout << "\n  Betti-RDL: " << std::fixed << std::setprecision(0)
             << events_per_sec << " events/sec" << std::endl;

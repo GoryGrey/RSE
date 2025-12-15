@@ -36,7 +36,8 @@ int main() {
     kernel.injectEvent(0, 0, 0, 0, 0, 0, 1);
 
     // Run simulation
-    kernel.run(1000);
+    int events_processed = kernel.run(1000);
+    std::cout << "  Events processed: " << events_processed << std::endl;
   }
 
   // Test 2: Grid topology
@@ -66,7 +67,8 @@ int main() {
     kernel2.injectEvent(4, 4, 0, 4, 4, 0, 1);
 
     // Run simulation
-    kernel2.run(5000);
+    int events_processed = kernel2.run(5000);
+    std::cout << "  Events processed: " << events_processed << std::endl;
   }
 
   // Test 3: 3D Cube topology
@@ -100,7 +102,8 @@ int main() {
     kernel3.injectEvent(0, 0, 0, 0, 0, 0, 1);
 
     // Run simulation
-    kernel3.run(10000);
+    int events_processed = kernel3.run(10000);
+    std::cout << "  Events processed: " << events_processed << std::endl;
   }
 
   std::cout << "\n================================================="

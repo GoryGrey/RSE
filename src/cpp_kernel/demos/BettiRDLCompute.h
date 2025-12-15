@@ -8,6 +8,8 @@
 #include <chrono>
 #include <cstdint>
 #include <iostream>
+#include <mutex>
+#include <queue>
 
 // Enhanced Betti-RDL with Real Computation
 // Adds actual algorithm execution, not just event propagation
@@ -66,7 +68,11 @@ private:
   std::size_t process_count_ = 0;
 
   unsigned long long current_time = 0;
-  unsigned long long events_processed = 0;
+  unsigned long long events_processed = 0;  // Lifetime total
+
+  // Thread-safety for concurrent injectEvent
+  std::mutex event_injection_lock;
+  std::queue<ComputeEvent> pending_events;
 
 public:
   BettiRDLCompute() {
@@ -97,8 +103,25 @@ public:
     evt.src_node = 0;
     evt.value = value;
 
-    return event_queue.push(evt);
+    // Thread-safe injection: add to pending queue
+    {
+      std::lock_guard<std::mutex> lock(event_injection_lock);
+      pending_events.push(evt);
+    }
+    return true;
   }
+
+  // Transfer pending events to the main event queue (single-threaded from scheduler)
+  private:
+  void flushPendingEvents() {
+    std::lock_guard<std::mutex> lock(event_injection_lock);
+    while (!pending_events.empty()) {
+      (void)event_queue.push(pending_events.front());
+      pending_events.pop();
+    }
+  }
+
+  public:
 
   void tick() {
     if (event_queue.empty()) {
@@ -106,7 +129,7 @@ public:
     }
 
     ComputeEvent evt = event_queue.top();
-    event_queue.pop();
+    (void)event_queue.pop();
 
     current_time = evt.timestamp;
     events_processed++;
@@ -134,11 +157,19 @@ public:
     }
   }
 
-  void run(int max_events) {
-    while (events_processed < static_cast<unsigned long long>(max_events) &&
-           !event_queue.empty()) {
+  // Process at most max_events NEW events, returning the count processed
+  // Does not depend on lifetime events_processed total
+  int run(int max_events) {
+    // Flush any pending events from concurrent injections
+    flushPendingEvents();
+
+    int events_in_run = 0;
+    while (events_in_run < max_events && !event_queue.empty()) {
       tick();
+      events_in_run++;
     }
+
+    return events_in_run;
   }
 
   int getProcessState(int pid) const {

@@ -46,7 +46,7 @@ int main() {
   for (int batch = 0; batch < num_batches; batch++) {
     size_t mem_before = MemoryManager::getUsedMemory();
 
-    kernel.run(batch_size);
+    (void)kernel.run(batch_size);
 
     size_t mem_after = MemoryManager::getUsedMemory();
 

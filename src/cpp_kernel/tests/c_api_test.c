@@ -25,12 +25,13 @@ int main() {
 
   // Run computation
   printf("\n[COMPUTE] Running distributed counter...\n");
-  betti_rdl_run(kernel, 100);
+  int events_in_run = betti_rdl_run(kernel, 100);
 
   // Display results
   printf("\n[RESULTS]\n");
-  printf("  Events processed: %llu\n", betti_rdl_get_events_processed(kernel));
-  printf("  Current time: %llu\n", betti_rdl_get_current_time(kernel));
+  printf("  Events processed (this run): %d\n", events_in_run);
+  printf("  Events processed (lifetime): %lu\n", betti_rdl_get_events_processed(kernel));
+  printf("  Current time: %lu\n", betti_rdl_get_current_time(kernel));
   printf("  Active processes: %zu\n", betti_rdl_get_process_count(kernel));
 
   printf("\n[VALIDATION]\n");

@@ -74,7 +74,7 @@ void runLogisticsDemo(int agents) {
     // Process network flow
     // In a real vis, we'd see them move. Here we measure throughput of the
     // routing logic.
-    kernel.run(batch_size);
+    (void)kernel.run(batch_size);
   }
 
   auto end = high_resolution_clock::now();
@@ -128,10 +128,10 @@ void runCortexDemo(int neurons, int impulses) {
     // Run propagation wave
     // Each spike triggers neighbors (simulated by kernel run)
     if (i % 1000 == 0)
-      kernel.run(100);
+      (void)kernel.run(100);
   }
   // Flush rest
-  kernel.run(impulses / 10);
+  (void)kernel.run(impulses / 10);
 
   auto end = high_resolution_clock::now();
   auto ms = duration_cast<milliseconds>(end - start).count();
@@ -177,7 +177,7 @@ void runContagionDemo(int population) {
 
   // Run simulation for 'population' interaction steps
   // This simulates the virus jumping 'population' times
-  kernel.run(population);
+  (void)kernel.run(population);
 
   auto end = high_resolution_clock::now();
   size_t mem_end = MemoryManager::getUsedMemory();

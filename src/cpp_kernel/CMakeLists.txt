@@ -1,9 +1,11 @@
 
 cmake_minimum_required(VERSION 3.10)
-project(BettiOS_Kernel VERSION 1.0.0 LANGUAGES CXX)
+project(BettiOS_Kernel VERSION 1.0.0 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
 enable_testing()
 
@@ -54,10 +56,12 @@ add_executable(parallel_scaling_test_v2 demos/parallel_scaling_test.cpp)
 add_library(betti_rdl_c SHARED betti_rdl_c_api.cpp)
 target_compile_definitions(betti_rdl_c PRIVATE BETTI_RDL_EXPORTS)
 
-# C API test
+# C API test (C wrapper for C++ library - link with C++)
 add_executable(c_api_test tests/c_api_test.c)
 target_link_libraries(c_api_test betti_rdl_c)
-set_target_properties(c_api_test PROPERTIES LINKER_LANGUAGE CXX)
+if(NOT MSVC)
+    target_link_libraries(c_api_test atomic)
+endif()
 
 # Allocator test (multi-threaded bounded arena allocator tests)
 add_executable(allocator_test tests/allocator_test.cpp)
@@ -69,6 +73,12 @@ endif()
 add_executable(fixed_structures_test tests/fixed_structures_test.cpp)
 if(NOT MSVC)
     target_link_libraries(fixed_structures_test pthread)
+endif()
+
+# Thread-safe scheduler test
+add_executable(threadsafe_scheduler_test tests/threadsafe_scheduler_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(threadsafe_scheduler_test pthread atomic)
 endif()
 
 # Stress Test
@@ -83,6 +93,7 @@ target_link_libraries(mega_demo betti_rdl_c)
 add_test(NAME allocator_test COMMAND allocator_test)
 add_test(NAME fixed_structures_test COMMAND fixed_structures_test)
 add_test(NAME c_api_test COMMAND c_api_test)
+add_test(NAME threadsafe_scheduler_test COMMAND threadsafe_scheduler_test)
 
 # Compiler Flags (Optimization + Warnings)
 if(MSVC)
@@ -98,6 +109,7 @@ if(MSVC)
     target_compile_options(parallel_scaling_test_v2 PRIVATE /W4)
     target_compile_options(allocator_test PRIVATE /W4)
     target_compile_options(fixed_structures_test PRIVATE /W4)
+    target_compile_options(threadsafe_scheduler_test PRIVATE /W4)
     # Disable runtime checks in Release mode to avoid conflict with /O2
     target_compile_definitions(bettios_kernel PRIVATE $<$<CONFIG:Release>:NDEBUG>)
     target_compile_definitions(hanoi_demo PRIVATE $<$<CONFIG:Release>:NDEBUG>)
@@ -124,4 +136,5 @@ else()
     target_compile_options(parallel_scaling_test_v2 PRIVATE -O3 -Wall -Wextra)
     target_compile_options(allocator_test PRIVATE -O3 -Wall -Wextra)
     target_compile_options(fixed_structures_test PRIVATE -O3 -Wall -Wextra)
+    target_compile_options(threadsafe_scheduler_test PRIVATE -O3 -Wall -Wextra)
 endif()

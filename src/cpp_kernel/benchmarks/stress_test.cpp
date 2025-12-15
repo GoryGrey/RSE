@@ -56,7 +56,7 @@ void runFirehose(int event_count) {
       kernel.injectEvent(0, 0, 0, i * batch_size + j);
     }
     // Drain the full chain to keep queue size bounded
-    kernel.run(batch_size * chain_length);
+    (void)kernel.run(batch_size * chain_length);
   }
 
   auto end = high_resolution_clock::now();
@@ -98,7 +98,7 @@ void runDeepDive(int depth) {
 
   // Run for 'depth' steps
   // The kernel propagates events: 1 -> 2 -> 3 ...
-  kernel.run(depth);
+  (void)kernel.run(depth);
 
   size_t mem_end = MemoryManager::getUsedMemory();
   std::cout << "  Memory End:   " << mem_end << " bytes" << std::endl;
@@ -129,7 +129,7 @@ void workerThread(int id, int events, std::atomic<long> &total_events) {
 
   for (int i = 0; i < events; i++) {
     kernel.injectEvent(0, 0, 0, i);
-    kernel.run(chain_length);
+    (void)kernel.run(chain_length);
   }
 
   total_events += static_cast<long>(kernel.getEventsProcessed());

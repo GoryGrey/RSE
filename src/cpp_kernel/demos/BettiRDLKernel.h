@@ -8,6 +8,8 @@
 #include <chrono>
 #include <cstdint>
 #include <iostream>
+#include <mutex>
+#include <queue>
 
 // Betti-RDL Integration
 // Combines toroidal space (Betti) with time-native events (RDL)
@@ -95,8 +97,12 @@ private:
   std::size_t edge_count_ = 0;
 
   unsigned long long current_time = 0;
-  unsigned long long events_processed = 0;
+  unsigned long long events_processed = 0;  // Lifetime total
   int process_counter = 0;
+
+  // Thread-safety for concurrent injectEvent
+  std::mutex event_injection_lock;
+  std::queue<RDLEvent> pending_events;
 
   [[nodiscard]] bool insertOrUpdateEdge(const AdaptiveEdge &edge) {
     const std::uint32_t from = nodeId(edge.from_x, edge.from_y, edge.from_z);
@@ -170,8 +176,25 @@ public:
     evt.src_node = static_cast<int>(nodeId(src_x, src_y, src_z));
     evt.payload = payload;
 
-    return event_queue.push(evt);
+    // Thread-safe injection: add to pending queue
+    {
+      std::lock_guard<std::mutex> lock(event_injection_lock);
+      pending_events.push(evt);
+    }
+    return true;
   }
+
+  // Transfer pending events to the main event queue (single-threaded from scheduler)
+  private:
+  void flushPendingEvents() {
+    std::lock_guard<std::mutex> lock(event_injection_lock);
+    while (!pending_events.empty()) {
+      (void)event_queue.push(pending_events.front());
+      pending_events.pop();
+    }
+  }
+
+  public:
 
   void tick() {
     if (event_queue.empty()) {
@@ -179,7 +202,7 @@ public:
     }
 
     RDLEvent evt = event_queue.top();
-    event_queue.pop();
+    (void)event_queue.pop();
 
     current_time = evt.timestamp;
     events_processed++;
@@ -202,18 +225,25 @@ public:
     }
   }
 
-  void run(int max_events) {
+  // Process at most max_events NEW events, returning the count processed
+  // Does not depend on lifetime events_processed total
+  int run(int max_events) {
     std::cout << "\n[BETTI-RDL] Starting execution..." << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
     size_t mem_before = MemoryManager::getUsedMemory();
 
-    while (events_processed < static_cast<unsigned long long>(max_events) &&
-           !event_queue.empty()) {
+    // Flush any pending events from concurrent injections
+    flushPendingEvents();
+
+    int events_in_run = 0;
+    while (events_in_run < max_events && !event_queue.empty()) {
       tick();
+      events_in_run++;
 
       if (events_processed % 100000 == 0) {
-        std::cout << "    > Events: " << events_processed
+        std::cout << "    > Events (lifetime): " << events_processed
+                  << ", Events (this run): " << events_in_run
                   << ", Time: " << current_time
                   << ", Queue: " << event_queue.size() << std::endl;
       }
@@ -226,7 +256,8 @@ public:
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
     std::cout << "\n[BETTI-RDL] ✓ EXECUTION COMPLETE" << std::endl;
-    std::cout << "    > Events Processed: " << events_processed << std::endl;
+    std::cout << "    > Events Processed (this run): " << events_in_run << std::endl;
+    std::cout << "    > Events Processed (lifetime): " << events_processed << std::endl;
     std::cout << "    > Final Time: " << current_time << std::endl;
     std::cout << "    > Processes: " << space.getProcessCount() << std::endl;
     std::cout << "    > Edges: " << edge_count_ << std::endl;
@@ -235,8 +266,12 @@ public:
     std::cout << "    > Memory After: " << mem_after << " bytes" << std::endl;
     std::cout << "    > Memory Delta: " << (mem_after - mem_before) << " bytes"
               << std::endl;
-    std::cout << "    > Events/sec: "
-              << (events_processed * 1000.0 / duration.count()) << std::endl;
+    if (duration.count() > 0) {
+      std::cout << "    > Events/sec: "
+                << (events_in_run * 1000.0 / duration.count()) << std::endl;
+    }
+
+    return events_in_run;
   }
 
   unsigned long long getCurrentTime() const { return current_time; }

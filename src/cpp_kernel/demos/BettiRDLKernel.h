@@ -161,13 +161,21 @@ public:
   void run(int max_events) {
     std::cout << "\n[BETTI-RDL] Starting execution..." << std::endl;
 
+    if (max_events <= 0) {
+      return;
+    }
+
+    const unsigned long long start_events = events_processed;
+    const unsigned long long target_events =
+        start_events + static_cast<unsigned long long>(max_events);
+
     auto start = std::chrono::high_resolution_clock::now();
     size_t mem_before = MemoryManager::getUsedMemory();
 
-    while (events_processed < max_events && !event_queue.empty()) {
+    while (events_processed < target_events && !event_queue.empty()) {
       tick();
 
-      if (events_processed % 100000 == 0) {
+      if (events_processed != start_events && events_processed % 100000 == 0) {
         std::cout << "    > Events: " << events_processed
                   << ", Time: " << current_time
                   << ", Queue: " << event_queue.size() << std::endl;
@@ -179,9 +187,15 @@ public:
 
     auto duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    const auto duration_ms = std::max<long long>(1, duration.count());
+
+    const auto processed_this_run = events_processed - start_events;
 
     std::cout << "\n[BETTI-RDL] ✓ EXECUTION COMPLETE" << std::endl;
-    std::cout << "    > Events Processed: " << events_processed << std::endl;
+    std::cout << "    > Events Processed (total): " << events_processed
+              << std::endl;
+    std::cout << "    > Events Processed (run): " << processed_this_run
+              << std::endl;
     std::cout << "    > Final Time: " << current_time << std::endl;
     std::cout << "    > Processes: " << space.getProcessCount() << std::endl;
     std::cout << "    > Edges: " << edges.size() << std::endl;
@@ -190,8 +204,8 @@ public:
     std::cout << "    > Memory After: " << mem_after << " bytes" << std::endl;
     std::cout << "    > Memory Delta: " << (mem_after - mem_before) << " bytes"
               << std::endl;
-    std::cout << "    > Events/sec: "
-              << (events_processed * 1000.0 / duration.count()) << std::endl;
+    std::cout << "    > Events/sec (run): "
+              << (processed_this_run * 1000.0 / duration_ms) << std::endl;
   }
 
   unsigned long long getCurrentTime() const { return current_time; }

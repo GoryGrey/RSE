@@ -1,0 +1,68 @@
+Betti-RDL System Stress Test
+V 1.0.0
+
+=================================================
+   TEST 1: THE FIREHOSE (Throughput)
+=================================================
+Goal: Process 5000000 events as fast as possible.
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+  Events: 5000000
+  Time:   0.14s
+  Speed:  35714285.71 Events/Sec
+  [SUCCESS] >1M EPS achieved!
+
+=================================================
+   TEST 2: THE DEEP DIVE (Memory Stability)
+=================================================
+Goal: Chain 100000 dependent events.
+Expectation: 0 bytes memory growth.
+  Memory Start: 320 bytes
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+  Events processed: 100000
+  Memory End:   700 bytes
+  Delta:        380 bytes
+  [SUCCESS] O(1) Memory Verified!
+
+=================================================
+   TEST 3: THE SWARM (Parallel Scaling)
+=================================================
+Goal: Run 16 threads x 100000 events.
+[Metal] ToroidalSpace <[Metal] ToroidalSpace <3232xx32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+  Threads: 16
+  Total Events: 1600000
+  Time: 0.01s
+  Aggregate Speed: 133333333.33 EPS
+  [SUCCESS] Threads maintained stability.

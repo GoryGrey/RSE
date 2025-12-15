@@ -6,7 +6,6 @@
 #include <thread>
 #include <vector>
 
-
 // Parallel Scaling Test
 // Proves Betti-RDL enables better parallelism than traditional approaches
 
@@ -19,13 +18,16 @@ void runSingleInstance(int instance_id, int events) {
   }
 
   // Inject events
-  kernel.injectEvent(0, instance_id, 0, instance_id);
+  for (int i = 0; i < events; i++) {
+    kernel.injectEvent(0, instance_id, 0, i);
+  }
 
   // Run computation
   kernel.run(events);
 }
 
-void testParallelScaling(int num_instances, int events_per_instance) {
+double testParallelScaling(int num_instances, int events_per_instance,
+                           double baseline_eps) {
   std::cout << "\n[TEST] Running " << num_instances << " parallel instances..."
             << std::endl;
 
@@ -33,13 +35,12 @@ void testParallelScaling(int num_instances, int events_per_instance) {
   auto start = std::chrono::high_resolution_clock::now();
 
   std::vector<std::thread> threads;
+  threads.reserve(num_instances);
 
-  // Spawn parallel instances
   for (int i = 0; i < num_instances; i++) {
     threads.emplace_back(runSingleInstance, i, events_per_instance);
   }
 
-  // Wait for completion
   for (auto &t : threads) {
     t.join();
   }
@@ -47,19 +48,37 @@ void testParallelScaling(int num_instances, int events_per_instance) {
   auto end = std::chrono::high_resolution_clock::now();
   size_t mem_after = MemoryManager::getUsedMemory();
 
-  auto duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+  auto duration_us =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  double seconds = std::max(1.0e-6, duration_us / 1.0e6);
+
+  const long long total_events =
+      static_cast<long long>(num_instances) * events_per_instance;
+
+  double eps = total_events / seconds;
+  double speedup = baseline_eps > 0 ? (eps / baseline_eps) : 0.0;
+  double efficiency = num_instances > 0 ? (speedup / num_instances) : 0.0;
 
   std::cout << "  Instances: " << num_instances << std::endl;
   std::cout << "  Events per instance: " << events_per_instance << std::endl;
-  std::cout << "  Total events: " << (num_instances * events_per_instance)
-            << std::endl;
-  std::cout << "  Duration: " << duration.count() << "ms" << std::endl;
-  std::cout << "  Memory delta: " << (mem_after - mem_before) << " bytes"
-            << std::endl;
-  std::cout << "  Memory per instance: "
-            << ((mem_after - mem_before) / num_instances) << " bytes"
-            << std::endl;
+  std::cout << "  Total events: " << total_events << std::endl;
+  std::cout << "  Duration: " << std::fixed << std::setprecision(3) << seconds
+            << "s" << std::endl;
+  std::cout << "  Throughput: " << std::fixed << std::setprecision(2) << eps
+            << " EPS" << std::endl;
+  std::cout << "  Speedup vs baseline: " << std::fixed << std::setprecision(2)
+            << speedup << "x" << std::endl;
+  std::cout << "  Scaling efficiency: " << std::fixed << std::setprecision(2)
+            << (efficiency * 100.0) << "%" << std::endl;
+
+  const long long mem_delta = static_cast<long long>(mem_after) -
+                              static_cast<long long>(mem_before);
+
+  std::cout << "  Memory delta: " << mem_delta << " bytes" << std::endl;
+  std::cout << "  Memory per instance: " << (mem_delta / num_instances)
+            << " bytes" << std::endl;
+
+  return eps;
 }
 
 int main() {
@@ -69,55 +88,36 @@ int main() {
   std::cout << "\nGoal: Prove Betti-RDL enables linear speedup" << std::endl;
   std::cout << "      with constant memory per instance\n" << std::endl;
 
-  int events = 100;
+  const int events = 1000000;
 
   std::cout << "[BASELINE] Single instance..." << std::endl;
   auto baseline_start = std::chrono::high_resolution_clock::now();
   runSingleInstance(0, events);
   auto baseline_end = std::chrono::high_resolution_clock::now();
-  auto baseline_duration =
-      std::chrono::duration_cast<std::chrono::milliseconds>(baseline_end -
-                                                            baseline_start);
-  std::cout << "  Duration: " << baseline_duration.count() << "ms" << std::endl;
+
+  auto baseline_us =
+      std::chrono::duration_cast<std::chrono::microseconds>(baseline_end -
+                                                            baseline_start)
+          .count();
+  double baseline_seconds = std::max(1.0e-6, baseline_us / 1.0e6);
+  double baseline_eps = events / baseline_seconds;
+
+  std::cout << "  Duration: " << std::fixed << std::setprecision(3)
+            << baseline_seconds << "s" << std::endl;
+  std::cout << "  Throughput: " << std::fixed << std::setprecision(2)
+            << baseline_eps << " EPS" << std::endl;
 
   // Test scaling
-  testParallelScaling(1, events);
-  testParallelScaling(2, events);
-  testParallelScaling(4, events);
-  testParallelScaling(8, events);
-  testParallelScaling(16, events);
-
-  std::cout << "\n================================================="
-            << std::endl;
-  std::cout << "   ANALYSIS                                     " << std::endl;
-  std::cout << "=================================================" << std::endl;
-
-  std::cout << "\n[EXPECTED RESULTS]" << std::endl;
-  std::cout << "  • Linear speedup: 2x instances = ~2x throughput" << std::endl;
-  std::cout << "  • Constant memory per instance" << std::endl;
-  std::cout << "  • No memory interference between instances" << std::endl;
-
-  std::cout << "\n[BETTI-RDL ADVANTAGE]" << std::endl;
-  std::cout << "  • Each instance has O(1) memory" << std::endl;
-  std::cout << "  • No shared state = no contention" << std::endl;
-  std::cout << "  • Space-time isolation enables true parallelism" << std::endl;
-
-  std::cout << "\n[TRADITIONAL APPROACH]" << std::endl;
-  std::cout << "  • Shared memory = contention" << std::endl;
-  std::cout << "  • Cache invalidation overhead" << std::endl;
-  std::cout << "  • Memory grows with instances" << std::endl;
+  testParallelScaling(1, events, baseline_eps);
+  testParallelScaling(2, events, baseline_eps);
+  testParallelScaling(4, events, baseline_eps);
+  testParallelScaling(8, events, baseline_eps);
+  testParallelScaling(16, events, baseline_eps);
 
   std::cout << "\n================================================="
             << std::endl;
   std::cout << "   VALIDATION COMPLETE                          " << std::endl;
   std::cout << "=================================================" << std::endl;
-
-  std::cout << "\n✓ Parallel scaling tested" << std::endl;
-  std::cout << "✓ Ready for production runtime" << std::endl;
-  std::cout << "✓ Next: Build Python bindings" << std::endl;
-
-  std::cout << "\n================================================="
-            << std::endl;
 
   return 0;
 }

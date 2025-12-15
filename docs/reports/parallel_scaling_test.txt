@@ -1,0 +1,133 @@
+=================================================
+   PARALLEL SCALING TEST                        
+=================================================
+
+Goal: Prove Betti-RDL enables linear speedup
+      with constant memory per instance
+
+[BASELINE] Single instance...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+  Duration: 0.077s
+  Throughput: 12961426.79 EPS
+
+[TEST] Running 1 parallel instances...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+  Instances: 1
+  Events per instance: 1000000
+  Total events: 1000000
+  Duration: 0.079s
+  Throughput: 12681664.85 EPS
+  Speedup vs baseline: 0.98x
+  Scaling efficiency: 97.84%
+  Memory delta: 108 bytes
+  Memory per instance: 108 bytes
+
+[TEST] Running 2 parallel instances...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+  Instances: 2
+  Events per instance: 1000000
+  Total events: 2000000
+  Duration: 0.082s
+  Throughput: 24476808.22 EPS
+  Speedup vs baseline: 1.89x
+  Scaling efficiency: 94.42%
+  Memory delta: 216 bytes
+  Memory per instance: 108 bytes
+
+[TEST] Running 4 parallel instances...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+  Instances: 4
+  Events per instance: 1000000
+  Total events: 4000000
+  Duration: 0.138s
+  Throughput: 28978367.65 EPS
+  Speedup vs baseline: 2.24x
+  Scaling efficiency: 55.89%
+  Memory delta: -18024 bytes
+  Memory per instance: -4506 bytes
+
+[TEST] Running 8 parallel instances...
+[Metal] ToroidalSpace <32x32x32> Init.
+[Metal] ToroidalSpace <32x32x32> Init.[COMPUTE] Initializing Betti-RDL with real computation...
+
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+  Instances: 8
+  Events per instance: 1000000
+  Total events: 8000000
+  Duration: 0.327s
+  Throughput: 24499970.91 EPS
+  Speedup vs baseline: 1.89x
+  Scaling efficiency: 23.63%
+  Memory delta: 756 bytes
+  Memory per instance: 94 bytes
+
+[TEST] Running 16 parallel instances...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+  Instances: 16
+  Events per instance: 1000000
+  Total events: 16000000
+  Duration: 1.293s
+  Throughput: 12372026.85 EPS
+  Speedup vs baseline: 0.95x
+  Scaling efficiency: 5.97%
+  Memory delta: 13864 bytes
+  Memory per instance: 866 bytes
+
+=================================================
+   VALIDATION COMPLETE                          
+=================================================

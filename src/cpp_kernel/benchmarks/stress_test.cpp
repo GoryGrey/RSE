@@ -90,12 +90,14 @@ void runDeepDive(int depth) {
   BettiRDLCompute kernel;
   kernel.spawnProcess(0, 0, 0);
 
-  // Inject BIG initial event to start the chain
-  kernel.injectEvent(0, 0, 0, 1);
+  // Inject a recursive seed event to start the chain
+  // The kernel emits exactly one follow-up event per tick.
+  kernel.injectRecursiveEvent(0, 0, 0, 1);
 
   // Run for 'depth' steps
-  // The kernel propagates events: 1 -> 2 -> 3 ...
   kernel.run(depth);
+  std::cout << "  Events processed: " << kernel.getEventsProcessed()
+            << std::endl;
 
   size_t mem_end = MemoryManager::getUsedMemory();
   std::cout << "  Memory End:   " << mem_end << " bytes" << std::endl;

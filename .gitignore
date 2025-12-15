@@ -13,6 +13,7 @@ build/
 # Language specific
 __pycache__/
 *.pyc
+.venv/
 node_modules/
 target/   # Rust
 vendor/   # Go

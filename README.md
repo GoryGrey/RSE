@@ -3,7 +3,10 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/betti-labs/betti-rdl)
+[![CI Status](https://github.com/betti-labs/betti-rdl/actions/workflows/ci.yml/badge.svg)](https://github.com/betti-labs/betti-rdl/actions)
 ![Platform](https://img.shields.io/badge/platform-win--x64%20%7C%20linux--x64-lightgrey)
+
+**Automated pipeline validating O(1) memory guarantees, thread safety, and multi-language bindings on every commit.**
 
 ## Abstract
 

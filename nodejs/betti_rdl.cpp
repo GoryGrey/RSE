@@ -94,8 +94,8 @@ Napi::Value BettiKernelWrapper::Run(const Napi::CallbackInfo &info) {
   }
 
   int maxEvents = info[0].As<Napi::Number>().Int32Value();
-  kernel.run(maxEvents);
-  return env.Undefined();
+  int result = kernel.run(maxEvents);
+  return Napi::Number::New(env, result);
 }
 
 Napi::Value

@@ -19,7 +19,7 @@ public:
     kernel.injectEvent(x, y, z, value);
   }
 
-  void run(int max_events) { kernel.run(max_events); }
+  int run(int max_events) { return kernel.run(max_events); }
 
   unsigned long long get_events_processed() const {
     return kernel.getEventsProcessed();

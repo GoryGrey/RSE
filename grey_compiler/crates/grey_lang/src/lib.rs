@@ -10,7 +10,7 @@ pub mod types;
 pub mod diagnostics;
 pub mod constraints;
 
-use crate::diagnostics::{DiagnosticError, Diagnostic};
+use crate::diagnostics::Diagnostic;
 
 /// Parse Grey source code into an AST
 pub fn parse_source(source: &str) -> Result<ast::Program, Box<dyn Diagnostic>> {

@@ -127,6 +127,12 @@ if(NOT MSVC)
     target_link_libraries(stress_test atomic)
 endif()
 
+# Benchmark Harness
+add_executable(benchmark_harness benchmarks/benchmark_harness.cpp)
+if(NOT MSVC)
+    target_link_libraries(benchmark_harness atomic)
+endif()
+
 # Mega Scale Demos
 add_executable(mega_demo demos/scale_demos/mega_demo.cpp)
 target_link_libraries(mega_demo betti_rdl_c)
@@ -185,4 +191,34 @@ else()
     target_compile_options(fixed_structures_test PRIVATE -O3 -Wall -Wextra)
     target_compile_options(threadsafe_scheduler_test PRIVATE -O3 -Wall -Wextra)
     target_compile_options(memory_telemetry_test PRIVATE -O3 -Wall -Wextra)
+    target_compile_options(benchmark_harness PRIVATE -O3 -Wall -Wextra)
+endif()
+
+# ============================================================================
+# Sanitizer Targets (for CI/CD debugging)
+# ============================================================================
+# Build with AddressSanitizer and LeakSanitizer for memory safety validation
+# Usage: cmake -DENABLE_SANITIZERS=ON
+
+option(ENABLE_SANITIZERS "Enable AddressSanitizer and LeakSanitizer" OFF)
+
+if(ENABLE_SANITIZERS AND NOT MSVC)
+    # Target: Run mega_demo with sanitizers
+    add_executable(mega_demo_asan demos/scale_demos/mega_demo.cpp)
+    target_link_libraries(mega_demo_asan betti_rdl_c)
+    target_link_libraries(mega_demo_asan atomic)
+    target_compile_options(mega_demo_asan PRIVATE -fsanitize=address -fsanitize=leak -g -O1)
+    target_link_options(mega_demo_asan PRIVATE -fsanitize=address -fsanitize=leak)
+    
+    # Target: Run parallel_scaling_test with sanitizers
+    add_executable(parallel_scaling_test_asan demos/parallel_scaling_test.cpp)
+    target_link_libraries(parallel_scaling_test_asan atomic)
+    target_compile_options(parallel_scaling_test_asan PRIVATE -fsanitize=address -fsanitize=leak -g -O1)
+    target_link_options(parallel_scaling_test_asan PRIVATE -fsanitize=address -fsanitize=leak)
+    
+    # Target: Run betti_rdl_stress_test with sanitizers
+    add_executable(betti_rdl_stress_test_asan demos/betti_rdl_stress_test.cpp)
+    target_link_libraries(betti_rdl_stress_test_asan atomic)
+    target_compile_options(betti_rdl_stress_test_asan PRIVATE -fsanitize=address -fsanitize=leak -g -O1)
+    target_link_options(betti_rdl_stress_test_asan PRIVATE -fsanitize=address -fsanitize=leak)
 endif()

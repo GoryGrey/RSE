@@ -49,7 +49,7 @@ int main() {
   std::cout << std::string(25, '-') << std::endl;
 
   for (int i = 0; i < 10; i++) {
-    int pid = i * 100; // Match pid mapping in kernel
+    int pid = i * 1024; // nodeId(x=i,y=0,z=0)
     int value = kernel.getProcessState(pid);
     if (value > 0) {
       std::cout << std::setw(10) << i << std::setw(15) << value << std::endl;

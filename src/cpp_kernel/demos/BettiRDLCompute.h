@@ -1,10 +1,13 @@
 #pragma once
+
 #include "../Allocator.h"
+#include "../FixedStructures.h"
 #include "../ToroidalSpace.h"
+
+#include <array>
 #include <chrono>
-#include <functional>
-#include <map>
-#include <queue>
+#include <cstdint>
+#include <iostream>
 
 // Enhanced Betti-RDL with Real Computation
 // Adds actual algorithm execution, not just event propagation
@@ -13,21 +16,23 @@ struct ComputeEvent {
   unsigned long long timestamp;
   int dst_node;
   int src_node;
-  int value; // Actual data payload
+  int value;
 
-  bool operator>(const ComputeEvent &other) const {
+  bool operator<(const ComputeEvent &other) const {
     if (timestamp != other.timestamp)
-      return timestamp > other.timestamp;
+      return timestamp < other.timestamp;
     if (dst_node != other.dst_node)
-      return dst_node > other.dst_node;
-    return src_node > other.src_node;
+      return dst_node < other.dst_node;
+    if (src_node != other.src_node)
+      return src_node < other.src_node;
+    return value < other.value;
   }
 };
 
 struct ComputeProcess {
   int pid;
   int x, y, z;
-  int state; // Accumulated value
+  int state;
 
   ComputeProcess(int id, int px, int py, int pz)
       : pid(id), x(px), y(py), z(pz), state(0) {}
@@ -35,15 +40,33 @@ struct ComputeProcess {
 
 class BettiRDLCompute {
 private:
-  ToroidalSpace<32, 32, 32> space;
-  std::priority_queue<ComputeEvent, std::vector<ComputeEvent>,
-                      std::greater<ComputeEvent>>
-      event_queue;
-  std::map<int, int> process_states; // pid -> accumulated value
+  static constexpr int kDim = 32;
+  static constexpr std::size_t kMaxPendingEvents = 4096;
+  static constexpr std::size_t kMaxProcesses = 2048;
+
+  static constexpr std::uint32_t nodeId(int x, int y, int z) {
+    const int wx = ToroidalSpace<kDim, kDim, kDim>::wrap(x, kDim);
+    const int wy = ToroidalSpace<kDim, kDim, kDim>::wrap(y, kDim);
+    const int wz = ToroidalSpace<kDim, kDim, kDim>::wrap(z, kDim);
+    return static_cast<std::uint32_t>(wx * 1024 + wy * 32 + wz);
+  }
+
+  static constexpr void decodeNode(std::uint32_t node, int &x, int &y, int &z) {
+    x = static_cast<int>(node / 1024u);
+    y = static_cast<int>((node % 1024u) / 32u);
+    z = static_cast<int>(node % 32u);
+  }
+
+  ToroidalSpace<kDim, kDim, kDim> space;
+  FixedMinHeap<ComputeEvent, kMaxPendingEvents> event_queue;
+  FixedObjectPool<ComputeProcess, kMaxProcesses> process_pool;
+
+  std::array<int, LATTICE_SIZE> process_states_{};
+  std::array<std::uint8_t, LATTICE_SIZE> process_active_{};
+  std::size_t process_count_ = 0;
 
   unsigned long long current_time = 0;
   unsigned long long events_processed = 0;
-  int process_counter = 0;
 
 public:
   BettiRDLCompute() {
@@ -51,25 +74,36 @@ public:
               << std::endl;
   }
 
-  void spawnProcess(int x, int y, int z) {
-    ComputeProcess *p = new ComputeProcess(++process_counter, x, y, z);
-    space.addProcess((Process *)p, x, y, z);
-    process_states[p->pid] = 0;
+  bool spawnProcess(int x, int y, int z) {
+    const std::uint32_t pid = nodeId(x, y, z);
+
+    if (process_active_[pid] == 0) {
+      process_active_[pid] = 1;
+      ++process_count_;
+    }
+    process_states_[pid] = 0;
+
+    ComputeProcess *p = process_pool.create(static_cast<int>(pid), x, y, z);
+    if (!p) {
+      return false;
+    }
+    return space.addProcess(reinterpret_cast<Process *>(p), x, y, z);
   }
 
-  void injectEvent(int dst_x, int dst_y, int dst_z, int value) {
-    ComputeEvent evt;
+  bool injectEvent(int dst_x, int dst_y, int dst_z, int value) {
+    ComputeEvent evt{};
     evt.timestamp = current_time;
-    evt.dst_node = dst_x * 1024 + dst_y * 32 + dst_z;
+    evt.dst_node = static_cast<int>(nodeId(dst_x, dst_y, dst_z));
     evt.src_node = 0;
     evt.value = value;
 
-    event_queue.push(evt);
+    return event_queue.push(evt);
   }
 
   void tick() {
-    if (event_queue.empty())
+    if (event_queue.empty()) {
       return;
+    }
 
     ComputeEvent evt = event_queue.top();
     event_queue.pop();
@@ -78,41 +112,44 @@ public:
     events_processed++;
 
     // Decode spatial coordinates
-    int dst_x = evt.dst_node / 1024;
-    int dst_y = (evt.dst_node % 1024) / 32;
-    int dst_z = evt.dst_node % 32;
+    int dst_x, dst_y, dst_z;
+    decodeNode(static_cast<std::uint32_t>(evt.dst_node), dst_x, dst_y, dst_z);
 
-    // REAL COMPUTATION: Accumulate value
-    int pid = dst_x * 100 + dst_y * 10 + dst_z; // Simple pid mapping
-    if (process_states.find(pid) != process_states.end()) {
-      process_states[pid] += evt.value;
+    // REAL COMPUTATION: Accumulate value in the destination process state
+    const std::uint32_t pid = static_cast<std::uint32_t>(evt.dst_node);
+    if (process_active_[pid] != 0) {
+      process_states_[pid] += evt.value;
     }
 
     // Propagate to neighbors (with computation)
-    int next_x = (dst_x + 1) % 32;
-    if (next_x < 10) { // Only propagate within our 10-node ring
-      ComputeEvent new_evt;
-      new_evt.timestamp = current_time + 1; // Fixed delay for simplicity
-      new_evt.dst_node = next_x * 1024;
+    int next_x = (dst_x + 1) % kDim;
+    if (next_x < 10) {
+      ComputeEvent new_evt{};
+      new_evt.timestamp = current_time + 1;
+      new_evt.dst_node = static_cast<int>(nodeId(next_x, dst_y, dst_z));
       new_evt.src_node = evt.dst_node;
-      new_evt.value = evt.value + 1; // Increment value (computation!)
+      new_evt.value = evt.value + 1;
 
-      event_queue.push(new_evt);
+      (void)event_queue.push(new_evt);
     }
   }
 
   void run(int max_events) {
-    while (events_processed < max_events && !event_queue.empty()) {
+    while (events_processed < static_cast<unsigned long long>(max_events) &&
+           !event_queue.empty()) {
       tick();
     }
   }
 
   int getProcessState(int pid) const {
-    auto it = process_states.find(pid);
-    return (it != process_states.end()) ? it->second : 0;
+    const std::uint32_t idx = static_cast<std::uint32_t>(pid);
+    if (idx >= LATTICE_SIZE) {
+      return 0;
+    }
+    return process_active_[idx] ? process_states_[idx] : 0;
   }
 
   unsigned long long getCurrentTime() const { return current_time; }
   unsigned long long getEventsProcessed() const { return events_processed; }
-  size_t getProcessCount() const { return process_states.size(); }
+  std::size_t getProcessCount() const { return process_count_; }
 };

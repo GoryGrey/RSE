@@ -5,6 +5,8 @@ project(BettiOS_Kernel VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+enable_testing()
+
 # Use Release build by default
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -63,6 +65,12 @@ if(NOT MSVC)
     target_link_libraries(allocator_test pthread)
 endif()
 
+# Fixed structures regression tests
+add_executable(fixed_structures_test tests/fixed_structures_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(fixed_structures_test pthread)
+endif()
+
 # Stress Test
 add_executable(stress_test benchmarks/stress_test.cpp)
 target_link_libraries(stress_test betti_rdl_c) 
@@ -70,6 +78,11 @@ target_link_libraries(stress_test betti_rdl_c)
 # Mega Scale Demos
 add_executable(mega_demo demos/scale_demos/mega_demo.cpp)
 target_link_libraries(mega_demo betti_rdl_c)
+
+# Tests
+add_test(NAME allocator_test COMMAND allocator_test)
+add_test(NAME fixed_structures_test COMMAND fixed_structures_test)
+add_test(NAME c_api_test COMMAND c_api_test)
 
 # Compiler Flags (Optimization + Warnings)
 if(MSVC)
@@ -84,6 +97,7 @@ if(MSVC)
     target_compile_options(distributed_counter PRIVATE /W4)
     target_compile_options(parallel_scaling_test_v2 PRIVATE /W4)
     target_compile_options(allocator_test PRIVATE /W4)
+    target_compile_options(fixed_structures_test PRIVATE /W4)
     # Disable runtime checks in Release mode to avoid conflict with /O2
     target_compile_definitions(bettios_kernel PRIVATE $<$<CONFIG:Release>:NDEBUG>)
     target_compile_definitions(hanoi_demo PRIVATE $<$<CONFIG:Release>:NDEBUG>)
@@ -96,6 +110,7 @@ if(MSVC)
     target_compile_definitions(distributed_counter PRIVATE $<$<CONFIG:Release>:NDEBUG>)
     target_compile_definitions(parallel_scaling_test_v2 PRIVATE $<$<CONFIG:Release>:NDEBUG>)
     target_compile_definitions(allocator_test PRIVATE $<$<CONFIG:Release>:NDEBUG>)
+    target_compile_definitions(fixed_structures_test PRIVATE $<$<CONFIG:Release>:NDEBUG>)
 else()
     target_compile_options(bettios_kernel PRIVATE -O3 -Wall -Wextra)
     target_compile_options(hanoi_demo PRIVATE -O3 -Wall -Wextra)
@@ -108,4 +123,5 @@ else()
     target_compile_options(distributed_counter PRIVATE -O3 -Wall -Wextra)
     target_compile_options(parallel_scaling_test_v2 PRIVATE -O3 -Wall -Wextra)
     target_compile_options(allocator_test PRIVATE -O3 -Wall -Wextra)
+    target_compile_options(fixed_structures_test PRIVATE -O3 -Wall -Wextra)
 endif()

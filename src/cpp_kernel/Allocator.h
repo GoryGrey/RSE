@@ -5,9 +5,12 @@
 #include <iostream>
 #include <atomic>
 #include <array>
+#include <cstddef>
+#include <cstdint>
 #include <thread>
 #include <mutex>
 #include <stdexcept>
+#include <type_traits>
 
 // Bounded Arena Allocator for BettiOS
 // Pre-reserves exact memory for 32³ lattice, processes, events, and edges
@@ -25,13 +28,19 @@ constexpr size_t PROCESSES_PER_CELL = 10;
 constexpr size_t EVENTS_PER_CELL = 50;
 constexpr size_t EDGES_PER_CELL = 5;
 
-// Pre-allocated pool capacities
+// Pre-allocated pool capacities (in blocks)
 constexpr size_t PROCESS_POOL_CAPACITY = LATTICE_SIZE * PROCESSES_PER_CELL; // ~327k
 constexpr size_t EVENT_POOL_CAPACITY = LATTICE_SIZE * EVENTS_PER_CELL;     // ~1.6M
 constexpr size_t EDGE_POOL_CAPACITY = LATTICE_SIZE * EDGES_PER_CELL;       // ~163k
 
+// Fixed block sizes per pool
+// (objects are allocated as blocks and constructed via placement-new)
+constexpr size_t PROCESS_BLOCK_SIZE = 64;
+constexpr size_t EVENT_BLOCK_SIZE = 32;
+constexpr size_t EDGE_BLOCK_SIZE = 64;
+
 // Generic allocation pool for miscellaneous allocations
-constexpr size_t GENERIC_POOL_CAPACITY = 1024 * 1024;  // 1MB for strings, maps, etc.
+constexpr size_t GENERIC_POOL_CAPACITY = 64ULL * 1024ULL * 1024ULL; // 64MB
 
 // Slab size for lock-free freelists (good balance between contention and cache)
 constexpr size_t FREELIST_SLAB_SIZE = 64;
@@ -94,68 +103,83 @@ struct FreelistNode {
 };
 
 // ============================================================================
-// Slab-Based Typed Pool (Thread-Safe)
+// Slab-Based Fixed Block Pool (Thread-Safe, ABA-resistant freelists)
 // ============================================================================
 
-template <typename T, size_t CAPACITY>
-class TypedPool {
+struct TaggedFreelistHead {
+    FreelistNode* ptr;
+    std::uint64_t tag;
+};
+
+static_assert(std::is_trivially_copyable_v<TaggedFreelistHead>);
+
+template <size_t BLOCK_SIZE, size_t CAPACITY>
+class FixedBlockPool {
 private:
-    static constexpr size_t ELEMENT_SIZE = sizeof(T);
+    static constexpr size_t ALIGNMENT = alignof(std::max_align_t);
+    static constexpr size_t ELEMENT_SIZE =
+        ((BLOCK_SIZE + ALIGNMENT - 1) / ALIGNMENT) * ALIGNMENT;
     static constexpr size_t TOTAL_SIZE = CAPACITY * ELEMENT_SIZE;
-    
+
     uint8_t* arena;
-    std::atomic<FreelistNode*> freelists[FREELIST_SLAB_SIZE];
+    std::atomic<TaggedFreelistHead> freelists[FREELIST_SLAB_SIZE];
     std::mutex arena_mutex;
     AllocationStats stats;
     size_t allocated_count;
 
     size_t hash_ptr(void* ptr) const {
-        return (reinterpret_cast<uintptr_t>(ptr) / ELEMENT_SIZE) % FREELIST_SLAB_SIZE;
+        return (reinterpret_cast<std::uintptr_t>(ptr) / ELEMENT_SIZE) % FREELIST_SLAB_SIZE;
     }
 
     void push_to_freelist(FreelistNode* node) {
-        size_t idx = hash_ptr(node);
-        FreelistNode* head = freelists[idx].load(std::memory_order_acquire);
-        
+        const size_t idx = hash_ptr(node);
+        TaggedFreelistHead head = freelists[idx].load(std::memory_order_acquire);
+        TaggedFreelistHead desired{};
+
         do {
-            node->next = head;
-        } while (!freelists[idx].compare_exchange_weak(head, node, 
+            node->next = head.ptr;
+            desired.ptr = node;
+            desired.tag = head.tag + 1;
+        } while (!freelists[idx].compare_exchange_weak(head, desired,
                                                         std::memory_order_release,
                                                         std::memory_order_acquire));
     }
 
     FreelistNode* pop_from_freelist(size_t idx) {
-        FreelistNode* head = freelists[idx].load(std::memory_order_acquire);
-        
-        while (head != nullptr) {
-            FreelistNode* next = head->next;
-            if (freelists[idx].compare_exchange_weak(head, next,
-                                                      std::memory_order_release,
-                                                      std::memory_order_acquire)) {
-                return head;
+        TaggedFreelistHead head = freelists[idx].load(std::memory_order_acquire);
+
+        while (head.ptr != nullptr) {
+            FreelistNode* next = head.ptr->next;
+            TaggedFreelistHead desired{next, head.tag + 1};
+
+            if (freelists[idx].compare_exchange_weak(head, desired,
+                                                     std::memory_order_release,
+                                                     std::memory_order_acquire)) {
+                return head.ptr;
             }
         }
+
         return nullptr;
     }
 
 public:
-    TypedPool(const char* name) : allocated_count(0) {
+    FixedBlockPool(const char* name) : allocated_count(0) {
         arena = static_cast<uint8_t*>(std::malloc(TOTAL_SIZE));
         if (!arena) {
             throw std::bad_alloc();
         }
         std::memset(arena, 0, TOTAL_SIZE);
-        
+
         for (size_t i = 0; i < FREELIST_SLAB_SIZE; ++i) {
-            freelists[i].store(nullptr, std::memory_order_relaxed);
+            freelists[i].store(TaggedFreelistHead{nullptr, 0}, std::memory_order_relaxed);
         }
 
-        std::cout << "[BoundedAllocator] Initialized " << name 
-                  << " pool: " << CAPACITY << " x " << ELEMENT_SIZE 
+        std::cout << "[BoundedAllocator] Initialized " << name
+                  << " pool: " << CAPACITY << " x " << ELEMENT_SIZE
                   << " = " << TOTAL_SIZE << " bytes" << std::endl;
     }
 
-    ~TypedPool() {
+    ~FixedBlockPool() {
         if (arena) {
             std::free(arena);
             arena = nullptr;
@@ -164,8 +188,8 @@ public:
 
     void* allocate() {
         FreelistNode* node = nullptr;
-        
-        // Try all slabs in round-robin
+
+        // Try all slabs (bounded)
         for (size_t i = 0; i < FREELIST_SLAB_SIZE; ++i) {
             node = pop_from_freelist(i);
             if (node) break;
@@ -193,7 +217,6 @@ public:
     void deallocate(void* ptr) {
         if (!ptr) return;
 
-        // Check if pointer is in our arena
         uintptr_t ptr_val = reinterpret_cast<uintptr_t>(ptr);
         uintptr_t arena_start = reinterpret_cast<uintptr_t>(arena);
         uintptr_t arena_end = arena_start + TOTAL_SIZE;
@@ -206,18 +229,20 @@ public:
         FreelistNode* node = reinterpret_cast<FreelistNode*>(ptr);
         node->size = ELEMENT_SIZE;
         push_to_freelist(node);
-        
+
         stats.recordDeallocation(ELEMENT_SIZE);
     }
 
     size_t getCapacity() const { return CAPACITY; }
-    size_t getAllocatedCount() const { 
+    size_t getBlockSize() const { return ELEMENT_SIZE; }
+
+    size_t getAllocatedCount() const {
         std::lock_guard<std::mutex> lock(arena_mutex);
         return allocated_count;
     }
 
     void printStats(const char* name) const { stats.print(name); }
-    
+
     size_t getCurrentUsage() const {
         return stats.current_usage.load(std::memory_order_relaxed);
     }
@@ -293,9 +318,9 @@ class BoundedArenaAllocator {
 private:
     static bool initializing;
     
-    TypedPool<char[1], PROCESS_POOL_CAPACITY>* process_pool;
-    TypedPool<char[1], EVENT_POOL_CAPACITY>* event_pool;
-    TypedPool<char[1], EDGE_POOL_CAPACITY>* edge_pool;
+    FixedBlockPool<PROCESS_BLOCK_SIZE, PROCESS_POOL_CAPACITY>* process_pool;
+    FixedBlockPool<EVENT_BLOCK_SIZE, EVENT_POOL_CAPACITY>* event_pool;
+    FixedBlockPool<EDGE_BLOCK_SIZE, EDGE_POOL_CAPACITY>* edge_pool;
     GenericPool* generic_pool;
 
     BoundedArenaAllocator()
@@ -306,9 +331,9 @@ private:
         g_in_allocator_init = true;
         
         try {
-            process_pool = new TypedPool<char[1], PROCESS_POOL_CAPACITY>("Process");
-            event_pool = new TypedPool<char[1], EVENT_POOL_CAPACITY>("Event");
-            edge_pool = new TypedPool<char[1], EDGE_POOL_CAPACITY>("Edge");
+            process_pool = new FixedBlockPool<PROCESS_BLOCK_SIZE, PROCESS_POOL_CAPACITY>("Process");
+            event_pool = new FixedBlockPool<EVENT_BLOCK_SIZE, EVENT_POOL_CAPACITY>("Event");
+            edge_pool = new FixedBlockPool<EDGE_BLOCK_SIZE, EDGE_POOL_CAPACITY>("Edge");
             generic_pool = new GenericPool();
             
             std::cout << "[BoundedAllocator] ========== READY ==========" << std::endl;
@@ -334,7 +359,7 @@ public:
     }
 
     void* allocateProcess(size_t size) {
-        if (size > PROCESS_POOL_CAPACITY) {
+        if (size > PROCESS_BLOCK_SIZE) {
             std::cerr << "[BoundedAllocator] Process allocation too large: " << size << std::endl;
             return nullptr;
         }
@@ -346,7 +371,7 @@ public:
     }
 
     void* allocateEvent(size_t size) {
-        if (size > EVENT_POOL_CAPACITY) {
+        if (size > EVENT_BLOCK_SIZE) {
             std::cerr << "[BoundedAllocator] Event allocation too large: " << size << std::endl;
             return nullptr;
         }
@@ -358,7 +383,7 @@ public:
     }
 
     void* allocateEdge(size_t size) {
-        if (size > EDGE_POOL_CAPACITY) {
+        if (size > EDGE_BLOCK_SIZE) {
             std::cerr << "[BoundedAllocator] Edge allocation too large: " << size << std::endl;
             return nullptr;
         }
@@ -399,6 +424,10 @@ public:
     }
     size_t getEdgePoolUsage() const {
         return edge_pool->getCurrentUsage();
+    }
+
+    size_t getGenericPoolUsage() const {
+        return generic_pool->getCurrentUsage();
     }
 };
 
@@ -449,11 +478,22 @@ void operator delete(void* p, size_t) noexcept {
 
 class MemoryManager {
 public:
+    // Kernel pools only (process/event/edge).
     static size_t getUsedMemory() {
         auto& allocator = BoundedArenaAllocator::getInstance();
-        return allocator.getProcessPoolUsage() + 
-               allocator.getEventPoolUsage() + 
+        return allocator.getProcessPoolUsage() +
+               allocator.getEventPoolUsage() +
                allocator.getEdgePoolUsage();
+    }
+
+    // Total arena usage including the generic pool (used by global new).
+    static size_t getTotalUsedMemory() {
+        auto& allocator = BoundedArenaAllocator::getInstance();
+        return getUsedMemory() + allocator.getGenericPoolUsage();
+    }
+
+    static size_t getGenericUsedMemory() {
+        return BoundedArenaAllocator::getInstance().getGenericPoolUsage();
     }
 
     static void fold() {

@@ -251,8 +251,16 @@ impl {0}Executable {{
             "    pub fn inject_events(&mut self) -> Result<(), Box<dyn std::error::Error>> {{\n"
         ));
         
-        // TODO: Generate event injection based on program events
-        code.push_str("        // TODO: Generate event injection logic\n");
+        // Generate event injection based on program events and process coordinates
+        if !process_coords.is_empty() {
+            code.push_str("        // Inject initial events to first process\n");
+            code.push_str("        if let Some((x, y, z)) = self.process_coords.values().next() {\n");
+            code.push_str("            // Inject seed events to trigger process execution\n");
+            code.push_str("            for i in 0..1 {\n");
+            code.push_str("                self.kernel.inject_event(*x, *y, *z, 1 + i);\n");
+            code.push_str("            }\n");
+            code.push_str("        }\n");
+        }
         code.push_str("        Ok(())\n");
         code.push_str("    }\n\n");
         
@@ -383,13 +391,19 @@ mod tests {{
     fn inject_initial_events(
         &self,
         kernel: &mut betti_rdl::Kernel,
-        _output: &CodeGenOutput,
+        output: &CodeGenOutput,
     ) -> Result<(), BackendError> {
-        // TODO: Inject initial events based on program structure
-        // For now, inject a single event to start execution
-        kernel.inject_event(0, 0, 0, 1);
+        // Inject initial events to seed the computation
+        // Use process count to determine injection strategy
+        let process_count = output.metadata.process_count;
         
-        debug!("Injected initial event");
+        if process_count > 0 {
+            // Inject to first process at origin
+            kernel.inject_event(0, 0, 0, 1);
+            debug!("Injected seed event to process at (0, 0, 0)");
+        }
+        
+        debug!("Injected initial event(s)");
         Ok(())
     }
     

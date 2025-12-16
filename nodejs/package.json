@@ -1,33 +1,33 @@
 {
-    "name": "betti-rdl",
-    "version": "1.0.0",
-    "description": "Space-Time Native Computation Runtime with O(1) Memory",
-    "main": "index.js",
-    "types": "index.d.ts",
-    "scripts": {
-        "install": "node-gyp rebuild",
-        "test": "node test.js"
-    },
-    "keywords": [
-        "computation",
-        "recursion",
-        "parallel",
-        "runtime",
-        "rdl",
-        "performance"
-    ],
-    "author": "Gregory Betti <greg@betti.dev>",
-    "license": "MIT",
-    "gypfile": true,
-    "dependencies": {
-        "node-addon-api": "^8.0.0"
-    },
-    "devDependencies": {
-        "node-gyp": "^10.0.0"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/betti-labs/betti-rdl"
-    },
-    "homepage": "https://betti-rdl.dev"
+  "name": "betti-rdl",
+  "version": "1.0.0",
+  "description": "Space-Time Native Computation Runtime with O(1) Memory",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "install": "bash configure_binding.sh && node-gyp rebuild",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "computation",
+    "recursion",
+    "parallel",
+    "runtime",
+    "rdl",
+    "performance"
+  ],
+  "author": "Gregory Betti <greg@betti.dev>",
+  "license": "MIT",
+  "gypfile": true,
+  "dependencies": {
+    "node-addon-api": "^8.0.0"
+  },
+  "devDependencies": {
+    "node-gyp": "^10.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/betti-labs/betti-rdl"
+  },
+  "homepage": "https://betti-rdl.dev"
 }

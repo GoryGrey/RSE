@@ -140,67 +140,147 @@ cd grey_compiler
 cargo run -p grey_harness --bin grey_compare_sir -- --max-events 1000 --seed 42 --spacing 1
 ```
 
-## Installation & Usage
+## Multi-Language Binding Matrix
 
-### Python (Data Science / AI)
+The Betti-RDL runtime provides bindings for multiple programming languages, all sharing the same compiled C++ kernel. This ensures consistent behavior and eliminates redundant builds.
+
+### Running the Complete Binding Matrix Test
+
+Validate all language bindings against the same kernel build:
+
+```bash
+# From the project root
+./scripts/run_binding_matrix.sh
+```
+
+This will:
+1. **Build the C++ kernel once** and install to `build/shared/`
+2. **Configure each binding** to use the shared library  
+3. **Run smoke tests** for each available language
+4. **Compare telemetry** across all languages
+5. **Report comprehensive results**
+
+### Expected Output
+
+```
+🔧 Betti-RDL Binding Matrix Test
+======================================
+
+Step 1: Building C++ kernel...
+  ✅ C++ kernel built successfully
+
+Step 2: Environment Configuration
+  BETTI_RDL_SHARED_LIB=/home/engine/project/build/shared/lib/libbetti_rdl_c.so
+
+Step 3: Building and Testing Python Binding...
+  ✅ Python test passed
+
+Step 4: Building and Testing Node.js Binding...
+  ✅ Node.js test passed
+
+Step 5: Testing Go Binding...
+  ✅ Go test passed
+
+Step 6: Testing Rust Binding...
+  ✅ Rust test passed
+
+Step 7: Cross-Language Telemetry Verification...
+  Python telemetry: 500,500,1234
+  Node.js telemetry: 500,500,1234
+  Go telemetry: 500,500,1234
+  Rust telemetry: 500,500,1234
+  ✅ Cross-language telemetry validation passed
+
+🏁 Binding Matrix Test Results
+=================================
+
+Individual Test Results:
+  python: ✅ PASS
+  nodejs: ✅ PASS
+  go: ✅ PASS
+  rust: ✅ PASS
+
+Summary: 5/5 tests passed
+🎉 ALL TESTS PASSED! Binding matrix is healthy.
+```
+
+### Language-Specific Usage
+
+#### Python (Data Science / AI)
 Ideal for massive agent-based simulations or recursive search algorithms.
 
 ```bash
-pip install betti-rdl
-```
+# Install dependencies
+pip install pybind11
 
-```python
+# Build and test
+cd python
+pip install .
+python -c "
 import betti_rdl
-
-# Initialize Kernel
 kernel = betti_rdl.Kernel()
-
-# Spawn a recursive counter at origin
-# This would crash a Python recursion limit, but runs forever here.
 kernel.spawn_process(0, 0, 0)
 kernel.inject_event(0, 0, 0, 1)
-
-# Execute 1 million steps
-kernel.run(1000000)
-
-print(f"State preserved: {kernel.get_process_state(0)}")
+events = kernel.run(1000)
+print(f'Processed {events} events')
+"
 ```
 
-### Node.js (Serverless / Web)
+#### Node.js (Serverless / Web)  
 Ideal for high-density backend logic.
 
 ```bash
-npm install betti-rdl
+# Install dependencies
+npm install
+
+# Build and test
+cd nodejs
+npm install
+node -e "
+const { Kernel } = require('./index.js');
+const kernel = new Kernel();
+kernel.spawnProcess(0, 0, 0);
+kernel.injectEvent(0, 0, 0, 1);
+const events = kernel.run(1000);
+console.log(\`Processed \${events} events\`);
+"
 ```
 
-```javascript
-const { Kernel } = require('betti-rdl');
-const k = new Kernel();
-k.run(1000); // 0 bytes allocated
+#### Go (Cloud / Backend)
+High-performance cloud services with zero-overhead CGO integration.
+
+```bash
+# Test directly
+cd go
+go run example/main.go
 ```
 
-### Rust (Systems)
-Zero-overhead integration for embedded use. The C++ kernel is automatically built during `cargo build`.
+#### Rust (Systems / Embedded)
+Zero-overhead integration for embedded use. Automatically uses shared library if available, builds from source otherwise.
 
 **Prerequisites**: CMake 3.10+, C++17 compiler
 
-```toml
-# Cargo.toml
-[dependencies]
-betti-rdl = "1.0"
+```bash
+# Test
+cd rust
+cargo run --example basic
 ```
 
-```rust
-use betti_rdl::Kernel;
+### Architecture Benefits
 
-let mut kernel = Kernel::new();
-kernel.spawn_process(0, 0, 0);
-kernel.inject_event(0, 0, 0, 1);
+**Before (Ad-hoc Paths)**
+- Each language builds/links separately
+- Different library versions possible  
+- Inconsistent error messages
+- Slow CI with redundant builds
 
-// Returns number of events processed in this run
-let count = kernel.run(1000);
-println!("Processed {} events", count);
-```
+**After (Shared Library)**
+- Single build step for all languages
+- Guaranteed library version consistency
+- Unified error handling
+- Faster CI with parallel execution
+
+For detailed documentation on the binding matrix validation system, see [`docs/VALIDATION.md`](docs/VALIDATION.md).
 
 ## Roadmap
 

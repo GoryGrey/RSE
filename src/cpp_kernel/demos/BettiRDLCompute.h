@@ -9,7 +9,6 @@
 #include <cstdint>
 #include <iostream>
 #include <mutex>
-#include <queue>
 
 // Enhanced Betti-RDL with Real Computation
 // Adds actual algorithm execution, not just event propagation
@@ -72,7 +71,7 @@ private:
 
   // Thread-safety for concurrent injectEvent
   std::mutex event_injection_lock;
-  std::queue<ComputeEvent> pending_events;
+  FixedVector<ComputeEvent, 16384> pending_events;
 
 public:
   BettiRDLCompute() {
@@ -106,7 +105,9 @@ public:
     // Thread-safe injection: add to pending queue
     {
       std::lock_guard<std::mutex> lock(event_injection_lock);
-      pending_events.push(evt);
+      if (!pending_events.push_back(evt)) {
+        return false;
+      }
     }
     return true;
   }
@@ -115,10 +116,10 @@ public:
   private:
   void flushPendingEvents() {
     std::lock_guard<std::mutex> lock(event_injection_lock);
-    while (!pending_events.empty()) {
-      (void)event_queue.push(pending_events.front());
-      pending_events.pop();
+    for (std::size_t i = 0; i < pending_events.size(); ++i) {
+      (void)event_queue.push(pending_events[i]);
     }
+    pending_events.clear();
   }
 
   public:

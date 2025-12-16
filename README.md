@@ -282,11 +282,24 @@ cargo run --example basic
 
 For detailed documentation on the binding matrix validation system, see [`docs/VALIDATION.md`](docs/VALIDATION.md).
 
+## Status & Health
+
+For a comprehensive assessment of the runtime's current state, see **[RSE Status Report](docs/RSE_Status_Report.md)**.
+
+**Quick Summary** (as of December 2024):
+- ✅ Core kernel: Production-ready, all tests passing
+- ✅ Performance: 16.8M events/sec, O(1) memory verified
+- ✅ Thread safety: Validated with concurrent injection
+- ⚠️ Bindings: Rust validated, others require runtime testing
+- ⚠️ Grey compiler: Early stage, requires Rust toolchain
+- 🔴 COG & Dashboard: Scaffold only, not production-ready
+
 ## Roadmap
 
 - [x] **v1.0**: Core Runtime, O(1) Validation, Multi-language Bindings.
-- [ ] **v1.1**: Go Bindings, Distributed Network Clustering.
-- [ ] **v2.0**: "COG Cloud" (Serverless Platform).
+- [ ] **v1.1**: Binding Matrix Validation, Grey Compiler Integration, Documentation.
+- [ ] **v1.2**: Production Hardening, Observability, Example Gallery.
+- [ ] **v2.0**: Distributed Coordination (if demand justifies), COG Cloud (deferred).
 
 ## License
 

@@ -1,22 +1,27 @@
 # Betti-RDL Launch Plan
 
-## Status: Ready to Ship
+## Status: Production-Ready Core, Ecosystem Maturing
 
 **Package**: betti-rdl v1.0.0  
-**Platform**: Python (pip installable)  
-**Launch Date**: This week
+**Platform**: C++ Core (validated), Multi-language bindings (partial)  
+**Launch Date**: Pending validation completion
+
+For detailed technical assessment, see **[RSE Status Report](docs/RSE_Status_Report.md)**.
 
 ---
 
 ## Pre-Launch Checklist
 
-- [x] Core technology validated
-- [x] Python bindings working
-- [x] Package installable via pip
-- [x] Example code runs
+- [x] Core technology validated (C++ kernel all tests passing)
+- [x] Thread safety validated (concurrent injection, deterministic scheduling)
+- [x] Performance benchmarks (16.8M events/sec, O(1) memory proven)
+- [x] Rust bindings validated (auto-build with cmake crate)
 - [x] README written
+- [ ] Multi-language binding matrix test (Python, Node.js, Go) - requires runtimes
+- [ ] Grey compiler validation - requires Rust toolchain
+- [ ] Documentation complete (API reference, architecture guide)
 - [ ] GitHub repo created
-- [ ] PyPI package published
+- [ ] PyPI package published (Python binding)
 - [ ] HN post written
 
 ---
@@ -130,12 +135,27 @@ Technical details in the repo. Happy to answer questions!
 
 ## Next Steps (After Launch)
 
-1. **Week 1**: Launch + engage
-2. **Week 2**: Find first customer
-3. **Week 3**: Build what they need
-4. **Week 4**: Get first revenue
+Based on the **[RSE Status Report](docs/RSE_Status_Report.md)** recommendations:
 
-**Then decide**: Scale what works or pivot to different use case
+### Phase 3: Weeks 1-4 (Critical Path to Production)
+1. **Week 1**: Binding validation & hardening (Python, Node.js, Go)
+2. **Week 2**: Grey compiler validation (requires Rust toolchain)
+3. **Week 3**: Documentation sprint (API reference, architecture guide)
+4. **Week 4**: Production readiness (logging, error handling, deployment guide)
+
+### Phase 3: Weeks 5-8 (Ecosystem Growth)
+1. **Week 5**: Example gallery (algorithms, benchmarks, Jupyter notebooks)
+2. **Week 6**: Observability & profiling (telemetry, tracing, CLI tools)
+3. **Week 7**: CI/CD hardening (fuzzing, stress tests, regression benchmarks)
+4. **Week 8**: Community onboarding (Getting Started, contributing guide, Discord/Slack)
+
+### Phase 3: Weeks 9-16 (Advanced Features - if demand exists)
+- Distributed kernel coordination (multi-node scaling)
+- Grey compiler optimization
+- WebAssembly support
+- COG orchestration (conditional on user demand)
+
+**Decision Point**: After Week 8, assess user adoption and iterate based on real usage patterns
 
 ---
 

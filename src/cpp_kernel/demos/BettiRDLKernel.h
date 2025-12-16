@@ -9,7 +9,6 @@
 #include <cstdint>
 #include <iostream>
 #include <mutex>
-#include <queue>
 
 // Betti-RDL Integration
 // Combines toroidal space (Betti) with time-native events (RDL)
@@ -102,7 +101,7 @@ private:
 
   // Thread-safety for concurrent injectEvent
   std::mutex event_injection_lock;
-  std::queue<RDLEvent> pending_events;
+  FixedVector<RDLEvent, 16384> pending_events;
 
   [[nodiscard]] bool insertOrUpdateEdge(const AdaptiveEdge &edge) {
     const std::uint32_t from = nodeId(edge.from_x, edge.from_y, edge.from_z);
@@ -179,7 +178,9 @@ public:
     // Thread-safe injection: add to pending queue
     {
       std::lock_guard<std::mutex> lock(event_injection_lock);
-      pending_events.push(evt);
+      if (!pending_events.push_back(evt)) {
+        return false;
+      }
     }
     return true;
   }
@@ -188,10 +189,10 @@ public:
   private:
   void flushPendingEvents() {
     std::lock_guard<std::mutex> lock(event_injection_lock);
-    while (!pending_events.empty()) {
-      (void)event_queue.push(pending_events.front());
-      pending_events.pop();
+    for (std::size_t i = 0; i < pending_events.size(); ++i) {
+      (void)event_queue.push(pending_events[i]);
     }
+    pending_events.clear();
   }
 
   public:

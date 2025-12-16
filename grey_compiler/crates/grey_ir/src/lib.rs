@@ -340,10 +340,10 @@ impl IrBuilder {
     
     fn extract_actions(&self, statements: &[grey_lang::types::TypedStatement]) -> Result<Vec<IrAction>> {
         let mut actions = Vec::new();
-        
+
         for statement in statements {
-            if let grey_lang::types::TypedStatement::Let { pattern, value } = statement {
-                match pattern {
+            match statement {
+                grey_lang::types::TypedStatement::Let { pattern, value } => match pattern {
                     grey_lang::ast::Pattern::Identifier(field_name) => {
                         let expr = self.expression_to_ir_expression(&value.expression)?;
                         actions.push(IrAction::UpdateField {
@@ -351,43 +351,82 @@ impl IrBuilder {
                             value: expr,
                         });
                     }
+                },
+                grey_lang::types::TypedStatement::Expression(expr) => {
+                    if let grey_lang::ast::Expression::Block { statements: inner } = &expr.expression {
+                        actions.extend(self.extract_actions_from_ast(inner)?);
+                    }
                 }
+                grey_lang::types::TypedStatement::Return(_) => {}
             }
         }
-        
+
+        Ok(actions)
+    }
+
+    fn extract_actions_from_ast(&self, statements: &[grey_lang::ast::Statement]) -> Result<Vec<IrAction>> {
+        let mut actions = Vec::new();
+
+        for statement in statements {
+            match statement {
+                grey_lang::ast::Statement::Let { pattern, value } => match pattern {
+                    grey_lang::ast::Pattern::Identifier(field_name) => {
+                        let expr = self.expression_to_ir_expression(value)?;
+                        actions.push(IrAction::UpdateField {
+                            field: field_name.clone(),
+                            value: expr,
+                        });
+                    }
+                },
+                grey_lang::ast::Statement::Expression(expr) => {
+                    if let grey_lang::ast::Expression::Block { statements: inner } = expr {
+                        actions.extend(self.extract_actions_from_ast(inner)?);
+                    }
+                }
+                grey_lang::ast::Statement::Return(_) => {}
+            }
+        }
+
         Ok(actions)
     }
     
     fn expression_to_value(&self, expr: &grey_lang::ast::Expression) -> Result<IrValue> {
         match expr {
             grey_lang::ast::Expression::Integer(i) => Ok(IrValue::Integer(*i)),
+            grey_lang::ast::Expression::Boolean(b) => Ok(IrValue::Boolean(*b)),
             grey_lang::ast::Expression::String(s) => Ok(IrValue::String(s.clone())),
             grey_lang::ast::Expression::CoordLiteral => Ok(IrValue::Coord(Coord::new(0, 0, 0))),
-            _ => Ok(IrValue::Integer(0)), // Default for unrecognized expressions
+            _ => Ok(IrValue::Integer(0)),
         }
     }
-    
+
     fn expression_to_ir_expression(&self, expr: &grey_lang::ast::Expression) -> Result<IrExpression> {
         match expr {
-            grey_lang::ast::Expression::Integer(i) => {
-                Ok(IrExpression::Constant(IrValue::Integer(*i)))
-            }
-            grey_lang::ast::Expression::String(s) => {
-                Ok(IrExpression::Constant(IrValue::String(s.clone())))
-            }
-            grey_lang::ast::Expression::Identifier(name) => {
-                Ok(IrExpression::FieldAccess(name.clone()))
-            }
-            grey_lang::ast::Expression::Add { left, right } => {
-                Ok(IrExpression::Arithmetic {
-                    op: IrArithmeticOp::Add,
-                    left: Box::new(self.expression_to_ir_expression(left)?),
-                    right: Box::new(self.expression_to_ir_expression(right)?),
-                })
-            }
-            grey_lang::ast::Expression::CoordLiteral => {
-                Ok(IrExpression::Constant(IrValue::Coord(Coord::new(0, 0, 0))))
-            }
+            grey_lang::ast::Expression::Integer(i) => Ok(IrExpression::Constant(IrValue::Integer(*i))),
+            grey_lang::ast::Expression::Boolean(b) => Ok(IrExpression::Constant(IrValue::Boolean(*b))),
+            grey_lang::ast::Expression::String(s) => Ok(IrExpression::Constant(IrValue::String(s.clone()))),
+            grey_lang::ast::Expression::Identifier(name) => Ok(IrExpression::FieldAccess(name.clone())),
+            grey_lang::ast::Expression::Add { left, right } => Ok(IrExpression::Arithmetic {
+                op: IrArithmeticOp::Add,
+                left: Box::new(self.expression_to_ir_expression(left)?),
+                right: Box::new(self.expression_to_ir_expression(right)?),
+            }),
+            grey_lang::ast::Expression::Subtract { left, right } => Ok(IrExpression::Arithmetic {
+                op: IrArithmeticOp::Subtract,
+                left: Box::new(self.expression_to_ir_expression(left)?),
+                right: Box::new(self.expression_to_ir_expression(right)?),
+            }),
+            grey_lang::ast::Expression::Multiply { left, right } => Ok(IrExpression::Arithmetic {
+                op: IrArithmeticOp::Multiply,
+                left: Box::new(self.expression_to_ir_expression(left)?),
+                right: Box::new(self.expression_to_ir_expression(right)?),
+            }),
+            grey_lang::ast::Expression::Divide { left, right } => Ok(IrExpression::Arithmetic {
+                op: IrArithmeticOp::Divide,
+                left: Box::new(self.expression_to_ir_expression(left)?),
+                right: Box::new(self.expression_to_ir_expression(right)?),
+            }),
+            grey_lang::ast::Expression::CoordLiteral => Ok(IrExpression::Constant(IrValue::Coord(Coord::new(0, 0, 0)))),
             _ => Ok(IrExpression::Constant(IrValue::Integer(0))),
         }
     }

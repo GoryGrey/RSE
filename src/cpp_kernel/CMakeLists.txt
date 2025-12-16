@@ -140,6 +140,12 @@ if(NOT MSVC)
     target_link_libraries(mega_demo atomic)
 endif()
 
+# JSON reference demo for Grey comparison harness
+add_executable(grey_sir_reference demos/scale_demos/grey_sir_reference.cpp)
+if(NOT MSVC)
+    target_link_libraries(grey_sir_reference atomic)
+endif()
+
 # Tests
 add_test(NAME allocator_test COMMAND allocator_test)
 add_test(NAME fixed_structures_test COMMAND fixed_structures_test)

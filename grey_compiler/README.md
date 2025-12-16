@@ -86,6 +86,7 @@ greyc emit-betti program.grey --run --max-events 5000 --telemetry
 
 - `--run`: Execute the generated Betti RDL workload
 - `--max-events N`: Maximum events to process (default: 1000)
+- `--seed N`: Deterministic seed used for initial event injection (default: 42)
 - `--telemetry`: Enable detailed telemetry output
 
 ### Programmatic Usage
@@ -176,52 +177,55 @@ The integration tests include reduced versions of key demo programs:
 
 These demonstrate the core process/event model and provide validation targets.
 
-## Comparison Harness
+## Killer Demo (Grey): SIR Epidemic
 
-### Purpose
+A production-like Grey demo lives at:
 
-The comparison harness (`grey_compiler/scripts/comparison_harness.rs`) enables:
+- `grey_compiler/examples/sir_demo.grey`
 
-- **Parity Testing**: Compare Grey-compiled vs C++ reference implementations
-- **Deterministic Validation**: Use shared seeds for reproducible comparisons
-- **Performance Analysis**: Compare execution times and resource usage
-- **State Verification**: Ensure process states match between implementations
+It defines multiple event types, bounded per-process state, and a `RUNTIME_PROCESSES` constant that the Betti backend uses to spawn many process instances (still O(1) memory in the Betti lattice).
 
-### Usage
+### Run via the CLI
 
-```rust
-use grey_compiler::scripts::comparison_harness::{BettiComparisonHarness, ComparisonConfig};
+```bash
+cd grey_compiler
 
-// Configure comparison
-let config = ComparisonConfig {
-    seed: 42,
-    max_events: 1000,
-    cpp_demo_path: Some(PathBuf::from("path/to/reference/demo")),
-    ..Default::default()
-};
-
-let harness = BettiComparisonHarness::new(config);
-let result = harness.run_comparison(grey_program)?;
-
-if result.parity_achieved {
-    println!("✅ Deterministic parity achieved!");
-} else {
-    println!("❌ Parity not achieved");
-    for diff in &result.state_differences {
-        println!("  {}", diff);
-    }
-}
+# Compile to the Betti backend and execute immediately
+cargo run -p greyc_cli --bin greyc -- emit-betti examples/sir_demo.grey \
+  --run --max-events 1000 --seed 42 --telemetry
 ```
 
-### Quick Comparison
+Expected behavior:
+- deterministic `events_processed` and `current_time` for the same `--seed`
+- process-state snapshot keyed by Betti PID (toroidal node id)
 
-For simple validation without C++ reference:
+## Comparison Harness (Grey vs C++)
 
-```rust
-use grey_compiler::scripts::comparison_harness::quick_compare;
+To prove deterministic parity, we ship a harness as a real Cargo crate:
 
-let result = quick_compare(grey_program, 42)?;
-println!("Processed {} events", result.grey_result.events_processed);
+- Harness crate: `grey_compiler/crates/grey_harness`
+- C++ reference executable: `src/cpp_kernel/demos/scale_demos/grey_sir_reference.cpp` (built via CMake)
+
+### Run the harness
+
+```bash
+cd grey_compiler
+cargo run -p grey_harness --bin grey_compare_sir -- --max-events 1000 --seed 42 --spacing 1
+```
+
+The harness will:
+1. compile the Grey demo
+2. run it through the Betti backend
+3. build + run the C++ reference
+4. compare `events_processed`, `current_time`, and the per-process state snapshot
+
+### Integration test
+
+The end-to-end harness test is marked `#[ignore]` (it builds C++ via CMake):
+
+```bash
+cd grey_compiler
+cargo test -p grey_harness -- --ignored
 ```
 
 ## Extending the Backend System

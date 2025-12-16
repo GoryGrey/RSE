@@ -320,52 +320,40 @@ impl TypeChecker {
     /// Type check an expression
     fn check_expression(&mut self, expression: &Expression) -> Result<TypedExpression, Box<dyn Diagnostic>> {
         match expression {
-            Expression::Integer(_value) => {
-                Ok(TypedExpression {
-                    expression: expression.clone(),
-                    type_: Type::Int,
-                })
-            }
-            Expression::String(_value) => {
-                Ok(TypedExpression {
-                    expression: expression.clone(),
-                    type_: Type::String,
-                })
-            }
+            Expression::Integer(_value) => Ok(TypedExpression {
+                expression: expression.clone(),
+                type_: Type::Int,
+            }),
+            Expression::Boolean(_value) => Ok(TypedExpression {
+                expression: expression.clone(),
+                type_: Type::Bool,
+            }),
+            Expression::String(_value) => Ok(TypedExpression {
+                expression: expression.clone(),
+                type_: Type::String,
+            }),
             Expression::Identifier(_name) => {
-                // For now, assume identifiers have Unit type
+                // Minimal checker: identifiers could be fields, locals, or globals.
                 Ok(TypedExpression {
                     expression: expression.clone(),
                     type_: Type::Unit,
                 })
             }
-            Expression::CoordLiteral => {
-                Ok(TypedExpression {
-                    expression: expression.clone(),
-                    type_: Type::Coord,
-                })
-            }
-            Expression::Call { .. } => {
-                // For now, assume function calls return Unit type
-                Ok(TypedExpression {
-                    expression: expression.clone(),
-                    type_: Type::Unit,
-                })
-            }
-            Expression::Block { .. } => {
-                // For now, assume blocks return Unit type
-                Ok(TypedExpression {
-                    expression: expression.clone(),
-                    type_: Type::Unit,
-                })
-            }
-            Expression::Add { .. } => {
-                // For now, assume addition returns Unit type
-                Ok(TypedExpression {
-                    expression: expression.clone(),
-                    type_: Type::Unit,
-                })
-            }
+            Expression::CoordLiteral => Ok(TypedExpression {
+                expression: expression.clone(),
+                type_: Type::Coord,
+            }),
+            Expression::Call { .. } | Expression::Block { .. } => Ok(TypedExpression {
+                expression: expression.clone(),
+                type_: Type::Unit,
+            }),
+            Expression::Add { .. }
+            | Expression::Subtract { .. }
+            | Expression::Multiply { .. }
+            | Expression::Divide { .. } => Ok(TypedExpression {
+                expression: expression.clone(),
+                type_: Type::Int,
+            }),
         }
     }
     

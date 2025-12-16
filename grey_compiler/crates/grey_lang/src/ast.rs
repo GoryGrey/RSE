@@ -1,5 +1,5 @@
 //! Minimal Abstract Syntax Tree for Grey programs
-//! 
+//!
 //! This module defines the basic AST structures for Grey programs.
 
 /// Source location information
@@ -40,7 +40,7 @@ pub struct ProcessDefinition {
     pub methods: Vec<FunctionDefinition>,
 }
 
-/// Field declaration in process
+/// Field declaration in process/event
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldDeclaration {
     pub name: String,
@@ -74,20 +74,33 @@ pub struct FunctionParameter {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     Integer(i64),
+    Boolean(bool),
     String(String),
     Identifier(String),
     CoordLiteral,
-    
+
     Add {
         left: Box<Expression>,
         right: Box<Expression>,
     },
-    
+    Subtract {
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
+    Multiply {
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
+    Divide {
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
+
     Call {
         function: Box<Expression>,
         arguments: Vec<Expression>,
     },
-    
+
     Block {
         statements: Vec<Statement>,
     },

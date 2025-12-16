@@ -43,6 +43,10 @@ enum Commands {
         /// Maximum events to process
         #[arg(long, default_value = "1000")]
         max_events: i32,
+
+        /// Deterministic seed used for injection patterns
+        #[arg(long, default_value = "42")]
+        seed: u64,
         
         /// Enable telemetry output
         #[arg(long)]
@@ -84,7 +88,7 @@ fn main() -> anyhow::Result<()> {
             }
         }
         
-        Commands::EmitBetti { input, run, max_events, telemetry } => {
+        Commands::EmitBetti { input, run, max_events, seed, telemetry } => {
             if !input.exists() {
                 anyhow::bail!("Input file '{}' does not exist", input.display());
             }
@@ -117,7 +121,8 @@ fn main() -> anyhow::Result<()> {
             // Generate Betti RDL code
             let backend = BettiRdlBackend::new(grey_backends::betti_rdl::BettiConfig {
                 max_events,
-                process_placement: grey_backends::ProcessPlacement::GridLayout { spacing: 4 },
+                seed,
+                process_placement: grey_backends::ProcessPlacement::GridLayout { spacing: 1 },
                 telemetry_enabled: telemetry || run, // Enable telemetry if running
                 validate_coordinates: true,
             });
@@ -149,6 +154,7 @@ fn main() -> anyhow::Result<()> {
                 // Always show minimal telemetry
                 println!("\n📊 Execution Telemetry:");
                 println!("  Events processed: {}", telemetry_result.events_processed);
+                println!("  Current time: {}", telemetry_result.current_time);
                 println!("  Execution time: {:.3}ms", execution_time.as_secs_f64() * 1000.0);
                 println!("  Total processes: {}", telemetry_result.process_states.len());
                 

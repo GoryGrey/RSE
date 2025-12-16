@@ -61,7 +61,13 @@ pub enum EventOrdering {
 #[derive(Debug)]
 pub struct CodeGenMetadata {
     pub source_name: String,
+
+    /// Number of process *types* in the IR.
     pub process_count: usize,
+
+    /// Number of process *instances* the runtime should spawn for this workload.
+    pub runtime_process_count: usize,
+
     pub event_count: usize,
     pub expected_execution_time: Option<u64>,
 }
@@ -98,6 +104,7 @@ pub trait CodeGenerator {
 #[derive(Debug)]
 pub struct ExecutionTelemetry {
     pub events_processed: u64,
+    pub current_time: u64,
     pub execution_time_ns: u64,
     pub memory_usage_kb: Option<u64>,
     pub process_states: HashMap<usize, i32>,

@@ -204,10 +204,35 @@ Summary: 5/5 tests passed
 🎉 ALL TESTS PASSED! Binding matrix is healthy.
 ```
 
+### Building the C++ Kernel Library
+
+Before using any language bindings, you need to build the shared library:
+
+```bash
+# From the project root
+cd src/cpp_kernel
+mkdir -p build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . --config Release
+cd ../../..
+
+# Copy to shared location (expected by all bindings)
+mkdir -p build/shared/lib
+cp src/cpp_kernel/build/libbetti_rdl_c.so build/shared/lib/
+```
+
+Alternatively, use the binding matrix script which handles this automatically:
+
+```bash
+./scripts/run_binding_matrix.sh
+```
+
 ### Language-Specific Usage
 
 #### Python (Data Science / AI)
 Ideal for massive agent-based simulations or recursive search algorithms.
+
+**Prerequisites**: The C++ kernel library must be built first (see above).
 
 ```bash
 # Install dependencies
@@ -229,10 +254,9 @@ print(f'Processed {events} events')
 #### Node.js (Serverless / Web)  
 Ideal for high-density backend logic.
 
-```bash
-# Install dependencies
-npm install
+**Prerequisites**: The C++ kernel library must be built first (see above).
 
+```bash
 # Build and test
 cd nodejs
 npm install

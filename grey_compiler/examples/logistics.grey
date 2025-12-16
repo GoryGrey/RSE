@@ -1,0 +1,34 @@
+module LogisticsDemo {
+    const MAX_PROCESSES = 10;
+    const INITIAL_VALUE = 0;
+    
+    event PackageShipped {
+        package_id: Int,
+        destination: Coord,
+        priority: Int,
+    }
+    
+    event DeliveryCompleted {
+        package_id: Int,
+        timestamp: Int,
+    }
+    
+    process LogisticsHub {
+        packages_in_transit: Int,
+        total_deliveries: Int,
+        
+        method init() {
+            this.packages_in_transit = 0;
+            this.total_deliveries = 0;
+        }
+        
+        method handle_shipment(event: PackageShipped) {
+            this.packages_in_transit = this.packages_in_transit + 1;
+        }
+        
+        method handle_delivery(event: DeliveryCompleted) {
+            this.packages_in_transit = this.packages_in_transit - 1;
+            this.total_deliveries = this.total_deliveries + 1;
+        }
+    }
+}

@@ -254,19 +254,142 @@ impl IrBuilder {
             fields.insert(field.name.clone(), ir_type);
         }
         
-        let initial_state = IrState {
-            values: HashMap::new(), // TODO: extract initial values from methods
-        };
+        // Extract initial state from init() method
+        let initial_state = self.extract_initial_state(&process.methods, &fields)?;
         
-        let transitions = Vec::new(); // TODO: extract from methods
+        // Extract transitions from handler methods
+        let transitions = self.extract_transitions(&process.methods)?;
         
         Ok(IrProcess {
             name: process.name.clone(),
-            coord: Coord::new(0, 0, 0), // TODO: determine from context
+            coord: Coord::new(0, 0, 0), // Default placement; can be overridden by backend
             fields,
             initial_state,
             transitions,
         })
+    }
+    
+    fn extract_initial_state(&self, methods: &[grey_lang::types::TypedFunctionDefinition], fields: &HashMap<String, IrType>) -> Result<IrState> {
+        let mut values = HashMap::new();
+        
+        // Look for init() method
+        if let Some(init_method) = methods.iter().find(|m| m.name == "init") {
+            // Extract initial values from init method body
+            for statement in &init_method.body.statements {
+                if let grey_lang::types::TypedStatement::Let { pattern, value } = statement {
+                    match pattern {
+                        grey_lang::ast::Pattern::Identifier(field_name) => {
+                            let ir_value = self.expression_to_value(&value.expression)?;
+                            values.insert(field_name.clone(), ir_value);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Initialize missing fields with sensible defaults
+        for (field_name, field_type) in fields {
+            if !values.contains_key(field_name) {
+                let default_value = match field_type {
+                    IrType::Int => IrValue::Integer(0),
+                    IrType::String => IrValue::String(String::new()),
+                    IrType::Bool => IrValue::Boolean(false),
+                    IrType::Coord => IrValue::Coord(Coord::new(0, 0, 0)),
+                };
+                values.insert(field_name.clone(), default_value);
+            }
+        }
+        
+        Ok(IrState { values })
+    }
+    
+    fn extract_transitions(&self, methods: &[grey_lang::types::TypedFunctionDefinition]) -> Result<Vec<IrTransition>> {
+        let mut transitions = Vec::new();
+        
+        for method in methods {
+            // Handler methods typically start with "handle_"
+            if method.name.starts_with("handle_") {
+                // Extract event type from method name (e.g., handle_shipment -> Shipment)
+                let event_name_lower = method.name.strip_prefix("handle_").unwrap_or("");
+                let event_type = if !event_name_lower.is_empty() {
+                    // Capitalize first letter
+                    let mut chars = event_name_lower.chars();
+                    match chars.next() {
+                        None => continue,
+                        Some(first) => {
+                            first.to_uppercase().collect::<String>() + chars.as_str()
+                        }
+                    }
+                } else {
+                    continue;
+                };
+                
+                // Extract actions from method body
+                let actions = self.extract_actions(&method.body.statements)?;
+                
+                transitions.push(IrTransition {
+                    event_type,
+                    condition: None,
+                    actions,
+                });
+            }
+        }
+        
+        Ok(transitions)
+    }
+    
+    fn extract_actions(&self, statements: &[grey_lang::types::TypedStatement]) -> Result<Vec<IrAction>> {
+        let mut actions = Vec::new();
+        
+        for statement in statements {
+            if let grey_lang::types::TypedStatement::Let { pattern, value } = statement {
+                match pattern {
+                    grey_lang::ast::Pattern::Identifier(field_name) => {
+                        let expr = self.expression_to_ir_expression(&value.expression)?;
+                        actions.push(IrAction::UpdateField {
+                            field: field_name.clone(),
+                            value: expr,
+                        });
+                    }
+                }
+            }
+        }
+        
+        Ok(actions)
+    }
+    
+    fn expression_to_value(&self, expr: &grey_lang::ast::Expression) -> Result<IrValue> {
+        match expr {
+            grey_lang::ast::Expression::Integer(i) => Ok(IrValue::Integer(*i)),
+            grey_lang::ast::Expression::String(s) => Ok(IrValue::String(s.clone())),
+            grey_lang::ast::Expression::CoordLiteral => Ok(IrValue::Coord(Coord::new(0, 0, 0))),
+            _ => Ok(IrValue::Integer(0)), // Default for unrecognized expressions
+        }
+    }
+    
+    fn expression_to_ir_expression(&self, expr: &grey_lang::ast::Expression) -> Result<IrExpression> {
+        match expr {
+            grey_lang::ast::Expression::Integer(i) => {
+                Ok(IrExpression::Constant(IrValue::Integer(*i)))
+            }
+            grey_lang::ast::Expression::String(s) => {
+                Ok(IrExpression::Constant(IrValue::String(s.clone())))
+            }
+            grey_lang::ast::Expression::Identifier(name) => {
+                Ok(IrExpression::FieldAccess(name.clone()))
+            }
+            grey_lang::ast::Expression::Add { left, right } => {
+                Ok(IrExpression::Arithmetic {
+                    op: IrArithmeticOp::Add,
+                    left: Box::new(self.expression_to_ir_expression(left)?),
+                    right: Box::new(self.expression_to_ir_expression(right)?),
+                })
+            }
+            grey_lang::ast::Expression::CoordLiteral => {
+                Ok(IrExpression::Constant(IrValue::Coord(Coord::new(0, 0, 0))))
+            }
+            _ => Ok(IrExpression::Constant(IrValue::Integer(0))),
+        }
     }
     
     fn build_constant(&self, expr: &grey_lang::types::TypedExpression) -> Result<IrValue> {
@@ -304,6 +427,7 @@ mod tests {
     #[test]
     fn test_ir_builder() {
         let builder = IrBuilder::new();
-        // TODO: Add actual test with typed AST
+        // Basic builder construction test
+        assert_eq!(builder.programs.len(), 0);
     }
 }

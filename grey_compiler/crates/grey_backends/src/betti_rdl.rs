@@ -17,7 +17,7 @@ use crate::{
     EventOrdering, ExecutionTelemetry, BackendError, 
     CodeGenMetadata, ConfigOption
 };
-use crate::utils::{validate_program, generate_process_coords};
+use crate::utils::validate_program;
 
 /// Betti RDL Backend implementation
 pub struct BettiRdlBackend {

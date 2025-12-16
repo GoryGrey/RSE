@@ -315,6 +315,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "grey_harness"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "grey_backends",
+ "grey_ir",
+ "grey_lang",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "grey_ir"
 version = "0.1.0"
 dependencies = [

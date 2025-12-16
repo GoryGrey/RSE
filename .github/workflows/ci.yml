@@ -166,6 +166,16 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y cmake ninja-build
+    - name: Build C++ Kernel Library
+      run: |
+        cd src/cpp_kernel
+        mkdir -p build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release
+        cmake --build . --config Release
+        cd ../../..
+        mkdir -p build/shared/lib
+        cp src/cpp_kernel/build/libbetti_rdl_c.so build/shared/lib/
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
       with:
@@ -173,5 +183,6 @@ jobs:
         override: true
     - name: Run Tests
       run: |
+        export LD_LIBRARY_PATH=$PWD/build/shared/lib:$LD_LIBRARY_PATH
         cd grey_compiler
         cargo test

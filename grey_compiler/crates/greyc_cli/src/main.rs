@@ -123,7 +123,7 @@ fn main() -> anyhow::Result<()> {
             println!("✅ Betti RDL code generated");
             
             // Write generated files
-            let output_dir = input.parent().unwrap_or_else(|| PathBuf::from("."));
+            let output_dir = input.parent().unwrap_or_else(|| std::path::Path::new("."));
             let betti_file = output_dir.join(format!("{}_betti.rs", program_name));
             
             if let Some((path, content)) = output.files.iter().find(|(path, _)| {

@@ -159,12 +159,26 @@ k.run(1000); // 0 bytes allocated
 ```
 
 ### Rust (Systems)
-Zero-overhead integration for embedded use.
+Zero-overhead integration for embedded use. The C++ kernel is automatically built during `cargo build`.
+
+**Prerequisites**: CMake 3.10+, C++17 compiler
 
 ```toml
 # Cargo.toml
 [dependencies]
 betti-rdl = "1.0"
+```
+
+```rust
+use betti_rdl::Kernel;
+
+let mut kernel = Kernel::new();
+kernel.spawn_process(0, 0, 0);
+kernel.inject_event(0, 0, 0, 1);
+
+// Returns number of events processed in this run
+let count = kernel.run(1000);
+println!("Processed {} events", count);
 ```
 
 ## Roadmap

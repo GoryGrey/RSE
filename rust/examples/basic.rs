@@ -23,11 +23,12 @@ fn main() {
 
     // Run computation
     println!("\n[COMPUTE] Running distributed counter...");
-    kernel.run(100);
+    let events_in_run = kernel.run(100);
 
     // Display results
     println!("\n[RESULTS]");
-    println!("  Events processed: {}", kernel.events_processed());
+    println!("  Events in this run: {}", events_in_run);
+    println!("  Total events processed: {}", kernel.events_processed());
     println!("  Current time: {}", kernel.current_time());
     println!("  Active processes: {}", kernel.process_count());
 

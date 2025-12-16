@@ -181,4 +181,3 @@ pub mod utils {
 
 /// Betti RDL backend implementation
 pub mod betti_rdl;
-}

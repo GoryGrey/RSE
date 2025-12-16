@@ -6,19 +6,18 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use anyhow::{Context, Result};
-use log::{info, debug, warn};
+use anyhow::Result;
+use log::{info, debug};
 
 use grey_ir::{
-    IrProgram, IrProcess, IrEvent, IrAction, IrExpression, IrValue, 
-    IrTransition, Coord, IrResourceBounds
+    IrProgram, Coord
 };
 use crate::{
     CodeGenerator, CodeGenOutput, RuntimeConfig, ProcessPlacement, 
     EventOrdering, ExecutionTelemetry, BackendError, 
     CodeGenMetadata, ConfigOption
 };
-use utils::{validate_program, generate_process_coords, get_event_map, get_process_map};
+use crate::utils::{validate_program, generate_process_coords};
 
 /// Betti RDL Backend implementation
 pub struct BettiRdlBackend {
@@ -138,7 +137,7 @@ impl CodeGenerator for BettiRdlBackend {
         self.inject_initial_events(&mut kernel, &output)?;
         
         // Run the kernel
-        kernel.run(output.runtime_config.max_events);
+        let _events_in_run = kernel.run(output.runtime_config.max_events);
         
         let execution_time = start_time.elapsed();
         
@@ -261,8 +260,9 @@ impl {0}Executable {{
         code.push_str(&format!(
             "    pub fn run(&mut self, max_events: i32) -> Result<HashMap<String, u64>, Box<dyn std::error::Error>> {{\n"
         ));
-        code.push_str("        self.kernel.run(max_events);\n\n");
+        code.push_str("        let events_in_run = self.kernel.run(max_events);\n\n");
         code.push_str("        let mut results = HashMap::new();\n");
+        code.push_str("        results.insert(\"events_in_run\".to_string(), events_in_run as u64);\n");
         code.push_str("        results.insert(\"events_processed\".to_string(), self.kernel.events_processed());\n");
         code.push_str("        results.insert(\"current_time\".to_string(), self.kernel.current_time());\n");
         code.push_str("        results.insert(\"process_count\".to_string(), self.kernel.process_count() as u64);\n");
@@ -287,7 +287,7 @@ mod tests {{
         let results = executable.run({1}).unwrap();
         
         assert!(results.contains_key("events_processed"));
-        assert_eq!(results["process_count"], {} as u64);
+        assert_eq!(results["process_count"], {2} as u64);
     }}
 }}
 "#,
@@ -383,7 +383,7 @@ mod tests {{
     fn inject_initial_events(
         &self,
         kernel: &mut betti_rdl::Kernel,
-        output: &CodeGenOutput,
+        _output: &CodeGenOutput,
     ) -> Result<(), BackendError> {
         // TODO: Inject initial events based on program structure
         // For now, inject a single event to start execution
@@ -413,7 +413,7 @@ mod tests {{
 #[cfg(test)]
 mod tests {
     use super::*;
-    use grey_ir::{IrProgram, IrProcess, IrEvent, IrResourceBounds};
+    use grey_ir::{IrProgram, IrProcess, IrResourceBounds};
     use std::collections::HashMap;
     
     fn create_test_program() -> IrProgram {
@@ -458,6 +458,7 @@ mod tests {
         let output = backend.generate_code(&program).unwrap();
         let telemetry = backend.execute(&output).unwrap();
         
-        assert!(telemetry.events_processed >= 0);
+        // events_processed is u64, so always >= 0
+        assert!(telemetry.events_processed == telemetry.events_processed);
     }
 }

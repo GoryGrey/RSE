@@ -6,7 +6,7 @@ extern "C" {
     fn betti_rdl_destroy(kernel: *mut std::ffi::c_void);
     fn betti_rdl_spawn_process(kernel: *mut std::ffi::c_void, x: c_int, y: c_int, z: c_int);
     fn betti_rdl_inject_event(kernel: *mut std::ffi::c_void, x: c_int, y: c_int, z: c_int, value: c_int);
-    fn betti_rdl_run(kernel: *mut std::ffi::c_void, max_events: c_int);
+    fn betti_rdl_run(kernel: *mut std::ffi::c_void, max_events: c_int) -> c_int;
     fn betti_rdl_get_events_processed(kernel: *const std::ffi::c_void) -> u64;
     fn betti_rdl_get_current_time(kernel: *const std::ffi::c_void) -> u64;
     fn betti_rdl_get_process_count(kernel: *const std::ffi::c_void) -> usize;
@@ -20,8 +20,10 @@ pub struct Kernel {
 impl Kernel {
     pub fn new() -> Self {
         unsafe {
+            let ptr = betti_rdl_create();
+            assert!(!ptr.is_null(), "Failed to create Betti-RDL kernel");
             Kernel {
-                inner: betti_rdl_create(),
+                inner: ptr,
             }
         }
     }
@@ -38,9 +40,10 @@ impl Kernel {
         }
     }
 
-    pub fn run(&mut self, max_events: i32) {
+    /// Run the kernel for at most `max_events` and return the number of events processed.
+    pub fn run(&mut self, max_events: i32) -> i32 {
         unsafe {
-            betti_rdl_run(self.inner, max_events);
+            betti_rdl_run(self.inner, max_events)
         }
     }
 

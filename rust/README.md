@@ -11,6 +11,14 @@ Add to your `Cargo.toml`:
 betti-rdl = "1.0"
 ```
 
+The C++ kernel will be automatically compiled during the build process using CMake.
+
+### Prerequisites
+
+- CMake 3.10 or higher
+- A C++17 compatible compiler (GCC, Clang, or MSVC)
+- On Linux/macOS: `libatomic` (usually included with GCC)
+
 ## Quick Start
 
 ```rust
@@ -27,10 +35,11 @@ fn main() {
     // Inject event
     kernel.inject_event(0, 0, 0, 1);
 
-    // Run
-    kernel.run(100);
+    // Run - returns number of events processed in this run
+    let events_in_run = kernel.run(100);
 
-    println!("Processed: {} events", kernel.events_processed());
+    println!("Events in this run: {}", events_in_run);
+    println!("Total processed: {} events", kernel.events_processed());
     // Memory: O(1)
 }
 ```

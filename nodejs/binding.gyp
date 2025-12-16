@@ -8,7 +8,10 @@
         "../src/cpp_kernel"
       ],
       "libraries": [
-        "<!(node -e \"let libPath = process.env.BETTI_RDL_SHARED_LIB_DIR || '../src/cpp_kernel/build/Release'; console.log('-L' + libPath + ',-lbetti_rdl_c,-lstdc++,-latomic')\")"
+        "-L/home/engine/project/build/shared/lib",
+        "-lbetti_rdl_c",
+        "-lstdc++",
+        "-latomic"
       ],
       "dependencies": [
         "<!(node -p \"require('node-addon-api').gyp\")"

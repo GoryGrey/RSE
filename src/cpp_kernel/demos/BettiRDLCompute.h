@@ -147,7 +147,7 @@ public:
 
     // Propagate to neighbors (with computation)
     int next_x = (dst_x + 1) % kDim;
-    if (next_x < 10) {
+    if (next_x != dst_x) {
       ComputeEvent new_evt{};
       new_evt.timestamp = current_time + 1;
       new_evt.dst_node = static_cast<int>(nodeId(next_x, dst_y, dst_z));

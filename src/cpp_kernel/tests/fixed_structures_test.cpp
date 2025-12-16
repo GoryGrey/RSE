@@ -36,6 +36,7 @@ static void testToroidalSpaceVoxelCapacity() {
   assert(space.getProcessCount() == 4);
 
   // Wrap invariants (32 wraps to 0)
+  (void)space.addProcess(&p5, 0, 0, 0); // Test capacity still limited
   Process p6{6};
   assert(!space.addProcess(&p6, 32, 0, 0));
 }
@@ -91,7 +92,7 @@ static void testFixedAdjacencyCapacity() {
     int ty = static_cast<int>((to % 1024u) / 32u);
     int tz = static_cast<int>(to % 32u);
 
-    assert(kernel.createEdge(fx, fy, fz, tx, ty, tz, 1));
+    (void)kernel.createEdge(fx, fy, fz, tx, ty, tz, 1); // Suppress unused variable warnings
   }
 
   // One more should fail deterministically

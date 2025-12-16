@@ -1,0 +1,36 @@
+module SirDemo {
+    // Controls how many process instances the Betti backend will spawn.
+    // This remains O(1) memory because Betti-RDL pre-allocates a fixed lattice.
+    const RUNTIME_PROCESSES = 64;
+
+    event Infection {
+        strain: Int,
+        severity: Int,
+    }
+
+    event Recovery {
+        node_id: Int,
+    }
+
+    process Person {
+        infected: Bool,
+        recovered: Bool,
+        infection_count: Int,
+
+        method init() {
+            this.infected = false;
+            this.recovered = false;
+            this.infection_count = 0;
+        }
+
+        method handle_infection(event: Infection) {
+            this.infected = true;
+            this.infection_count = this.infection_count + 1;
+        }
+
+        method handle_recovery(event: Recovery) {
+            this.infected = false;
+            this.recovered = true;
+        }
+    }
+}

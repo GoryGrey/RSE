@@ -10,7 +10,7 @@ use anyhow::Result;
 use log::{info, debug};
 
 use grey_ir::{
-    IrProgram, Coord
+    Coord, IrProgram, IrValue,
 };
 use crate::{
     CodeGenerator, CodeGenOutput, RuntimeConfig, ProcessPlacement, 
@@ -28,13 +28,16 @@ pub struct BettiRdlBackend {
 pub struct BettiConfig {
     /// Default process placement strategy
     pub process_placement: ProcessPlacement,
-    
+
     /// Maximum events to process per run
     pub max_events: i32,
-    
+
+    /// Seed used for deterministic injection patterns.
+    pub seed: u64,
+
     /// Enable detailed telemetry collection
     pub telemetry_enabled: bool,
-    
+
     /// Coordinate bounds checking
     pub validate_coordinates: bool,
 }
@@ -42,8 +45,9 @@ pub struct BettiConfig {
 impl Default for BettiConfig {
     fn default() -> Self {
         Self {
-            process_placement: ProcessPlacement::GridLayout { spacing: 4 },
+            process_placement: ProcessPlacement::GridLayout { spacing: 1 },
             max_events: 1000,
+            seed: 42,
             telemetry_enabled: true,
             validate_coordinates: true,
         }
@@ -66,26 +70,61 @@ impl CodeGenerator for BettiRdlBackend {
         
         // Validate program for backend compatibility
         validate_program(program)?;
-        
+
+        let runtime_process_count = match &self.config.process_placement {
+            ProcessPlacement::Custom(coords) => coords.len().max(1),
+            ProcessPlacement::SingleNode => 1,
+            ProcessPlacement::GridLayout { .. } => {
+                let from_constants = program
+                    .constants
+                    .get("RUNTIME_PROCESSES")
+                    .or_else(|| program.constants.get("MAX_PROCESSES"))
+                    .and_then(|v| match v {
+                        IrValue::Integer(i) if *i > 0 => Some(*i as usize),
+                        _ => None,
+                    });
+
+                from_constants.unwrap_or(program.processes.len().max(1))
+            }
+        };
+
+        if runtime_process_count > program.resources.max_processes {
+            return Err(BackendError::ValidationError(format!(
+                "Runtime process count {} exceeds max_processes {}",
+                runtime_process_count, program.resources.max_processes
+            )));
+        }
+
+        // BettiRDLCompute has a fixed process pool.
+        if runtime_process_count > 2048 {
+            return Err(BackendError::ValidationError(format!(
+                "Runtime process count {} exceeds kernel hard limit 2048",
+                runtime_process_count
+            )));
+        }
+
         // Generate process placement coordinates
         let process_coords = match &self.config.process_placement {
             ProcessPlacement::SingleNode => {
                 let mut coords = HashMap::new();
-                for process in &program.processes {
-                    coords.insert(process.name.clone(), Coord::new(0, 0, 0));
-                }
+                coords.insert("p0".to_string(), Coord::new(0, 0, 0));
                 coords
-            },
+            }
             ProcessPlacement::GridLayout { spacing } => {
-                let mut coords = generate_process_coords(&program.processes.iter().collect::<Vec<_>>());
-                // Apply spacing multiplier
-                for coord in coords.values_mut() {
-                    coord.x *= spacing;
-                    coord.y *= spacing;
-                    coord.z *= spacing;
+                let mut coords = HashMap::new();
+                let grid_size = ((runtime_process_count as f32).sqrt().ceil() as i32).max(1);
+
+                for i in 0..runtime_process_count {
+                    let x = (i as i32) % grid_size;
+                    let y = (i as i32) / grid_size;
+                    let z = 0;
+                    coords.insert(
+                        format!("p{}", i),
+                        Coord::new(x * spacing, y * spacing, z * spacing),
+                    );
                 }
                 coords
-            },
+            }
             ProcessPlacement::Custom(coords) => coords.clone(),
         };
         
@@ -109,6 +148,7 @@ impl CodeGenerator for BettiRdlBackend {
         let metadata = CodeGenMetadata {
             source_name: program.name.clone(),
             process_count: program.processes.len(),
+            runtime_process_count,
             event_count: program.events.len(),
             expected_execution_time: None, // TODO: estimate based on complexity
         };
@@ -131,23 +171,25 @@ impl CodeGenerator for BettiRdlBackend {
         let mut kernel = betti_rdl::Kernel::new();
         
         // Spawn processes according to placement configuration
-        self.spawn_processes(&mut kernel, &output)?;
-        
+        let process_coords = self.spawn_processes(&mut kernel, output)?;
+
         // Inject initial events
-        self.inject_initial_events(&mut kernel, &output)?;
-        
+        self.inject_initial_events(&mut kernel, output, &process_coords)?;
+
         // Run the kernel
         let _events_in_run = kernel.run(output.runtime_config.max_events);
-        
+
         let execution_time = start_time.elapsed();
-        
+        let execution_time_ns = execution_time.as_nanos() as u64;
+
         // Collect telemetry
         let telemetry = if self.config.telemetry_enabled {
-            self.collect_telemetry(&kernel)?
+            self.collect_telemetry(&kernel, &process_coords, execution_time_ns)?
         } else {
             ExecutionTelemetry {
-                events_processed: 0,
-                execution_time_ns: execution_time.as_nanos() as u64,
+                events_processed: kernel.events_processed(),
+                current_time: kernel.current_time(),
+                execution_time_ns,
                 memory_usage_kb: None,
                 process_states: HashMap::new(),
             }
@@ -174,6 +216,13 @@ impl CodeGenerator for BettiRdlBackend {
             description: "Maximum events to process".to_string(),
             default: "1000".to_string(),
             allowed_values: vec!["100".to_string(), "1000".to_string(), "10000".to_string()],
+        });
+
+        options.insert("seed".to_string(), ConfigOption {
+            name: "seed".to_string(),
+            description: "Deterministic seed used for initial injection patterns".to_string(),
+            default: "42".to_string(),
+            allowed_values: vec!["0".to_string(), "1".to_string(), "42".to_string(), "123".to_string()],
         });
         
         options.insert("telemetry_enabled".to_string(), ConfigOption {
@@ -221,13 +270,16 @@ impl {0}Executable {{
         ));
         
         // Generate coordinate initialization
-        for (process_name, coord) in process_coords {
+        let mut process_entries: Vec<_> = process_coords.iter().collect();
+        process_entries.sort_by(|(a, _), (b, _)| a.cmp(b));
+
+        for (process_name, coord) in process_entries {
             code.push_str(&format!(
                 "        executable.process_coords.insert(\"{}\".to_string(), ({}, {}, {}));\n",
                 process_name, coord.x, coord.y, coord.z
             ));
         }
-        
+
         code.push_str("        executable\n");
         code.push_str("    }\n\n");
         
@@ -236,7 +288,10 @@ impl {0}Executable {{
             "    pub fn spawn_processes(&mut self) -> Result<(), Box<dyn std::error::Error>> {{\n"
         ));
         
-        for (process_name, coord) in process_coords {
+        let mut spawn_entries: Vec<_> = process_coords.iter().collect();
+        spawn_entries.sort_by(|(a, _), (b, _)| a.cmp(b));
+
+        for (process_name, coord) in spawn_entries {
             code.push_str(&format!(
                 "        self.kernel.spawn_process({}, {}, {}); // {}\n",
                 coord.x, coord.y, coord.z, process_name
@@ -254,11 +309,9 @@ impl {0}Executable {{
         // Generate event injection based on program events and process coordinates
         if !process_coords.is_empty() {
             code.push_str("        // Inject initial events to first process\n");
-            code.push_str("        if let Some((x, y, z)) = self.process_coords.values().next() {\n");
+            code.push_str("        if let Some((x, y, z)) = self.process_coords.get(\"p0\") {\n");
             code.push_str("            // Inject seed events to trigger process execution\n");
-            code.push_str("            for i in 0..1 {\n");
-            code.push_str("                self.kernel.inject_event(*x, *y, *z, 1 + i);\n");
-            code.push_str("            }\n");
+            code.push_str("            self.kernel.inject_event(*x, *y, *z, 1);\n");
             code.push_str("        }\n");
         }
         code.push_str("        Ok(())\n");
@@ -301,7 +354,7 @@ mod tests {{
 "#,
             program.name,
             self.config.max_events,
-            program.processes.len()
+            process_coords.len()
         ));
         
         Ok(code)
@@ -309,6 +362,16 @@ mod tests {{
     
     fn generate_validation_code(&self, program: &IrProgram) -> Result<String, BackendError> {
         let mut code = String::new();
+
+        let expected_processes = program
+            .constants
+            .get("RUNTIME_PROCESSES")
+            .or_else(|| program.constants.get("MAX_PROCESSES"))
+            .and_then(|v| match v {
+                IrValue::Integer(i) if *i > 0 => Some(*i as usize),
+                _ => None,
+            })
+            .unwrap_or(program.processes.len().max(1));
         
         code.push_str(&format!(
             r#"//! Validation code for {} Betti RDL program
@@ -356,7 +419,7 @@ mod tests {{
 }}
 "#,
             program.name,
-            program.processes.len(),
+            expected_processes,
             program.events.len(),
             program.name
         ));
@@ -368,59 +431,117 @@ mod tests {{
         &self,
         kernel: &mut betti_rdl::Kernel,
         output: &CodeGenOutput,
-    ) -> Result<(), BackendError> {
-        // Extract process coordinates from generated files
-        // For now, use a simple grid layout
-        let process_count = output.metadata.process_count;
-        let grid_size = ((process_count as f32).sqrt().ceil() as i32).max(1);
-        
-        debug!("Spawning {} processes in {}x{} grid", process_count, grid_size, grid_size);
-        
-        for i in 0..process_count {
-            let x = (i as i32) % grid_size;
-            let y = (i as i32) / grid_size;
-            let z = 0;
-            
-            kernel.spawn_process(x, y, z);
+    ) -> Result<Vec<Coord>, BackendError> {
+        let process_count = output.metadata.runtime_process_count;
+
+        let coords: Vec<Coord> = match &output.runtime_config.process_placement {
+            ProcessPlacement::SingleNode => vec![Coord::new(0, 0, 0)],
+            ProcessPlacement::GridLayout { spacing } => {
+                let grid_size = ((process_count as f32).sqrt().ceil() as i32).max(1);
+
+                (0..process_count)
+                    .map(|i| {
+                        let x = (i as i32) % grid_size;
+                        let y = (i as i32) / grid_size;
+                        let z = 0;
+                        Coord::new(x * spacing, y * spacing, z * spacing)
+                    })
+                    .collect()
+            }
+            ProcessPlacement::Custom(mapping) => {
+                let mut keys: Vec<_> = mapping.keys().cloned().collect();
+                keys.sort();
+                keys.into_iter()
+                    .filter_map(|k| mapping.get(&k).cloned())
+                    .collect()
+            }
+        };
+
+        debug!("Spawning {} processes", coords.len());
+
+        for coord in &coords {
+            kernel.spawn_process(coord.x, coord.y, coord.z);
         }
-        
-        info!("Spawned {} processes successfully", process_count);
-        Ok(())
+
+        info!("Spawned {} processes successfully", coords.len());
+        Ok(coords)
     }
-    
+
     fn inject_initial_events(
         &self,
         kernel: &mut betti_rdl::Kernel,
-        output: &CodeGenOutput,
+        _output: &CodeGenOutput,
+        process_coords: &[Coord],
     ) -> Result<(), BackendError> {
-        // Inject initial events to seed the computation
-        // Use process count to determine injection strategy
-        let process_count = output.metadata.process_count;
-        
-        if process_count > 0 {
-            // Inject to first process at origin
-            kernel.inject_event(0, 0, 0, 1);
-            debug!("Injected seed event to process at (0, 0, 0)");
+        if process_coords.is_empty() {
+            return Ok(());
         }
-        
-        debug!("Injected initial event(s)");
+
+        struct XorShift64 {
+            state: u64,
+        }
+
+        impl XorShift64 {
+            fn new(seed: u64) -> Self {
+                Self { state: seed.max(1) }
+            }
+
+            fn next_u64(&mut self) -> u64 {
+                let mut x = self.state;
+                x ^= x << 13;
+                x ^= x >> 7;
+                x ^= x << 17;
+                self.state = x;
+                x
+            }
+        }
+
+        let mut rng = XorShift64::new(self.config.seed);
+        let injections = 4.min(process_coords.len());
+
+        for _ in 0..injections {
+            let idx = (rng.next_u64() as usize) % process_coords.len();
+            let value = (rng.next_u64() % 5) as i32 + 1;
+            let coord = &process_coords[idx];
+            kernel.inject_event(coord.x, coord.y, coord.z, value);
+        }
+
+        debug!("Injected {} initial event(s)", injections);
         Ok(())
     }
-    
-    fn collect_telemetry(&self, kernel: &betti_rdl::Kernel) -> Result<ExecutionTelemetry, BackendError> {
+
+    fn collect_telemetry(
+        &self,
+        kernel: &betti_rdl::Kernel,
+        process_coords: &[Coord],
+        execution_time_ns: u64,
+    ) -> Result<ExecutionTelemetry, BackendError> {
         let mut process_states = HashMap::new();
-        
-        // Collect process states
-        for pid in 0..kernel.process_count() {
+
+        for coord in process_coords {
+            let pid = Self::node_id(coord) as usize;
             process_states.insert(pid, kernel.process_state(pid as i32));
         }
-        
+
         Ok(ExecutionTelemetry {
             events_processed: kernel.events_processed(),
-            execution_time_ns: 0, // Set by caller
-            memory_usage_kb: None, // TODO: Implement memory tracking
+            current_time: kernel.current_time(),
+            execution_time_ns,
+            memory_usage_kb: None,
             process_states,
         })
+    }
+
+    fn node_id(coord: &Coord) -> i32 {
+        fn wrap(v: i32) -> i32 {
+            let m = v % 32;
+            if m < 0 { m + 32 } else { m }
+        }
+
+        let x = wrap(coord.x);
+        let y = wrap(coord.y);
+        let z = wrap(coord.z);
+        x * 1024 + y * 32 + z
     }
 }
 

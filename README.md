@@ -65,7 +65,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . --config Release
 
 # 3. Run the "Mega Demo" (All 3 scenarios)
-./bg_demo  # Linux/Mac
+./mega_demo  # Linux/Mac
 .\Release\mega_demo.exe # Windows
 ```
 
@@ -117,6 +117,27 @@ The system consists of a core C++ "Metal Kernel" and high-level language binding
     |-- ToroidalSpace (Grid Management)
     |-- EventQueue (Time Management)
     |-- RDL (Adaptive Pathways)
+```
+
+## Grey Compiler (Killer Demo Rewrite)
+
+This repository also includes an early Grey compiler that targets the Betti runtime via the Rust FFI layer.
+
+- Grey compiler docs + killer demo: [`grey_compiler/README.md`](grey_compiler/README.md)
+- Demo source: [`grey_compiler/examples/sir_demo.grey`](grey_compiler/examples/sir_demo.grey)
+
+Quick run:
+
+```bash
+cd grey_compiler
+cargo run -p greyc_cli --bin greyc -- emit-betti examples/sir_demo.grey --run --max-events 1000 --seed 42 --telemetry
+```
+
+Determinism/parity harness (builds the C++ reference demo via CMake):
+
+```bash
+cd grey_compiler
+cargo run -p grey_harness --bin grey_compare_sir -- --max-events 1000 --seed 42 --spacing 1
 ```
 
 ## Installation & Usage

@@ -65,16 +65,24 @@ jobs:
         sudo apt-get install -y cmake ninja-build
     - name: Build C++ Kernel Library
       run: |
-        chmod +x scripts/run_binding_matrix.sh
-        ./scripts/run_binding_matrix.sh nodejs
+        cd src/cpp_kernel
+        mkdir -p build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release
+        cmake --build . --config Release
+        cd ../../..
+        mkdir -p build/shared/lib
+        cp src/cpp_kernel/build/libbetti_rdl_c.so build/shared/lib/
+    - name: Verify Library Exists
+      run: |
+        if [ ! -f build/shared/lib/libbetti_rdl_c.so ]; then
+          echo "ERROR: Library not found at build/shared/lib/libbetti_rdl_c.so"
+          exit 1
+        fi
     - name: Install Dependencies
       run: |
         cd nodejs
         npm install
-    - name: Build
-      run: |
-        cd nodejs
-        npm run build --if-present
     - name: Run Tests
       run: |
         cd nodejs

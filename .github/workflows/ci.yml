@@ -65,14 +65,8 @@ jobs:
         sudo apt-get install -y cmake ninja-build
     - name: Build C++ Kernel Library
       run: |
-        cd src/cpp_kernel
-        mkdir -p build
-        cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Release
-        cmake --build . --config Release
-        cd ../../..
-        mkdir -p build/shared/lib
-        cp src/cpp_kernel/build/libbetti_rdl_c.so build/shared/lib/
+        chmod +x scripts/run_binding_matrix.sh
+        ./scripts/run_binding_matrix.sh
     - name: Install Dependencies
       run: |
         cd nodejs

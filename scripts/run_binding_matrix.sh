@@ -160,7 +160,7 @@ else
     # Build Node.js addon first
     echo "  Building Node.js addon..."
     export BETTI_RDL_SHARED_LIB_DIR="$SHARED_BUILD_DIR/lib"
-    if ! bash configure_binding.sh && npm install >/dev/null 2>&1; then
+    if ! (bash configure_binding.sh && npm install >/dev/null 2>&1); then
         echo -e "${RED}❌ Node.js build failed${NC}"
         test_results[nodejs]=FAIL
         ((total_tests++))

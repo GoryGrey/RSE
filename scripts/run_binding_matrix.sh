@@ -24,6 +24,27 @@ echo -e "${BLUE}🔧 Betti-RDL Binding Matrix Test${NC}"
 echo "======================================"
 echo ""
 
+# Parse arguments
+TARGET_LANGUAGES=""
+if [ $# -gt 0 ]; then
+    TARGET_LANGUAGES="$@"
+    echo "Target languages: $TARGET_LANGUAGES"
+    echo ""
+fi
+
+should_test() {
+    local lang=$1
+    if [ -z "$TARGET_LANGUAGES" ]; then
+        return 0
+    fi
+    for target in $TARGET_LANGUAGES; do
+        if [ "$target" == "$lang" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 # Step 1: Build the C++ kernel once
 echo -e "${YELLOW}Step 1: Building C++ kernel...${NC}"
 cd "$CPP_KERNEL_DIR"
@@ -107,24 +128,25 @@ total_tests=0
 passed_tests=0
 
 # Step 3: Build and Test Python binding
-echo -e "${BLUE}Step 3: Building and Testing Python Binding${NC}"
-cd "$PROJECT_ROOT/python"
+if should_test "python"; then
+    echo -e "${BLUE}Step 3: Building and Testing Python Binding${NC}"
+    cd "$PROJECT_ROOT/python"
 
-if ! command_exists python3; then
-    echo -e "${YELLOW}⚠️  Python3 not available, skipping Python test${NC}"
-    test_results[python]=SKIP
-    ((total_tests++))
-else
-    # Build Python extension first
-    echo "  Building Python extension..."
-    export BETTI_RDL_SHARED_LIB_DIR="$SHARED_BUILD_DIR/lib"
-    if ! python3 -m pip install --user . 2>/dev/null; then
-        echo -e "${RED}❌ Python build failed${NC}"
-        test_results[python]=FAIL
-        ((total_tests++))
+    if ! command_exists python3; then
+        echo -e "${YELLOW}⚠️  Python3 not available, skipping Python test${NC}"
+        test_results[python]=SKIP
+        ((++total_tests))
     else
-        # Test the Python binding
-        if run_language_test "Python" "python3 -c \"
+        # Build Python extension first
+        echo "  Building Python extension..."
+        export BETTI_RDL_SHARED_LIB_DIR="$SHARED_BUILD_DIR/lib"
+        if ! python3 -m pip install --user . 2>/dev/null; then
+            echo -e "${RED}❌ Python build failed${NC}"
+            test_results[python]=FAIL
+            ((++total_tests))
+        else
+            # Test the Python binding
+            if run_language_test "Python" "python3 -c \"
 import betti_rdl
 kernel = betti_rdl.Kernel()
 kernel.spawn_process(0, 0, 0)
@@ -138,35 +160,37 @@ print(f'Python: Processed {events} events, total: {kernel.get_events_processed()
 assert events == 100, f'Expected 100 events, got {events}'
 assert kernel.get_events_processed() == 100, f'Expected total 100, got {kernel.get_events_processed()}'
 \""; then
-            test_results[python]=PASS
-            ((passed_tests++))
-        else
-            test_results[python]=FAIL
+                test_results[python]=PASS
+                ((++passed_tests))
+            else
+                test_results[python]=FAIL
+            fi
+            ((++total_tests))
         fi
-        ((total_tests++))
     fi
+    echo ""
 fi
-echo ""
 
 # Step 4: Build and Test Node.js binding
-echo -e "${BLUE}Step 4: Building and Testing Node.js Binding${NC}"
-cd "$PROJECT_ROOT/nodejs"
+if should_test "nodejs"; then
+    echo -e "${BLUE}Step 4: Building and Testing Node.js Binding${NC}"
+    cd "$PROJECT_ROOT/nodejs"
 
-if ! command_exists node || ! command_exists npm; then
-    echo -e "${YELLOW}⚠️  Node.js or npm not available, skipping Node.js test${NC}"
-    test_results[nodejs]=SKIP
-    ((total_tests++))
-else
-    # Build Node.js addon first
-    echo "  Building Node.js addon..."
-    export BETTI_RDL_SHARED_LIB_DIR="$SHARED_BUILD_DIR/lib"
-    if ! (bash configure_binding.sh && npm install >/dev/null 2>&1); then
-        echo -e "${RED}❌ Node.js build failed${NC}"
-        test_results[nodejs]=FAIL
-        ((total_tests++))
+    if ! command_exists node || ! command_exists npm; then
+        echo -e "${YELLOW}⚠️  Node.js or npm not available, skipping Node.js test${NC}"
+        test_results[nodejs]=SKIP
+        ((++total_tests))
     else
-        # Test the Node.js binding
-        if run_language_test "Node.js" "node -e \"
+        # Build Node.js addon first
+        echo "  Building Node.js addon..."
+        export BETTI_RDL_SHARED_LIB_DIR="$SHARED_BUILD_DIR/lib"
+        if ! (bash configure_binding.sh && npm install >/dev/null 2>&1); then
+            echo -e "${RED}❌ Node.js build failed${NC}"
+            test_results[nodejs]=FAIL
+            ((++total_tests))
+        else
+            # Test the Node.js binding
+            if run_language_test "Node.js" "node -e \"
 const { Kernel } = require('./index.js');
 const kernel = new Kernel();
 kernel.spawn_process(0, 0, 0);
@@ -177,67 +201,73 @@ for (let i = 0; i < 10; i++) {
 }
 
 const events = kernel.run(100);
-console.log(\`Node.js: Processed \${events} events, total: \${kernel.get_events_processed()}\`);
+console.log('Node.js: Processed ' + events + ' events, total: ' + kernel.get_events_processed());
 if (events !== 100) process.exit(1);
 if (kernel.get_events_processed() !== 100) process.exit(1);
 \""; then
-            test_results[nodejs]=PASS
-            ((passed_tests++))
-        else
-            test_results[nodejs]=FAIL
+                test_results[nodejs]=PASS
+                ((++passed_tests))
+            else
+                test_results[nodejs]=FAIL
+            fi
+            ((++total_tests))
         fi
-        ((total_tests++))
     fi
+    echo ""
 fi
-echo ""
 
 # Step 5: Test Go binding
-echo -e "${BLUE}Step 5: Testing Go Binding${NC}"
-cd "$PROJECT_ROOT/go"
+if should_test "go"; then
+    echo -e "${BLUE}Step 5: Testing Go Binding${NC}"
+    cd "$PROJECT_ROOT/go"
 
-if ! command_exists go; then
-    echo -e "${YELLOW}⚠️  Go not available, skipping Go test${NC}"
-    test_results[go]=SKIP
-    ((total_tests++))
-else
-    # Test the Go binding
-    if run_language_test "Go" "go run example/main.go"; then
-        test_results[go]=PASS
-        ((passed_tests++))
+    if ! command_exists go; then
+        echo -e "${YELLOW}⚠️  Go not available, skipping Go test${NC}"
+        test_results[go]=SKIP
+        ((++total_tests))
     else
-        test_results[go]=FAIL
+        # Test the Go binding
+        if run_language_test "Go" "go run example/main.go"; then
+            test_results[go]=PASS
+            ((++passed_tests))
+        else
+            test_results[go]=FAIL
+        fi
+        ((++total_tests))
     fi
-    ((total_tests++))
+    echo ""
 fi
-echo ""
 
 # Step 6: Test Rust binding
-echo -e "${BLUE}Step 6: Testing Rust Binding${NC}"
-cd "$PROJECT_ROOT/rust"
+if should_test "rust"; then
+    echo -e "${BLUE}Step 6: Testing Rust Binding${NC}"
+    cd "$PROJECT_ROOT/rust"
 
-if ! command_exists cargo; then
-    echo -e "${YELLOW}⚠️  Rust/Cargo not available, skipping Rust test${NC}"
-    test_results[rust]=SKIP
-    ((total_tests++))
-else
-    # Test the Rust binding
-    if run_language_test "Rust" "cargo run --example basic"; then
-        test_results[rust]=PASS
-        ((passed_tests++))
+    if ! command_exists cargo; then
+        echo -e "${YELLOW}⚠️  Rust/Cargo not available, skipping Rust test${NC}"
+        test_results[rust]=SKIP
+        ((++total_tests))
     else
-        test_results[rust]=FAIL
+        # Test the Rust binding
+        if run_language_test "Rust" "cargo run --example basic"; then
+            test_results[rust]=PASS
+            ((++passed_tests))
+        else
+            test_results[rust]=FAIL
+        fi
+        ((++total_tests))
     fi
-    ((total_tests++))
+    echo ""
 fi
-echo ""
 
 # Step 7: Comprehensive smoke test with telemetry comparison
-echo -e "${BLUE}Step 7: Cross-Language Telemetry Verification${NC}"
-echo "Running identical workloads across all languages..."
-echo ""
+if [ -z "$TARGET_LANGUAGES" ]; then
+    echo -e "${BLUE}Step 7: Cross-Language Telemetry Verification${NC}"
+    echo "Running identical workloads across all languages..."
+    echo ""
 
-# Run identical workload in each language and collect telemetry
-python_telemetry=$(cd "$PROJECT_ROOT/python" && python3 -c "
+    # Run identical workload in each language and collect telemetry
+    python_telemetry=$(cd "$PROJECT_ROOT/python" && python3 -c "
 import betti_rdl
 kernel = betti_rdl.Kernel()
 kernel.spawn_process(0, 0, 0)
@@ -248,7 +278,7 @@ time = kernel.get_current_time()
 print(f'{events},{total},{time}')
 " 2>/dev/null || echo "0,0,0")
 
-nodejs_telemetry=$(cd "$PROJECT_ROOT/nodejs" && node -e "
+    nodejs_telemetry=$(cd "$PROJECT_ROOT/nodejs" && node -e "
 const { Kernel } = require('./index.js');
 const kernel = new Kernel();
 kernel.spawn_process(0, 0, 0);
@@ -259,46 +289,60 @@ const time = kernel.get_current_time();
 console.log(\`\${events},\${total},\${time}\`);
 " 2>/dev/null || echo "0,0,0")
 
-go_telemetry=$(cd "$PROJECT_ROOT/go" && timeout 30s go run example/main.go 2>/dev/null | tail -1 || echo "0,0,0")
+    go_telemetry=$(cd "$PROJECT_ROOT/go" && timeout 30s go run example/main.go 2>/dev/null | tail -1 || echo "0,0,0")
 
-rust_telemetry=$(cd "$PROJECT_ROOT/rust" && timeout 30s cargo run --example basic 2>/dev/null | grep -o '[0-9]*,[0-9]*,[0-9]*' | tail -1 || echo "0,0,0")
+    rust_telemetry=$(cd "$PROJECT_ROOT/rust" && timeout 30s cargo run --example basic 2>/dev/null | grep -o '[0-9]*,[0-9]*,[0-9]*' | tail -1 || echo "0,0,0")
 
-echo "Python telemetry: $python_telemetry"
-echo "Node.js telemetry: $nodejs_telemetry"
-echo "Go telemetry: $go_telemetry"
-echo "Rust telemetry: $rust_telemetry"
+    echo "Python telemetry: $python_telemetry"
+    echo "Node.js telemetry: $nodejs_telemetry"
+    echo "Go telemetry: $go_telemetry"
+    echo "Rust telemetry: $rust_telemetry"
 
-# Verify all telemetry matches (events processed should be consistent)
-if [ "$python_telemetry" = "$nodejs_telemetry" ] && [ "$python_telemetry" = "$go_telemetry" ] && [ "$python_telemetry" = "$rust_telemetry" ] && [ "$python_telemetry" != "0,0,0" ]; then
-    echo -e "${GREEN}✅ Cross-language telemetry validation passed${NC}"
-    ((passed_tests++))
+    # Verify all telemetry matches (events processed should be consistent)
+    if [ "$python_telemetry" = "$nodejs_telemetry" ] && [ "$python_telemetry" = "$go_telemetry" ] && [ "$python_telemetry" = "$rust_telemetry" ] && [ "$python_telemetry" != "0,0,0" ]; then
+        echo -e "${GREEN}✅ Cross-language telemetry validation passed${NC}"
+        ((++passed_tests))
+        test_results[telemetry]=PASS
+    else
+        echo -e "${YELLOW}⚠️  Telemetry validation: languages returned different results${NC}"
+        echo "   This may be expected due to timing differences in event processing"
+        test_results[telemetry]=FAIL
+    fi
+    ((++total_tests))
+    echo ""
 else
-    echo -e "${YELLOW}⚠️  Telemetry validation: languages returned different results${NC}"
-    echo "   This may be expected due to timing differences in event processing"
+    echo -e "${YELLOW}Skipping telemetry validation (partial test)${NC}"
+    echo ""
 fi
-((total_tests++))
-echo ""
 
 # Step 8: Final Report
 echo -e "${BLUE}🏁 Binding Matrix Test Results${NC}"
 echo "================================="
 echo ""
 echo "Individual Test Results:"
-for lang in python nodejs go rust; do
-    case "${test_results[$lang]}" in
-        "PASS")
-            echo -e "  $lang: ${GREEN}PASS${NC}"
-            ;;
-        "FAIL")
-            echo -e "  $lang: ${RED}FAIL${NC}"
-            ;;
-        "SKIP")
-            echo -e "  $lang: ${YELLOW}SKIP${NC} (runtime not available)"
-            ;;
-        *)
-            echo -e "  $lang: ${RED}UNKNOWN${NC}"
-            ;;
-    esac
+# Added telemetry to the list
+for lang in python nodejs go rust telemetry; do
+    if [ -n "${test_results[$lang]}" ]; then
+        case "${test_results[$lang]}" in
+            "PASS")
+                echo -e "  $lang: ${GREEN}PASS${NC}"
+                ;;
+            "FAIL")
+                echo -e "  $lang: ${RED}FAIL${NC}"
+                ;;
+            "SKIP")
+                echo -e "  $lang: ${YELLOW}SKIP${NC} (runtime not available)"
+                ;;
+            *)
+                echo -e "  $lang: ${RED}UNKNOWN${NC}"
+                ;;
+        esac
+    else
+        if [ "$lang" != "telemetry" ]; then 
+            # If not telemetry, it means it wasn't even attempted (skipped by argument)
+             echo -e "  $lang: ${YELLOW}NOT TESTED${NC}"
+        fi
+    fi
 done
 echo ""
 echo "Summary: $passed_tests/$total_tests tests passed"
@@ -306,11 +350,11 @@ echo "Summary: $passed_tests/$total_tests tests passed"
 # Count non-skipped tests
 actual_total=0
 actual_passed=0
-for lang in python nodejs go rust; do
-    if [ "${test_results[$lang]}" != "SKIP" ]; then
-        ((actual_total++))
+for lang in python nodejs go rust telemetry; do
+    if [ -n "${test_results[$lang]}" ] && [ "${test_results[$lang]}" != "SKIP" ]; then
+        ((++actual_total))
         if [ "${test_results[$lang]}" = "PASS" ]; then
-            ((actual_passed++))
+            ((++actual_passed))
         fi
     fi
 done

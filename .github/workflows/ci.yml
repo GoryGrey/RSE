@@ -66,7 +66,7 @@ jobs:
     - name: Build C++ Kernel Library
       run: |
         chmod +x scripts/run_binding_matrix.sh
-        ./scripts/run_binding_matrix.sh
+        ./scripts/run_binding_matrix.sh nodejs
     - name: Install Dependencies
       run: |
         cd nodejs

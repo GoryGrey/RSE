@@ -4,9 +4,12 @@
 
 **Package**: betti-rdl v1.0.0  
 **Platform**: C++ Core (validated), Multi-language bindings (partial)  
-**Launch Date**: Pending validation completion
+**Launch Date**: NOW READY - Validation complete
 
-For detailed technical assessment, see **[RSE Status Report](docs/RSE_Status_Report.md)**.
+For detailed technical assessment, see:
+- **[RSE Status Report](docs/RSE_Status_Report.md)** - Benchmark overview
+- **[Validation Results](docs/VALIDATION_RESULTS.md)** - Complete test results
+- **[Comprehensive Review](COMPREHENSIVE_RSE_REVIEW.md)** - Full assessment with Phase 3 roadmap
 
 ---
 

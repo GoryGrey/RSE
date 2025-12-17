@@ -9,19 +9,35 @@ export class Kernel {
     spawnProcess(x: number, y: number, z: number): void;
 
     /**
+     * snake_case alias for spawnProcess
+     */
+    spawn_process(x: number, y: number, z: number): void;
+
+    /**
      * Inject an event at coordinates with value
      */
     injectEvent(x: number, y: number, z: number, value: number): void;
 
     /**
-     * Run computation for up to maxEvents
+     * snake_case alias for injectEvent
      */
-    run(maxEvents: number): void;
+    inject_event(x: number, y: number, z: number, value: number): void;
 
     /**
-     * Get number of events processed
+     * Run computation for up to maxEvents.
+     * Returns the number of events processed in this run.
+     */
+    run(maxEvents: number): number;
+
+    /**
+     * Get lifetime number of events processed
      */
     getEventsProcessed(): number;
+
+    /**
+     * snake_case alias for getEventsProcessed
+     */
+    get_events_processed(): number;
 
     /**
      * Get current logical time
@@ -29,12 +45,27 @@ export class Kernel {
     getCurrentTime(): number;
 
     /**
+     * snake_case alias for getCurrentTime
+     */
+    get_current_time(): number;
+
+    /**
      * Get number of active processes
      */
     getProcessCount(): number;
 
     /**
+     * snake_case alias for getProcessCount
+     */
+    get_process_count(): number;
+
+    /**
      * Get accumulated state for a process
      */
     getProcessState(pid: number): number;
+
+    /**
+     * snake_case alias for getProcessState
+     */
+    get_process_state(pid: number): number;
 }

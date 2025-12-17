@@ -128,7 +128,11 @@ else
 import betti_rdl
 kernel = betti_rdl.Kernel()
 kernel.spawn_process(0, 0, 0)
-kernel.inject_event(0, 0, 0, 1)
+
+# Inject 10 independent event chains (each chain produces 10 events: x=0..9)
+for i in range(10):
+    kernel.inject_event(0, 0, 0, i + 1)
+
 events = kernel.run(100)
 print(f'Python: Processed {events} events, total: {kernel.get_events_processed()}')
 assert events == 100, f'Expected 100 events, got {events}'
@@ -166,7 +170,12 @@ else
 const { Kernel } = require('./index.js');
 const kernel = new Kernel();
 kernel.spawn_process(0, 0, 0);
-kernel.inject_event(0, 0, 0, 1);
+
+// Inject 10 independent event chains (each chain produces 10 events: x=0..9)
+for (let i = 0; i < 10; i++) {
+  kernel.inject_event(0, 0, 0, i + 1);
+}
+
 const events = kernel.run(100);
 console.log(\`Node.js: Processed \${events} events, total: \${kernel.get_events_processed()}\`);
 if (events !== 100) process.exit(1);

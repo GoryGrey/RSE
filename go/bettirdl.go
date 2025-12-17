@@ -3,17 +3,19 @@ package bettirdl
 
 /*
 #cgo CXXFLAGS: -std=c++17 -I../src/cpp_kernel
-#cgo LDFLAGS: -L../src/cpp_kernel/build/Release -lbetti_rdl_c -lstdc++
+#cgo LDFLAGS: -L../build/shared/lib -L../src/cpp_kernel/build -lbetti_rdl_c -lstdc++
 
 // Dynamic library path selection
 #ifdef __linux__
     // On Linux, try to load from shared location first
     #ifndef BETTI_RDL_LIB_PATH
-        #define BETTI_RDL_LIB_PATH "../build/shared/lib:../src/cpp_kernel/build/Release"
+        #define BETTI_RDL_LIB_PATH "../build/shared/lib:../src/cpp_kernel/build"
     #endif
 #endif
 
 #include <stdlib.h>
+#include <stdint.h>
+#include <stddef.h>
 
 // Forward declarations
 typedef struct BettiRDLCompute BettiRDLCompute;
@@ -31,16 +33,19 @@ extern "C" {
 }
 */
 import "C"
-import "unsafe"
-import "os"
-import "fmt"
-import "path/filepath"
+
+import (
+    "fmt"
+    "os"
+    "path/filepath"
+)
 
 // checkSharedLibrary checks if the Betti-RDL shared library exists
 func checkSharedLibrary() {
     // Try shared location first, then fallback
     possiblePaths := []string{
         "../build/shared/lib",
+        "../src/cpp_kernel/build",
         "../src/cpp_kernel/build/Release",
     }
     
@@ -113,9 +118,10 @@ func (k *Kernel) InjectEvent(x, y, z, value int) {
     C.betti_rdl_inject_event(k.ptr, C.int(x), C.int(y), C.int(z), C.int(value))
 }
 
-// Run executes computation for up to maxEvents
-func (k *Kernel) Run(maxEvents int) {
-    C.betti_rdl_run(k.ptr, C.int(maxEvents))
+// Run executes computation for up to maxEvents.
+// Returns the number of events processed in this run.
+func (k *Kernel) Run(maxEvents int) int {
+    return int(C.betti_rdl_run(k.ptr, C.int(maxEvents)))
 }
 
 // EventsProcessed returns the number of events processed

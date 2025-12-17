@@ -6,21 +6,24 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SHARED_LIB_DIR="$PROJECT_ROOT/build/shared/lib"
-FALLBACK_LIB_DIR="$PROJECT_ROOT/src/cpp_kernel/build/Release"
+FALLBACK_LIB_DIR="$PROJECT_ROOT/src/cpp_kernel/build"
+LEGACY_LIB_DIR="$PROJECT_ROOT/src/cpp_kernel/build/Release"
 
 # Check for shared library first, then fallback
 if [ -f "$SHARED_LIB_DIR/libbetti_rdl_c.so" ]; then
     LIB_DIR="$SHARED_LIB_DIR"
     echo "Using shared library from: $LIB_DIR"
-else
+elif [ -f "$FALLBACK_LIB_DIR/libbetti_rdl_c.so" ]; then
     LIB_DIR="$FALLBACK_LIB_DIR"
-    if [ ! -f "$LIB_DIR/libbetti_rdl_c.so" ]; then
-        echo "❌ Betti-RDL library not found!"
-        echo "Searched in: $SHARED_LIB_DIR and $FALLBACK_LIB_DIR"
-        echo "Run: ../scripts/run_binding_matrix.sh to build the shared library"
-        exit 1
-    fi
     echo "Using fallback library from: $LIB_DIR"
+elif [ -f "$LEGACY_LIB_DIR/libbetti_rdl_c.so" ]; then
+    LIB_DIR="$LEGACY_LIB_DIR"
+    echo "Using legacy fallback library from: $LIB_DIR"
+else
+    echo "❌ Betti-RDL library not found!"
+    echo "Searched in: $SHARED_LIB_DIR, $FALLBACK_LIB_DIR, and $LEGACY_LIB_DIR"
+    echo "Run: ../scripts/run_binding_matrix.sh to build the shared library"
+    exit 1
 fi
 
 # Create a temporary gyp file with the correct library paths
@@ -38,7 +41,8 @@ cat > binding.gyp.tmp << EOF
         "-L$LIB_DIR",
         "-lbetti_rdl_c",
         "-lstdc++",
-        "-latomic"
+        "-latomic",
+        "-Wl,-rpath,$LIB_DIR"
       ],
       "dependencies": [
         "<!(node -p \"require('node-addon-api').gyp\")"

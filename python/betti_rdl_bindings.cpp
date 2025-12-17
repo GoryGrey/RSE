@@ -48,6 +48,12 @@ PYBIND11_MODULE(betti_rdl, m) {
            py::arg("y"), py::arg("z"), py::arg("value"))
       .def("run", &PyBettiKernel::run, "Run computation for up to max_events",
            py::arg("max_events"))
+      .def("get_events_processed", &PyBettiKernel::get_events_processed,
+           "Get lifetime number of events processed")
+      .def("get_current_time", &PyBettiKernel::get_current_time,
+           "Get current logical time")
+      .def("get_process_count", &PyBettiKernel::get_process_count,
+           "Get number of active processes")
       .def_property_readonly("events_processed",
                              &PyBettiKernel::get_events_processed,
                              "Number of events processed")

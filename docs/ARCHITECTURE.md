@@ -1,3 +1,8 @@
+---
+**Last Updated**: December 18, 2025 at 13:31 UTC
+**Status**: Current
+---
+
 # Betti-RDL Architecture Guide
 
 This document explains the internal architecture, design decisions, and performance characteristics of Betti-RDL.

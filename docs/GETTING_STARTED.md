@@ -1,3 +1,8 @@
+---
+**Last Updated**: December 18, 2025 at 13:31 UTC
+**Status**: Current
+---
+
 # Getting Started with Betti-RDL
 
 This guide will help you get up and running with Betti-RDL in under 5 minutes.

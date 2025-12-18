@@ -1,3 +1,8 @@
+---
+**Last Updated**: December 18, 2025 at 13:31 UTC
+**Status**: Current
+---
+
 # Betti-RDL Runtime Status Report
 **Report Date**: December 17 2024  
 **Version**: v1.0.0  

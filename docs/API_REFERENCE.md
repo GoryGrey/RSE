@@ -1,3 +1,8 @@
+---
+**Last Updated**: December 18, 2025 at 13:31 UTC
+**Status**: Current
+---
+
 # Betti-RDL API Reference
 
 Complete API documentation for all language bindings: C++, Rust, Python, Node.js, and Go.

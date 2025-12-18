@@ -11,21 +11,38 @@ fn main() {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let project_root = PathBuf::from(&manifest_dir).join("..");
     let cpp_kernel_path = project_root.join("src/cpp_kernel");
+
+    // Check environment variable first
+    let env_lib_dir = env::var("BETTI_RDL_SHARED_LIB_DIR").ok().map(PathBuf::from);
     let shared_lib_dir = project_root.join("build/shared/lib");
     let out_dir = env::var("OUT_DIR").unwrap();
 
-    // Check for shared library first, then fallback to building
-    let shared_lib_path = shared_lib_dir.join("libbetti_rdl_c.so");
+    let found_lib_dir = if let Some(dir) = env_lib_dir {
+        if dir.join("libbetti_rdl_c.so").exists() {
+            Some(dir)
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+    .or_else(|| {
+        if shared_lib_dir.join("libbetti_rdl_c.so").exists() {
+            Some(shared_lib_dir.clone())
+        } else {
+            None
+        }
+    });
 
-    if shared_lib_path.exists() {
+    if let Some(dir) = found_lib_dir {
         println!(
             "✅ Using shared Betti-RDL library from: {}",
-            shared_lib_path.display()
+            dir.display()
         );
 
-        println!("cargo:rustc-link-search=native={}", shared_lib_dir.display());
+        println!("cargo:rustc-link-search=native={}", dir.display());
         println!("cargo:rustc-link-lib=dylib=betti_rdl_c");
-        emit_rpath(&shared_lib_dir);
+        emit_rpath(&dir);
     } else {
         println!("📦 Building Betti-RDL library from source...");
 

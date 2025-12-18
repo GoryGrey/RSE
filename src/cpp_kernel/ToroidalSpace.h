@@ -64,6 +64,14 @@ public:
   }
 
   [[nodiscard]] std::size_t getProcessCount() const { return total_processes_; }
+  
+  // Clear all processes (for reset)
+  void clear() {
+    for (auto& cell : cells_) {
+      cell.processes.clear();
+    }
+    total_processes_ = 0;
+  }
 
 private:
   struct Cell {

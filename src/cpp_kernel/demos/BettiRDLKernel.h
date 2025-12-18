@@ -277,4 +277,40 @@ public:
 
   unsigned long long getCurrentTime() const { return current_time; }
   unsigned long long getEventsProcessed() const { return events_processed; }
+  
+  /**
+   * Reset kernel to initial state while preserving allocators.
+   * Critical for Phase 3 reconstruction - maintains O(1) memory usage.
+   */
+  void reset() {
+    // Clear event queue
+    while (!event_queue.empty()) {
+      (void)event_queue.pop();  // Ignore return value
+    }
+    
+    // Clear pending events
+    {
+      std::lock_guard<std::mutex> lock(event_injection_lock);
+      pending_events.clear();
+    }
+    
+    // Clear process pool (but keep allocator)
+    process_pool.clear();
+    
+    // Clear edges
+    edge_count_ = 0;
+    out_head_.fill(kInvalidEdge);
+    out_tail_.fill(kInvalidEdge);
+    
+    // Clear toroidal space
+    space.clear();
+    
+    // Reset counters
+    current_time = 0;
+    events_processed = 0;
+    process_counter = 0;
+    
+    // Note: Allocators are NOT reset - they keep their memory pools
+    // This maintains O(1) memory usage across multiple reset() calls
+  }
 };

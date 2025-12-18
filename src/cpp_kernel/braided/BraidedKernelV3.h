@@ -261,6 +261,27 @@ public:
         return active_processes_.size();
     }
     
+    /**
+     * Reset kernel to initial state while preserving allocators.
+     * Critical for Phase 3 reconstruction - maintains O(1) memory usage.
+     */
+    void reset() {
+        // Reset underlying kernel (preserves allocators)
+        kernel_.reset();
+        
+        // Clear Phase 3 tracking
+        active_processes_.clear();
+        
+        // Reset metrics
+        total_boundary_violations_ = 0;
+        total_global_violations_ = 0;
+        total_corrective_events_ = 0;
+        
+        // Reset health
+        last_heartbeat_ = 0;
+        health_status_ = ProjectionV3::HEALTHY;
+    }
+    
 private:
     /**
      * Extract boundary state from kernel (x=0 face).

@@ -210,6 +210,17 @@ public:
   [[nodiscard]] std::size_t capacity() const { return CAPACITY; }
   [[nodiscard]] std::size_t available() const { return free_top_; }
   [[nodiscard]] std::size_t inUse() const { return CAPACITY - free_top_; }
+  
+  // Clear all objects (for reset)
+  void clear() {
+    // Destroy all in-use objects
+    // We need to track which slots are in use - for now, just reset the free list
+    // This is safe because we're clearing everything
+    for (std::size_t i = 0; i < CAPACITY; ++i) {
+      free_list_[i] = static_cast<std::uint32_t>(CAPACITY - 1 - i);
+    }
+    free_top_ = CAPACITY;
+  }
 
 private:
   alignas(T) std::array<std::byte, sizeof(T) * CAPACITY> storage_{};

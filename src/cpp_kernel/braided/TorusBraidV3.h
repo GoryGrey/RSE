@@ -264,14 +264,14 @@ public:
         // Migrate processes to B and C before reconstruction
         migrateProcesses(0);
         
-        // Create new torus
-        torus_a_ = std::make_unique<BraidedKernelV3>();
+        // Reset existing torus (reuse allocator - O(1) memory!)
+        torus_a_->reset();
         torus_a_->setTorusId(0);
         
         // Restore from projection
         torus_a_->restoreFromProjection(*last_proj_a_);
         
-        std::cout << "[TorusBraid] ✅ Torus A reconstructed successfully" << std::endl;
+        std::cout << "[TorusBraid] ✅ Torus A reconstructed successfully (allocator reused)" << std::endl;
         total_reconstructions_++;
     }
     
@@ -288,11 +288,12 @@ public:
         
         migrateProcesses(1);
         
-        torus_b_ = std::make_unique<BraidedKernelV3>();
+        // Reset existing torus (reuse allocator - O(1) memory!)
+        torus_b_->reset();
         torus_b_->setTorusId(1);
         torus_b_->restoreFromProjection(*last_proj_b_);
         
-        std::cout << "[TorusBraid] ✅ Torus B reconstructed successfully" << std::endl;
+        std::cout << "[TorusBraid] ✅ Torus B reconstructed successfully (allocator reused)" << std::endl;
         total_reconstructions_++;
     }
     
@@ -309,11 +310,12 @@ public:
         
         migrateProcesses(2);
         
-        torus_c_ = std::make_unique<BraidedKernelV3>();
+        // Reset existing torus (reuse allocator - O(1) memory!)
+        torus_c_->reset();
         torus_c_->setTorusId(2);
         torus_c_->restoreFromProjection(*last_proj_c_);
         
-        std::cout << "[TorusBraid] ✅ Torus C reconstructed successfully" << std::endl;
+        std::cout << "[TorusBraid] ✅ Torus C reconstructed successfully (allocator reused)" << std::endl;
         total_reconstructions_++;
     }
     

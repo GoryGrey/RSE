@@ -1,3 +1,8 @@
+---
+**Last Updated**: December 18, 2025 at 13:31 UTC
+**Status**: Current
+---
+
 # Recursive Symbolic Execution (RSE): A New Paradigm for Infinite Computation on Finite Hardware
 
 **Author:** Gregory Betti  

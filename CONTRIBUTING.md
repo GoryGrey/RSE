@@ -1,3 +1,8 @@
+---
+**Last Updated**: December 18, 2025 at 13:31 UTC
+**Status**: Current
+---
+
 # Contributing to Betti-RDL
 
 Thank you for your interest in contributing to Betti-RDL! This document provides guidelines and instructions for contributing.

@@ -1,3 +1,8 @@
+---
+**Last Updated**: December 18, 2025 at 13:31 UTC
+**Status**: Current
+---
+
 # Multi-Language Binding Validation
 
 The Betti-RDL runtime provides bindings for multiple programming languages (Python, Node.js, Go, and Rust). This document describes the validation system that ensures consistent behavior across all language bindings.

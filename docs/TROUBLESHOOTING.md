@@ -1,3 +1,8 @@
+---
+**Last Updated**: December 18, 2025 at 13:31 UTC
+**Status**: Current
+---
+
 # Troubleshooting Guide
 
 Common issues and solutions for Betti-RDL.

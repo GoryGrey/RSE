@@ -1,3 +1,8 @@
+---
+**Last Updated**: December 18, 2025 at 13:31 UTC
+**Status**: Current
+---
+
 # Grey Language Specification
 **Version 1.0**  
 **Betti-RDL Runtime Foundation**

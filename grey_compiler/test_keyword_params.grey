@@ -1,0 +1,53 @@
+// Test file to verify keyword-as-identifier fix
+module TestKeywords {
+    // Test events with normal field names
+    event TestEvent {
+        event_data: Int,        
+        process_name: String,   
+        module_info: Bool,      
+        const_value: Int,       
+        fn_name: String,   
+        let_val: Int,      
+        if_condition: Bool,     
+        else_value: String,  
+        while_counter: Int,   
+        for_counter: Int,    
+        return_value: Int,   
+    }
+
+    process TestProcess {
+        let_val: Int = 0,  // Field declaration
+        
+        // Test keywords as method parameters (the main fix)
+        method handle_event(event: TestEvent) {
+            // Test keywords as local variables
+            let process = event.process_name;
+            let module = event.module_info;
+            let const_val = event.const_value;
+            let fn_name = event.fn_name;
+            let if_cond = event.if_condition;
+            let else_val = event.else_value;
+            let while_loop = event.while_counter;
+            let for_count = event.for_counter;
+            let return_val = event.return_value;
+            
+            this.let_val = event.event_data;
+        }
+
+        method another_method(
+            event: TestEvent,
+            process: String,
+            module: Bool,
+            const: Int,
+            fn: String,
+            let: Int,
+            if: Bool,
+            else: String,
+            while: Int,
+            for: Int,
+            return: Int
+        ) -> Int {
+            return event.event_data;
+        }
+    }
+}

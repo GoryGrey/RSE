@@ -1,0 +1,25 @@
+// Test the original failing case: keyword as parameter name
+module SimpleTest {
+    event Infection {
+        strain: Int,
+        severity: Int,
+    }
+
+    process Person {
+        infected: Bool,
+        recovered: Bool,
+        infection_count: Int,
+
+        method handle_infection(event: Infection) {
+            // This was failing with "Expected parameter name" at (0,0)
+            this.infected = true;
+            this.infection_count = this.infection_count + 1;
+        }
+
+        method handle_recovery(event: Infection) {
+            // This was also failing
+            this.infected = false;
+            this.recovered = true;
+        }
+    }
+}

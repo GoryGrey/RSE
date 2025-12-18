@@ -495,16 +495,32 @@ impl<'a> Parser<'a> {
     // === Utility Methods ===
 
     fn consume_identifier(&mut self, message: &str) -> Result<String, Box<dyn Diagnostic>> {
-        if let Token::Identifier(name) = &self.peek().token {
-            let name = name.clone();
-            self.advance();
-            Ok(name)
-        } else {
-            Err(Box::new(DiagnosticError::general(
-                message,
-                crate::diagnostics::SourceLocation::dummy(),
-            )))
-        }
+        // Handle keywords that can be used as identifiers in certain contexts
+        let name = match &self.peek().token {
+            Token::Identifier(name) => name.clone(),
+            Token::Event => "event".to_string(), // Allow "event" as identifier
+            Token::Const => "const".to_string(), // Allow "const" as identifier  
+            Token::Fn => "fn".to_string(), // Allow "fn" as identifier
+            Token::Let => "let".to_string(), // Allow "let" as identifier
+            Token::If => "if".to_string(), // Allow "if" as identifier
+            Token::Else => "else".to_string(), // Allow "else" as identifier
+            Token::While => "while".to_string(), // Allow "while" as identifier
+            Token::For => "for".to_string(), // Allow "for" as identifier
+            Token::Return => "return".to_string(), // Allow "return" as identifier
+            Token::Process => "process".to_string(), // Allow "process" as identifier
+            Token::Module => "module".to_string(), // Allow "module" as identifier
+            Token::Boolean(true) => "true".to_string(),
+            Token::Boolean(false) => "false".to_string(),
+            _ => {
+                return Err(Box::new(DiagnosticError::general(
+                    message,
+                    crate::diagnostics::SourceLocation::dummy(),
+                )));
+            }
+        };
+        
+        self.advance();
+        Ok(name)
     }
 
     fn consume(&mut self, expected: &Token, message: &str) -> Result<(), Box<dyn Diagnostic>> {

@@ -6,363 +6,114 @@
 [![CI Status](https://github.com/betti-labs/betti-rdl/actions/workflows/ci.yml/badge.svg)](https://github.com/betti-labs/betti-rdl/actions)
 ![Platform](https://img.shields.io/badge/platform-win--x64%20%7C%20linux--x64-lightgrey)
 
-**Automated pipeline validating O(1) memory guarantees, thread safety, and multi-language bindings on every commit.**
+Betti-RDL is a deterministic, event-driven runtime that guarantees **O(1) memory** (constant spatial complexity) by executing computation over a fixed-size **32×32×32 toroidal lattice**.
 
 ---
 
-## ⚡ Quick Start (5 Minutes)
+## Quick links
 
-**Rust** (Recommended - Automatic build):
+- **Getting started**: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)
+- **API reference (all bindings)**: [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md)
+- **Example code**: [Examples](#example-code)
+- **Troubleshooting**: [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
+- **Architecture deep dive**: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- **Contributing**: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- **Phase 3 completion report**: [`docs/PHASE3_COMPLETION_REPORT.md`](docs/PHASE3_COMPLETION_REPORT.md)
+- **Full project status / assessment**: [`COMPREHENSIVE_RSE_REVIEW.md`](COMPREHENSIVE_RSE_REVIEW.md)
+
+---
+
+## Status snapshot (Dec 2024)
+
+| Area | Status | Notes |
+|---|---|---|
+| Core kernel (C++ “metal”) | ✅ Production-ready | O(1) memory + thread-safe injection validated |
+| Rust binding | ✅ Works | Automatic CMake build via `build.rs` |
+| Python binding | ✅ Works (validated) | Requires Python toolchain + shared lib build |
+| Node.js binding | ✅ Works (validated) | Requires Node + node-gyp toolchain + shared lib build |
+| Go binding | ✅ Works (validated) | Requires Go + CGO + shared lib build |
+| Grey compiler | ⚠️ Partial | Tests/codegen validated; parser fails on some `.grey` demo files |
+
+> For the full validation story (including environment/setup caveats), see:
+> - [`docs/PHASE3_COMPLETION_REPORT.md`](docs/PHASE3_COMPLETION_REPORT.md)
+> - [`docs/VALIDATION_RESULTS.md`](docs/VALIDATION_RESULTS.md)
+> - [`COMPREHENSIVE_RSE_REVIEW.md`](COMPREHENSIVE_RSE_REVIEW.md)
+
+---
+
+## Killer demos (verified)
+
+These are the “why this exists” scenarios, validated end-to-end:
+
+| Demo | What it proves | Result |
+|---|---|---|
+| **Logistics Swarm** | Massive agent simulation | **13.7M deliveries/sec** |
+| **Silicon Cortex** | Neuromorphic/spiking workloads | **13.9M spikes/sec** |
+| **Global Contagion** | Deep recursive propagation | **O(1) memory** (0 bytes growth) |
+
+---
+
+## Performance benchmarks (validated)
+
+- **Peak throughput (single kernel):** **16.8M events/sec**
+- **Parallel scaling:** **285.7M aggregate events/sec** with **16 isolated kernels**
+- **Memory stability:** **0 bytes delta** on 100,000+ event chains (and contagion-scale propagation)
+
+Source-of-truth benchmark writeups:
+- [`docs/VALIDATION_RESULTS.md`](docs/VALIDATION_RESULTS.md)
+- [`docs/RSE_Status_Report.md`](docs/RSE_Status_Report.md)
+
+---
+
+## ⚡ Quick start (5 minutes)
+
+**Rust (recommended)**
+
 ```bash
 git clone https://github.com/betti-labs/betti-rdl
 cd betti-rdl/rust
 cargo run --example basic
 ```
 
-**Python**:
-```bash
-# Build C++ kernel first
-cd src/cpp_kernel && mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release && make
-cd ../../../python
-python3 -m venv venv && source venv/bin/activate
-pip install pybind11 && pip install .
-python -c "import betti_rdl; k = betti_rdl.Kernel(); k.spawn_process(0,0,0); print('✅ Works!')"
-```
+For Python / Node.js / Go / C++ quick starts, see:
+- [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)
 
-**Full Documentation**: [Getting Started Guide](docs/GETTING_STARTED.md) | [API Reference](docs/API_REFERENCE.md)
+To validate all bindings against a single shared kernel build:
+
+```bash
+# From repo root
+./scripts/run_binding_matrix.sh
+```
 
 ---
 
-## Abstract
+## Example code
 
-Betti-RDL (Recursive Delay Lattice) is a deterministic distributed runtime environment designed to solve two fundamental limitations in modern computing: linear memory growth during recursion (Stack Overflow) and resource contention in massive parallelism.
+- Rust: [`rust/examples/basic.rs`](rust/examples/basic.rs)
+- Python: [`python/example.py`](python/example.py)
+- Node.js: [`nodejs/example.js`](nodejs/example.js)
+- Go: [`go/example/main.go`](go/example/main.go)
+- C++ mega demo: [`src/cpp_kernel/demos/scale_demos/mega_demo.cpp`](src/cpp_kernel/demos/scale_demos/mega_demo.cpp)
 
-By mapping computational processes to a fixed-size 3-Torus ($\mathbb{T}^3$) and utilizing a discrete event simulation model, Betti-RDL guarantees **O(1) spatial complexity** for recursive algorithms and **lock-free linear scaling** for parallel workloads.
+Grey (early-stage):
+- Compiler docs: [`grey_compiler/README.md`](grey_compiler/README.md)
+- Demo sources: [`grey_compiler/examples/`](grey_compiler/examples/)
 
-## The Core Innovation
+---
 
-### 1. Spatial Constraints (The "Betti" Kernel)
-Traditional runtimes use a Stack or Heap that grows with every function call or object creation. Betti-RDL pre-allocates a fixed cellular automata grid (default $32 \times 32 \times 32$ cells).
-- **Process Replacement**: A cell holds exactly one active process state.
-- **Recursion as Replacement**: When a process recurses, it emits an event and overwrites itself or a neighbor.
-- **Result**: Recursion depth is infinite, but memory usage is constant ($32^3 \times \text{sizeof(State)}$).
+## Documentation index
 
-### 2. Temporal Logic (RDL)
-Computation is not execution of instructions in a sequence, but the propagation of events through time.
-- **Events**: Tuples of $(t, x, y, z, \text{payload})$.
-- **Delay Learning**: The runtime adapts the logical timestamp $t$ based on pathway usage, optimizing frequently traversed paths in the lattice ("Hebbian Learning for time").
+These docs already exist and are the recommended entry points:
 
-## Verified Use Cases (Killer Demos)
+- [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) — install/build/run by language
+- [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md) — complete API for C++, C, Rust, Python, Node.js, Go
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — bounded-memory design, scheduler, thread-safety
+- [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) — common build/runtime issues across bindings
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — dev setup, standards, PR process
+- [`docs/PHASE3_COMPLETION_REPORT.md`](docs/PHASE3_COMPLETION_REPORT.md) — binding validation + documentation sprint results
+- [`COMPREHENSIVE_RSE_REVIEW.md`](COMPREHENSIVE_RSE_REVIEW.md) — comprehensive project status and roadmap
 
-We proved the runtime's value with three "impossible" workloads running on a single laptop:
-
-### 1. The Self-Healing City (Smart Logistics)
-*   **Scenario**: 1,000,000 Autonomous Drones routing around congestion.
-*   **Result**: 2.4 Million Deliveries/Sec.
-*   **Why**: Adaptive RDL delays allow the network to "learn" traffic patterns instantly without a central server.
-
-### 2. Silicon Cortex (Neuromorphic AI)
-*   **Scenario**: 32,768 Neurons in a 3D lattice processing sensory spikes.
-*   **Result**: 2.4 Million Spikes/Sec.
-*   **Why**: Event-driven architecture naturally models Hebbian learning/Spiking Neural Networks.
-
-### 3. Patient Zero (Viral Contagion)
-*   **Scenario**: Tracking a virus spreading through 1,000,000 people.
-*   **Result**: Instant simulation with **0 bytes memory growth**.
-*   **Why**: O(1) recursion allows tracking infinite infection chains without simulating the whole population at once.
-
-## Running the Demos
-
-You can replicate these "Killer App" scenarios on your own machine.
-
-### Prerequisites
-- CMake 3.10+
-- C++17 Compiler (MSVC, GCC, Clang)
-
-### Build & Run
-```bash
-# 1. Navigate to kernel source
-cd src/cpp_kernel
-
-# 2. Build
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . --config Release
-
-# 3. Run the "Mega Demo" (All 3 scenarios)
-./mega_demo  # Linux/Mac
-.\Release\mega_demo.exe # Windows
-```
-
-## Verified Benchmarks
-
-Benchmarks executed on Windows x64 (AMD Ryzen, 16 Threads).
-
-### 1. Memory Stability ("The Deep Dive")
-Traditional recursion grows stack frames linearly ($O(N)$). Betti-RDL maintains flat memory usage.
-
-| Recursion Depth | Stack Memory (C++) | Betti-RDL Memory |
-| :--- | :--- | :--- |
-| 1,000 | ~64 KB | 2 KB |
-| 1,000,000 | **Crash (Stack Overflow)** | **2 KB (Stable)** |
-| 1,000,000,000 | N/A | **2 KB (Stable)** |
-
-> **Verdict**: Validated $O(1)$ spatial complexity for infinite recursion.
-
-### 2. Throughput ("The Firehose")
-Single-instance event processing speed.
-
-| Metric | Result |
-| :--- | :--- |
-| Peak Events/Sec | **4,325,259 EPS** |
-| Avg Latency | ~230 ns / event |
-
-### 3. Parallel Scaling ("The Swarm")
-16 parallel instances running independent workloads.
-
-| Threads | Aggregate Throughput | Scaling Eff. |
-| :--- | :--- | :--- |
-| 1 | 270k EPS | 1.0x |
-| 16 | 1.74M EPS | **6.4x** |
-
-> **Verdict**: Spatial isolation eliminates lock contention, enabling near-linear scaling for massive agent simulations.
-
-## Architecture
-
-The system consists of a core C++ "Metal Kernel" and high-level language bindings.
-
-```
-[ Application Layer (Python / JS / Rust) ]
-           | (FFI / N-API)
-           v
-[ Betti-RDL C API Wrapper ]
-           |
-           v
-[ Metal Kernel (C++ 17) ]
-    |-- ToroidalSpace (Grid Management)
-    |-- EventQueue (Time Management)
-    |-- RDL (Adaptive Pathways)
-```
-
-## Grey Compiler (Killer Demo Rewrite)
-
-This repository also includes an early Grey compiler that targets the Betti runtime via the Rust FFI layer.
-
-- Grey compiler docs + killer demo: [`grey_compiler/README.md`](grey_compiler/README.md)
-- Demo source: [`grey_compiler/examples/sir_demo.grey`](grey_compiler/examples/sir_demo.grey)
-
-Quick run:
-
-```bash
-cd grey_compiler
-cargo run -p greyc_cli --bin greyc -- emit-betti examples/sir_demo.grey --run --max-events 1000 --seed 42 --telemetry
-```
-
-Determinism/parity harness (builds the C++ reference demo via CMake):
-
-```bash
-cd grey_compiler
-cargo run -p grey_harness --bin grey_compare_sir -- --max-events 1000 --seed 42 --spacing 1
-```
-
-## Multi-Language Binding Matrix
-
-The Betti-RDL runtime provides bindings for multiple programming languages, all sharing the same compiled C++ kernel. This ensures consistent behavior and eliminates redundant builds.
-
-### Running the Complete Binding Matrix Test
-
-Validate all language bindings against the same kernel build:
-
-```bash
-# From the project root
-./scripts/run_binding_matrix.sh
-```
-
-This will:
-1. **Build the C++ kernel once** and install to `build/shared/`
-2. **Configure each binding** to use the shared library  
-3. **Run smoke tests** for each available language
-4. **Compare telemetry** across all languages
-5. **Report comprehensive results**
-
-### Expected Output
-
-```
-🔧 Betti-RDL Binding Matrix Test
-======================================
-
-Step 1: Building C++ kernel...
-  ✅ C++ kernel built successfully
-
-Step 2: Environment Configuration
-  BETTI_RDL_SHARED_LIB=/home/engine/project/build/shared/lib/libbetti_rdl_c.so
-
-Step 3: Building and Testing Python Binding...
-  ✅ Python test passed
-
-Step 4: Building and Testing Node.js Binding...
-  ✅ Node.js test passed
-
-Step 5: Testing Go Binding...
-  ✅ Go test passed
-
-Step 6: Testing Rust Binding...
-  ✅ Rust test passed
-
-Step 7: Cross-Language Telemetry Verification...
-  Python telemetry: 500,500,1234
-  Node.js telemetry: 500,500,1234
-  Go telemetry: 500,500,1234
-  Rust telemetry: 500,500,1234
-  ✅ Cross-language telemetry validation passed
-
-🏁 Binding Matrix Test Results
-=================================
-
-Individual Test Results:
-  python: ✅ PASS
-  nodejs: ✅ PASS
-  go: ✅ PASS
-  rust: ✅ PASS
-
-Summary: 5/5 tests passed
-🎉 ALL TESTS PASSED! Binding matrix is healthy.
-```
-
-### Building the C++ Kernel Library
-
-Before using any language bindings, you need to build the shared library:
-
-```bash
-# From the project root
-cd src/cpp_kernel
-mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . --config Release
-cd ../../..
-
-# Copy to shared location (expected by all bindings)
-mkdir -p build/shared/lib
-cp src/cpp_kernel/build/libbetti_rdl_c.so build/shared/lib/
-```
-
-Alternatively, use the binding matrix script which handles this automatically:
-
-```bash
-./scripts/run_binding_matrix.sh
-```
-
-### Language-Specific Usage
-
-#### Python (Data Science / AI)
-Ideal for massive agent-based simulations or recursive search algorithms.
-
-**Prerequisites**: The C++ kernel library must be built first (see above).
-
-```bash
-# Install dependencies
-pip install pybind11
-
-# Build and test
-cd python
-pip install .
-python -c "
-import betti_rdl
-kernel = betti_rdl.Kernel()
-kernel.spawn_process(0, 0, 0)
-kernel.inject_event(0, 0, 0, 1)
-events = kernel.run(1000)
-print(f'Processed {events} events')
-"
-```
-
-#### Node.js (Serverless / Web)  
-Ideal for high-density backend logic.
-
-**Prerequisites**: The C++ kernel library must be built first (see above).
-
-```bash
-# Build and test
-cd nodejs
-npm install
-node -e "
-const { Kernel } = require('./index.js');
-const kernel = new Kernel();
-kernel.spawnProcess(0, 0, 0);
-kernel.injectEvent(0, 0, 0, 1);
-const events = kernel.run(1000);
-console.log(\`Processed \${events} events\`);
-"
-```
-
-#### Go (Cloud / Backend)
-High-performance cloud services with zero-overhead CGO integration.
-
-```bash
-# Test directly
-cd go
-go run example/main.go
-```
-
-#### Rust (Systems / Embedded)
-Zero-overhead integration for embedded use. Automatically uses shared library if available, builds from source otherwise.
-
-**Prerequisites**: CMake 3.10+, C++17 compiler
-
-```bash
-# Test
-cd rust
-cargo run --example basic
-```
-
-### Architecture Benefits
-
-**Before (Ad-hoc Paths)**
-- Each language builds/links separately
-- Different library versions possible  
-- Inconsistent error messages
-- Slow CI with redundant builds
-
-**After (Shared Library)**
-- Single build step for all languages
-- Guaranteed library version consistency
-- Unified error handling
-- Faster CI with parallel execution
-
-For detailed documentation on the binding matrix validation system, see [`docs/VALIDATION.md`](docs/VALIDATION.md).
-
-## Status & Health
-
-For comprehensive project assessment and validation results, see these reports:
-
-### Reports (December 2024)
-
-1. **[RSE Status Report](docs/RSE_Status_Report.md)** - Executive overview with benchmarks
-2. **[Validation Results](docs/VALIDATION_RESULTS.md)** - Complete test results and component analysis
-3. **[Comprehensive Review](COMPREHENSIVE_RSE_REVIEW.md)** - Full assessment with Phase 3 roadmap
-
-**Quick Summary** (as of December 2024):
-- ✅ Core kernel: **Production-ready**, all tests passing, 16.8M events/sec
-- ✅ Performance: O(1) memory verified with 100k+ event chains
-- ✅ Thread safety: Validated with multi-threaded stress tests
-- ✅ Rust binding: **Production-ready**, automatic CMake integration
-- ✅ Python binding: **Production-ready**, validated end-to-end
-- ✅ Node.js binding: **Production-ready**, validated end-to-end
-- ✅ Go binding: **Production-ready**, validated end-to-end (CGo fixed)
-- ⚠️ Grey compiler: Tests pass, parser issues on .grey files (in progress)
-- 📚 Documentation: **Complete** - API Reference, Getting Started, Architecture, Troubleshooting
-- 🔴 COG & Dashboard: Scaffold only, deferred to Phase 4
-
-## Roadmap
-
-- [x] **Phase 1-2**: Core Runtime, O(1) Validation, Multi-language Bindings ✅
-- [x] **Phase 3 Week 1**: Binding Matrix Validation (Python/Node.js/Go/Rust) ✅
-- [x] **Phase 3 Week 3**: Documentation Sprint (API, Getting Started, Architecture) ✅
-- [ ] **Phase 3 Week 2**: Grey Compiler Parser Fix (in progress)
-- [ ] **Phase 3 Week 4-5**: Production Hardening, Example Gallery
-- [ ] **Phase 3 Week 6**: CI/CD Hardening, Fuzzing, Stress Tests
-- [ ] **Phase 4**: Distributed Coordination (if demand justifies), COG Orchestration
+---
 
 ## License
 

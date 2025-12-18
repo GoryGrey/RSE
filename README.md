@@ -157,51 +157,16 @@ cd RSE/src/cpp_kernel
 - **Visual Flair**: Every command looks amazing
 - **Degen Vibes**: "Stay degen. Stay future. 🚀"
 
-### Demo Screenshots
+### Screenshots
 
 #### System Information
-```
-┌─[ SYSTEM STATUS ]─────────────────────────────────────────┐
-│ OS:        BraidedOS v0.1.0 (Revolutionary)
-│ Kernel:    Braided-Torus Runtime
-│
-│ ⚡ TORUS STATUS
-│   ● Torus A: ACTIVE  │  Load: █████████░ 90%
-│   ● Torus B: ACTIVE  │  Load: ███████░░░ 70%
-│   ● Torus C: ACTIVE  │  Load: ████████░░ 80%
-│
-│ ⚙  PERFORMANCE
-│   Events/sec:  285.7M (parallel)
-│   Fairness:    1.0 (perfect)
-│   CPU Usage:   100% (no waste)
-│   Memory:      O(1) (bounded)
-│
-│ ✨ FEATURES
-│   ✓ Emergent Scheduling
-│   ✓ Self-Healing (2-of-3)
-│   ✓ Fault Tolerance
-│   ✓ Zero Bottlenecks
-└───────────────────────────────────────────────────────────────┘
-```
+![BraidShell System Info](docs/images/braidshell_info.png)
 
 #### Braided-Torus Visualization
-```
-┌─[ BRAIDED TORUS VISUALIZATION ]──────────────────────────┐
-│
-│     ╔═══════╗       ╔═══════╗       ╔═══════╗
-│     ║ TOR-A ║ ◄───► ║ TOR-B ║ ◄───► ║ TOR-C ║
-│     ╚═══════╝       ╚═══════╝       ╚═══════╝
-│         ↑                 ↑                 ↑
-│         └─────────────────┴─────────────────┘
-│                  ⚡ BRAIDED ⚡
-│
-│  Torus A │ Processes: 42 │ Events: 95.2M/s
-│  Torus B │ Processes: 38 │ Events: 91.8M/s
-│  Torus C │ Processes: 40 │ Events: 98.7M/s
-│
-│  Braid Exchanges: 1,247 │ Violations: 0
-└───────────────────────────────────────────────────────────────┘
-```
+![BraidShell Torus Visualization](docs/images/braidshell_torus.png)
+
+#### Performance Metrics
+![BraidShell Performance](docs/images/braidshell_perf.png)
 
 ### Available Commands
 

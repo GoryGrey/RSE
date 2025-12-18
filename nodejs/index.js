@@ -30,6 +30,10 @@ class Kernel {
         return this._native.getProcessCount();
     }
 
+    getTelemetry() {
+        return this._native.getTelemetry();
+    }
+
     getProcessState(pid) {
         return this._native.getProcessState(pid);
     }
@@ -53,6 +57,10 @@ class Kernel {
 
     get_process_count() {
         return this.getProcessCount();
+    }
+
+    get_telemetry() {
+        return this.getTelemetry();
     }
 
     get_process_state(pid) {

@@ -29,6 +29,16 @@ int betti_rdl_run(BettiRDLCompute* kernel, int max_events);
 uint64_t betti_rdl_get_events_processed(const BettiRDLCompute* kernel);
 uint64_t betti_rdl_get_current_time(const BettiRDLCompute* kernel);
 size_t betti_rdl_get_process_count(const BettiRDLCompute* kernel);
+
+typedef struct {
+    uint64_t events_processed;
+    uint64_t current_time;
+    size_t process_count;
+    size_t memory_used;
+} BettiRDLTelemetry;
+
+BettiRDLTelemetry betti_rdl_get_telemetry(const BettiRDLCompute* kernel);
+
 int betti_rdl_get_process_state(const BettiRDLCompute* kernel, int pid);
 */
 import "C"
@@ -83,6 +93,14 @@ func fileExists(path string) bool {
         return false
     }
     return true
+}
+
+// Telemetry provides deterministic runtime counters for cross-language verification.
+type Telemetry struct {
+    EventsProcessed uint64
+    CurrentTime     uint64
+    ProcessCount    uint64
+    MemoryUsed      uint64
 }
 
 // Kernel represents a Betti-RDL computational kernel
@@ -141,4 +159,15 @@ func (k *Kernel) ProcessCount() int {
 // ProcessState returns the accumulated state for a process
 func (k *Kernel) ProcessState(pid int) int {
     return int(C.betti_rdl_get_process_state(k.ptr, C.int(pid)))
+}
+
+// GetTelemetry returns deterministic runtime telemetry counters.
+func (k *Kernel) GetTelemetry() Telemetry {
+    t := C.betti_rdl_get_telemetry(k.ptr)
+    return Telemetry{
+        EventsProcessed: uint64(t.events_processed),
+        CurrentTime:     uint64(t.current_time),
+        ProcessCount:    uint64(t.process_count),
+        MemoryUsed:      uint64(t.memory_used),
+    }
 }

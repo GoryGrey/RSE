@@ -10,7 +10,10 @@ FALLBACK_LIB_DIR="$PROJECT_ROOT/src/cpp_kernel/build"
 LEGACY_LIB_DIR="$PROJECT_ROOT/src/cpp_kernel/build/Release"
 
 # Check for shared library first, then fallback
-if [ -f "$SHARED_LIB_DIR/libbetti_rdl_c.so" ]; then
+if [ -n "$BETTI_RDL_SHARED_LIB_DIR" ] && [ -f "$BETTI_RDL_SHARED_LIB_DIR/libbetti_rdl_c.so" ]; then
+    LIB_DIR="$BETTI_RDL_SHARED_LIB_DIR"
+    echo "Using library from environment: $LIB_DIR"
+elif [ -f "$SHARED_LIB_DIR/libbetti_rdl_c.so" ]; then
     LIB_DIR="$SHARED_LIB_DIR"
     echo "Using shared library from: $LIB_DIR"
 elif [ -f "$FALLBACK_LIB_DIR/libbetti_rdl_c.so" ]; then
@@ -21,7 +24,11 @@ elif [ -f "$LEGACY_LIB_DIR/libbetti_rdl_c.so" ]; then
     echo "Using legacy fallback library from: $LIB_DIR"
 else
     echo "❌ Betti-RDL library not found!"
-    echo "Searched in: $SHARED_LIB_DIR, $FALLBACK_LIB_DIR, and $LEGACY_LIB_DIR"
+    echo "Searched in:"
+    echo "  - Env: $BETTI_RDL_SHARED_LIB_DIR"
+    echo "  - $SHARED_LIB_DIR"
+    echo "  - $FALLBACK_LIB_DIR"
+    echo "  - $LEGACY_LIB_DIR"
     echo "Run: ../scripts/run_binding_matrix.sh to build the shared library"
     exit 1
 fi

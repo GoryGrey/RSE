@@ -6,6 +6,7 @@
 
 #include <array>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <iostream>
 #include <mutex>
@@ -73,8 +74,18 @@ private:
   std::mutex event_injection_lock;
   FixedVector<ComputeEvent, 16384> pending_events;
 
+  std::chrono::steady_clock::time_point start_time_;
+
 public:
-  BettiRDLCompute() {
+  struct Telemetry {
+    std::uint64_t events_processed;
+    std::uint64_t current_time;
+    std::size_t process_count;
+    std::size_t memory_used;
+    double throughput_eps;
+  };
+
+  BettiRDLCompute() : start_time_(std::chrono::steady_clock::now()) {
     std::cout << "[COMPUTE] Initializing Betti-RDL with real computation..."
               << std::endl;
   }
@@ -184,4 +195,22 @@ public:
   unsigned long long getCurrentTime() const { return current_time; }
   unsigned long long getEventsProcessed() const { return events_processed; }
   std::size_t getProcessCount() const { return process_count_; }
+
+  Telemetry getTelemetry() const {
+    Telemetry telemetry{};
+    telemetry.events_processed = static_cast<std::uint64_t>(events_processed);
+    telemetry.current_time = static_cast<std::uint64_t>(current_time);
+    telemetry.process_count = process_count_;
+    telemetry.memory_used = MemoryManager::getUsedMemory();
+
+    const auto elapsed =
+        std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                      start_time_)
+            .count();
+    telemetry.throughput_eps =
+        elapsed > 0.0 ? static_cast<double>(telemetry.events_processed) / elapsed
+                      : 0.0;
+
+    return telemetry;
+  }
 };

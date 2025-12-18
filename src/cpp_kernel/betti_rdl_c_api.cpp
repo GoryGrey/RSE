@@ -40,6 +40,21 @@ size_t betti_rdl_get_process_count(const BettiRDLCompute *kernel) {
   return kernel ? kernel->getProcessCount() : 0;
 }
 
+BettiRDLTelemetry betti_rdl_get_telemetry(const BettiRDLCompute *kernel) {
+  BettiRDLTelemetry telemetry{};
+  if (!kernel) {
+    return telemetry;
+  }
+
+  const auto cpp_telemetry = kernel->getTelemetry();
+  telemetry.events_processed = cpp_telemetry.events_processed;
+  telemetry.current_time = cpp_telemetry.current_time;
+  telemetry.process_count = cpp_telemetry.process_count;
+  telemetry.memory_used = cpp_telemetry.memory_used;
+
+  return telemetry;
+}
+
 int betti_rdl_get_process_state(const BettiRDLCompute *kernel, int pid) {
   return kernel ? kernel->getProcessState(pid) : 0;
 }

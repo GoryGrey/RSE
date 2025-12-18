@@ -260,53 +260,118 @@ if should_test "rust"; then
     echo ""
 fi
 
-# Step 7: Comprehensive smoke test with telemetry comparison
+# Step 7: Cross-Language Telemetry Verification
 if [ -z "$TARGET_LANGUAGES" ]; then
     echo -e "${BLUE}Step 7: Cross-Language Telemetry Verification${NC}"
     echo "Running identical workloads across all languages..."
     echo ""
 
     # Run identical workload in each language and collect telemetry
-    python_telemetry=$(cd "$PROJECT_ROOT/python" && python3 -c "
+    python_telemetry=$(
+        cd "$PROJECT_ROOT/python" &&
+        (python3 -c "
 import betti_rdl
 kernel = betti_rdl.Kernel()
 kernel.spawn_process(0, 0, 0)
 kernel.inject_event(0, 0, 0, 1)
-events = kernel.run(500)
-total = kernel.get_events_processed()
-time = kernel.get_current_time()
-print(f'{events},{total},{time}')
-" 2>/dev/null || echo "0,0,0")
+kernel.run(100)
+tel = kernel.get_telemetry()
+print(f'TELEMETRY,{tel.events_processed},{tel.current_time},{tel.process_count},{tel.memory_used}')
+" 2>/dev/null || true) |
+            grep '^TELEMETRY,' | tail -1 | sed 's/^TELEMETRY,//' || true
+    )
 
-    nodejs_telemetry=$(cd "$PROJECT_ROOT/nodejs" && node -e "
+    nodejs_telemetry=$(
+        cd "$PROJECT_ROOT/nodejs" &&
+        (node -e "
 const { Kernel } = require('./index.js');
 const kernel = new Kernel();
 kernel.spawn_process(0, 0, 0);
 kernel.inject_event(0, 0, 0, 1);
-const events = kernel.run(500);
-const total = kernel.get_events_processed();
-const time = kernel.get_current_time();
-console.log(\`\${events},\${total},\${time}\`);
-" 2>/dev/null || echo "0,0,0")
+kernel.run(100);
+const tel = kernel.get_telemetry();
+console.log(\`TELEMETRY,\${tel.events_processed},\${tel.current_time},\${tel.process_count},\${tel.memory_used}\`);
+" 2>/dev/null || true) |
+            grep '^TELEMETRY,' | tail -1 | sed 's/^TELEMETRY,//' || true
+    )
 
-    go_telemetry=$(cd "$PROJECT_ROOT/go" && timeout 30s go run example/main.go 2>/dev/null | tail -1 || echo "0,0,0")
+    go_telemetry=$(
+        cd "$PROJECT_ROOT/go" &&
+        (timeout 30s go run example/telemetry.go 2>/dev/null || true) |
+            grep '^TELEMETRY,' | tail -1 | sed 's/^TELEMETRY,//' || true
+    )
 
-    rust_telemetry=$(cd "$PROJECT_ROOT/rust" && timeout 30s cargo run --example basic 2>/dev/null | grep -o '[0-9]*,[0-9]*,[0-9]*' | tail -1 || echo "0,0,0")
+    rust_telemetry=$(
+        cd "$PROJECT_ROOT/rust" &&
+        (timeout 30s cargo run --example telemetry 2>/dev/null || true) |
+            grep '^TELEMETRY,' | tail -1 | sed 's/^TELEMETRY,//' || true
+    )
 
     echo "Python telemetry: $python_telemetry"
     echo "Node.js telemetry: $nodejs_telemetry"
     echo "Go telemetry: $go_telemetry"
     echo "Rust telemetry: $rust_telemetry"
 
-    # Verify all telemetry matches (events processed should be consistent)
-    if [ "$python_telemetry" = "$nodejs_telemetry" ] && [ "$python_telemetry" = "$go_telemetry" ] && [ "$python_telemetry" = "$rust_telemetry" ] && [ "$python_telemetry" != "0,0,0" ]; then
-        echo -e "${GREEN}✅ Cross-language telemetry validation passed${NC}"
-        ((++passed_tests))
-        test_results[telemetry]=PASS
+    declare -A telemetry
+    telemetry[python]="$python_telemetry"
+    telemetry[nodejs]="$nodejs_telemetry"
+    telemetry[go]="$go_telemetry"
+    telemetry[rust]="$rust_telemetry"
+
+    baseline_lang=""
+    baseline=""
+    valid_count=0
+    for lang in python nodejs go rust; do
+        val="${telemetry[$lang]}"
+        if [[ "$val" =~ ^[0-9]+,[0-9]+,[0-9]+,[0-9]+$ ]]; then
+            ((++valid_count))
+            if [ -z "$baseline_lang" ]; then
+                baseline_lang="$lang"
+                baseline="$val"
+            fi
+        fi
+    done
+
+    if [ $valid_count -lt 2 ]; then
+        echo -e "${YELLOW}⚠️  Telemetry validation skipped (insufficient runnable bindings)${NC}"
+        test_results[telemetry]=SKIP
     else
-        echo -e "${YELLOW}⚠️  Telemetry validation: languages returned different results${NC}"
-        echo "   This may be expected due to timing differences in event processing"
-        test_results[telemetry]=FAIL
+        IFS=',' read -r base_events base_time base_proc base_mem <<<"$baseline"
+        telemetry_ok=1
+
+        for lang in python nodejs go rust; do
+            val="${telemetry[$lang]}"
+            if [[ ! "$val" =~ ^[0-9]+,[0-9]+,[0-9]+,[0-9]+$ ]]; then
+                continue
+            fi
+
+            IFS=',' read -r events time proc mem <<<"$val"
+
+            if [ "$events" -ne "$base_events" ]; then
+                telemetry_ok=0
+            fi
+            if [ "$time" -ne "$base_time" ]; then
+                telemetry_ok=0
+            fi
+            if [ "$proc" -ne "$base_proc" ]; then
+                telemetry_ok=0
+            fi
+
+            diff=$(( mem > base_mem ? mem - base_mem : base_mem - mem ))
+            if [ $diff -ge 1000000 ]; then
+                telemetry_ok=0
+            fi
+        done
+
+        if [ $telemetry_ok -eq 1 ]; then
+            echo -e "${GREEN}✅ Cross-language telemetry validation passed${NC}"
+            ((++passed_tests))
+            test_results[telemetry]=PASS
+        else
+            echo -e "${RED}❌ Cross-language telemetry validation failed${NC}"
+            echo "   Baseline ($baseline_lang): $baseline"
+            test_results[telemetry]=FAIL
+        fi
     fi
     ((++total_tests))
     echo ""

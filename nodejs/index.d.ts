@@ -1,5 +1,12 @@
 // TypeScript definitions for betti-rdl
 
+export interface Telemetry {
+    events_processed: number;
+    current_time: number;
+    process_count: number;
+    memory_used: number;
+}
+
 export class Kernel {
     constructor();
 
@@ -58,6 +65,16 @@ export class Kernel {
      * snake_case alias for getProcessCount
      */
     get_process_count(): number;
+
+    /**
+     * Get runtime telemetry
+     */
+    getTelemetry(): Telemetry;
+
+    /**
+     * snake_case alias for getTelemetry
+     */
+    get_telemetry(): Telemetry;
 
     /**
      * Get accumulated state for a process

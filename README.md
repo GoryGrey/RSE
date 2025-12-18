@@ -8,6 +8,32 @@
 
 **Automated pipeline validating O(1) memory guarantees, thread safety, and multi-language bindings on every commit.**
 
+---
+
+## ⚡ Quick Start (5 Minutes)
+
+**Rust** (Recommended - Automatic build):
+```bash
+git clone https://github.com/betti-labs/betti-rdl
+cd betti-rdl/rust
+cargo run --example basic
+```
+
+**Python**:
+```bash
+# Build C++ kernel first
+cd src/cpp_kernel && mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release && make
+cd ../../../python
+python3 -m venv venv && source venv/bin/activate
+pip install pybind11 && pip install .
+python -c "import betti_rdl; k = betti_rdl.Kernel(); k.spawn_process(0,0,0); print('✅ Works!')"
+```
+
+**Full Documentation**: [Getting Started Guide](docs/GETTING_STARTED.md) | [API Reference](docs/API_REFERENCE.md)
+
+---
+
 ## Abstract
 
 Betti-RDL (Recursive Delay Lattice) is a deterministic distributed runtime environment designed to solve two fundamental limitations in modern computing: linear memory growth during recursion (Stack Overflow) and resource contention in massive parallelism.
@@ -320,17 +346,23 @@ For comprehensive project assessment and validation results, see these reports:
 - ✅ Core kernel: **Production-ready**, all tests passing, 16.8M events/sec
 - ✅ Performance: O(1) memory verified with 100k+ event chains
 - ✅ Thread safety: Validated with multi-threaded stress tests
-- ✅ Rust binding: Validated and production-ready
-- ⚠️ Python/Node.js/Go bindings: Source ready, require environment validation
-- ⚠️ Grey compiler: Tests pass, parser issues on .grey files
-- 🔴 COG & Dashboard: Scaffold only, deferred to Phase 3
+- ✅ Rust binding: **Production-ready**, automatic CMake integration
+- ✅ Python binding: **Production-ready**, validated end-to-end
+- ✅ Node.js binding: **Production-ready**, validated end-to-end
+- ✅ Go binding: **Production-ready**, validated end-to-end (CGo fixed)
+- ⚠️ Grey compiler: Tests pass, parser issues on .grey files (in progress)
+- 📚 Documentation: **Complete** - API Reference, Getting Started, Architecture, Troubleshooting
+- 🔴 COG & Dashboard: Scaffold only, deferred to Phase 4
 
 ## Roadmap
 
-- [x] **v1.0**: Core Runtime, O(1) Validation, Multi-language Bindings.
-- [ ] **v1.1**: Binding Matrix Validation, Grey Compiler Integration, Documentation.
-- [ ] **v1.2**: Production Hardening, Observability, Example Gallery.
-- [ ] **v2.0**: Distributed Coordination (if demand justifies), COG Cloud (deferred).
+- [x] **Phase 1-2**: Core Runtime, O(1) Validation, Multi-language Bindings ✅
+- [x] **Phase 3 Week 1**: Binding Matrix Validation (Python/Node.js/Go/Rust) ✅
+- [x] **Phase 3 Week 3**: Documentation Sprint (API, Getting Started, Architecture) ✅
+- [ ] **Phase 3 Week 2**: Grey Compiler Parser Fix (in progress)
+- [ ] **Phase 3 Week 4-5**: Production Hardening, Example Gallery
+- [ ] **Phase 3 Week 6**: CI/CD Hardening, Fuzzing, Stress Tests
+- [ ] **Phase 4**: Distributed Coordination (if demand justifies), COG Orchestration
 
 ## License
 

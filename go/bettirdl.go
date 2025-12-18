@@ -20,17 +20,16 @@ package bettirdl
 // Forward declarations
 typedef struct BettiRDLCompute BettiRDLCompute;
 
-extern "C" {
-    BettiRDLCompute* betti_rdl_create();
-    void betti_rdl_destroy(BettiRDLCompute* kernel);
-    void betti_rdl_spawn_process(BettiRDLCompute* kernel, int x, int y, int z);
-    void betti_rdl_inject_event(BettiRDLCompute* kernel, int x, int y, int z, int value);
-    int betti_rdl_run(BettiRDLCompute* kernel, int max_events);
-    uint64_t betti_rdl_get_events_processed(const BettiRDLCompute* kernel);
-    uint64_t betti_rdl_get_current_time(const BettiRDLCompute* kernel);
-    size_t betti_rdl_get_process_count(const BettiRDLCompute* kernel);
-    int betti_rdl_get_process_state(const BettiRDLCompute* kernel, int pid);
-}
+// C API declarations (already extern "C" in the library)
+BettiRDLCompute* betti_rdl_create();
+void betti_rdl_destroy(BettiRDLCompute* kernel);
+void betti_rdl_spawn_process(BettiRDLCompute* kernel, int x, int y, int z);
+void betti_rdl_inject_event(BettiRDLCompute* kernel, int x, int y, int z, int value);
+int betti_rdl_run(BettiRDLCompute* kernel, int max_events);
+uint64_t betti_rdl_get_events_processed(const BettiRDLCompute* kernel);
+uint64_t betti_rdl_get_current_time(const BettiRDLCompute* kernel);
+size_t betti_rdl_get_process_count(const BettiRDLCompute* kernel);
+int betti_rdl_get_process_state(const BettiRDLCompute* kernel, int pid);
 */
 import "C"
 

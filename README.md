@@ -139,6 +139,91 @@ cd RSE/src/cpp_kernel/braided/build
 
 ---
 
+## 🎨 BraidShell: The Future of Computing
+
+**Experience the braided OS through our cyberpunk-aesthetic terminal.**
+
+### Try It Now
+
+```bash
+cd RSE/src/cpp_kernel
+./braidshell
+```
+
+### Features
+
+- **Cyberpunk Aesthetic**: Neon colors, ASCII art, beautiful UI
+- **Real-Time Stats**: Live torus status, performance metrics
+- **Visual Flair**: Every command looks amazing
+- **Degen Vibes**: "Stay degen. Stay future. 🚀"
+
+### Demo Screenshots
+
+#### System Information
+```
+┌─[ SYSTEM STATUS ]─────────────────────────────────────────┐
+│ OS:        BraidedOS v0.1.0 (Revolutionary)
+│ Kernel:    Braided-Torus Runtime
+│
+│ ⚡ TORUS STATUS
+│   ● Torus A: ACTIVE  │  Load: █████████░ 90%
+│   ● Torus B: ACTIVE  │  Load: ███████░░░ 70%
+│   ● Torus C: ACTIVE  │  Load: ████████░░ 80%
+│
+│ ⚙  PERFORMANCE
+│   Events/sec:  285.7M (parallel)
+│   Fairness:    1.0 (perfect)
+│   CPU Usage:   100% (no waste)
+│   Memory:      O(1) (bounded)
+│
+│ ✨ FEATURES
+│   ✓ Emergent Scheduling
+│   ✓ Self-Healing (2-of-3)
+│   ✓ Fault Tolerance
+│   ✓ Zero Bottlenecks
+└───────────────────────────────────────────────────────────────┘
+```
+
+#### Braided-Torus Visualization
+```
+┌─[ BRAIDED TORUS VISUALIZATION ]──────────────────────────┐
+│
+│     ╔═══════╗       ╔═══════╗       ╔═══════╗
+│     ║ TOR-A ║ ◄───► ║ TOR-B ║ ◄───► ║ TOR-C ║
+│     ╚═══════╝       ╚═══════╝       ╚═══════╝
+│         ↑                 ↑                 ↑
+│         └─────────────────┴─────────────────┘
+│                  ⚡ BRAIDED ⚡
+│
+│  Torus A │ Processes: 42 │ Events: 95.2M/s
+│  Torus B │ Processes: 38 │ Events: 91.8M/s
+│  Torus C │ Processes: 40 │ Events: 98.7M/s
+│
+│  Braid Exchanges: 1,247 │ Violations: 0
+└───────────────────────────────────────────────────────────────┘
+```
+
+### Available Commands
+
+- `info` - System information with torus status
+- `torus` - Braided-torus visualization
+- `perf` - Performance metrics dashboard
+- `matrix` - Enter the matrix (animation)
+- `help` - Show all commands
+- `clear` - Clear screen
+- `exit` - Exit BraidShell
+
+### See It in Action
+
+Open the HTML demos in your browser:
+- [System Info](docs/braidshell_demos/info.html)
+- [Torus Visualization](docs/braidshell_demos/torus.html)
+- [Performance Metrics](docs/braidshell_demos/perf.html)
+
+**This is computing for the future.** 🔥
+
+---
+
 ## 🏗️ Architecture
 
 ### Core Infrastructure (`src/cpp_kernel/core/`)

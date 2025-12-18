@@ -4,10 +4,16 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/betti-labs/betti-rdl)
 [![CI Status](https://github.com/betti-labs/betti-rdl/actions/workflows/ci.yml/badge.svg)](https://github.com/betti-labs/betti-rdl/actions)
+[![Last Updated](https://img.shields.io/badge/last%20updated-December%2018,%202025-green.svg)](#)
 ![Platform](https://img.shields.io/badge/platform-win--x64%20%7C%20linux--x64-lightgrey)
 
 Betti-RDL is a deterministic, event-driven runtime that guarantees **O(1) memory** (constant spatial complexity) by executing computation over a fixed-size **32×32×32 toroidal lattice**.
 
+---
+**Document**: README.md
+**Last Updated**: December 18, 2025
+**Status**: Current
+**Author**: Betti Labs
 ---
 
 ## Quick links
@@ -23,7 +29,7 @@ Betti-RDL is a deterministic, event-driven runtime that guarantees **O(1) memory
 
 ---
 
-## Status snapshot (Dec 2024)
+## Status snapshot (Dec 2025)
 
 | Area | Status | Notes |
 |---|---|---|

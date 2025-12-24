@@ -1,31 +1,38 @@
 # Build artifacts
 build/
-*.exe
-*.dll
-*.lib
-*.exp
-*.obj
+*.o
+*.a
 *.so
 *.dylib
-*.pyd
-*.node
+*.exe
+target/
+dist/
 
-# Language specific
+# Test binaries
+test_*
+benchmark_*
+*_test
+minimal_test
+wrapper_test
+braidshell
+
+# Python
 __pycache__/
 *.pyc
-venv/
+*.pyo
 *.egg-info/
-node_modules/
-target/   # Rust
-grey_compiler/target/  # Grey compiler specific
-vendor/   # Go
 
-# IDEs
+# Node
+node_modules/
+package-lock.json
+
+# IDE
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
 
-# Logs
-*.log
-
-output/
+# OS
+.DS_Store
+Thumbs.db

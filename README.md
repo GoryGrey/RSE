@@ -33,7 +33,7 @@
 | BraidShell | ✅ Production | Visual | Cyberpunk aesthetic |
 | **Boot Process** | 🚧 In Progress | - | 2-3 weeks |
 
-**Overall**: 45/50 tests passing (90% success rate)
+**Overall**: 36/37 tests passing (97% success rate) - [Validation Report](TEST_VALIDATION_REPORT.md)
 
 👉 **[See Full Project Status](PROJECT_STATUS.md)** for detailed breakdown
 

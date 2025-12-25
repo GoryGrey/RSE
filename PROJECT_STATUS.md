@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-**The Bible - Last Updated: December 18, 2025**
+**The Bible - Last Updated: December 25, 2025**
 
 ---
 
@@ -17,36 +17,42 @@ Not by distributing across machines, but by eliminating architectural bottleneck
 
 ---
 
-## 📊 Current Status: **85% COMPLETE**
+## 📊 Current Status: **45% COMPLETE (Prototype)**
 
-### **What Works** ✅
+### **What Works (Prototype)** ✅
 
 | Component | Status | Tests | Performance |
 |-----------|--------|-------|-------------|
-| **Braided Runtime** | ✅ Production | 5/5 passing | 16.8M events/sec per torus |
-| **Boundary Coupling** | ✅ Production | 6/6 passing | O(1) coordination (4.7KB) |
-| **Self-Healing** | ✅ Production | 7/8 passing | 2-of-3 reconstruction |
-| **Parallel Execution** | ✅ Validated | Architecture | 3 worker threads |
-| **Memory Optimization** | ✅ Production | Validated | O(1) bounded at 450MB |
-| **Emergent Scheduler** | ✅ Production | 4/4 passing | Perfect fairness (1.0) |
-| **System Calls** | ✅ Production | Implemented | 43 defined, 9 implemented |
-| **Memory Management** | ✅ Production | 8/8 passing | Virtual memory, page tables |
-| **Virtual File System** | ✅ Production | 8/8 passing | POSIX-compatible |
-| **I/O System** | ✅ Production | 4/4 passing | Console driver |
-| **BraidShell** | ✅ Production | Visual demo | Cyberpunk aesthetic |
+| **Braided Runtime** | ⚠️ Prototype | Internal smoke | 16.8M events/sec per torus |
+| **Boundary Coupling** | ⚠️ Prototype | Internal smoke | O(1) coordination (4.7KB) |
+| **Self-Healing** | ⚠️ Prototype | 7/8 internal | 2-of-3 reconstruction |
+| **Parallel Execution** | ⚠️ Prototype | Architecture | 3 worker threads |
+| **Memory Optimization** | ⚠️ Prototype | Design-validated | O(1) bounded at 450MB |
+| **Emergent Scheduler** | ⚠️ Prototype | 4/4 internal | Fairness target met in sim |
+| **System Calls** | ⚠️ Partial | 9 implemented | 43 defined |
+| **Memory Management** | ⚠️ Partial | Basic | Page tables, no user isolation |
+| **Virtual File System** | ⚠️ Partial | Basic | MemFS + minimal BlockFS |
+| **BlockFS Persistence** | ⚠️ Prototype | Basic | `/persist` fixed-slot store |
+| **I/O System** | ⚠️ Partial | Basic | Console + block + net stubs |
+| **Userspace Runner** | ⚠️ Prototype | Cooperative | In-kernel user tasks |
+| **BraidShell** | ⚠️ Demo | Visual demo | Not integrated in kernel |
+| **UEFI Boot** | ✅ Working | Serial + framebuffer | Kernel + benchmarks |
+| **Framebuffer Dashboard** | ✅ Working | Visual | Panels + console + input |
+| **UI Input (Keyboard/Mouse)** | ✅ Working | Interactive | Dashboard selection + actions |
+| **Projection Exchange (IVSHMEM)** | ⚠️ Lab-only | 3-torus Multi-VM | Shared-memory transport |
 
-**Overall Test Success Rate**: 36/37 tests passing (97%)
-
-**Note**: Validated test count is 37 (not 50). See [TEST_VALIDATION_REPORT.md](TEST_VALIDATION_REPORT.md) for details.
+**Test Coverage**: Internal smoke + bench logs. No external validation yet.
 
 ### **What's Left** 🚧
 
 | Component | Priority | Estimated Time | Dependencies |
 |-----------|----------|----------------|--------------|
 | More Utilities (ls, cat, ps) | High | 1-2 days | VFS, Scheduler |
-| Boot Process (init, kernel entry) | High | 1-2 days | All above |
+| User-Mode + ELF Loader | High | 1-2 weeks | Syscalls, scheduler |
 | Real Hardware Drivers | Medium | 1-2 weeks | Boot process |
 | Distributed Mode | Low | 2-4 weeks | Network layer |
+| Full IP/TCP Stack | Medium | 1-2 weeks | Network RX stability |
+| Network Transport (virtio-net RX/TX) | Medium | 1-2 weeks | RX online, TX stalls under load |
 
 ---
 
@@ -120,6 +126,40 @@ RSE/
 | **CPU Utilization** | N/A | 100% | 100% |
 | **Fault Tolerance** | None | 2-of-3 | 2-of-3 |
 | **Context Switches** | N/A | 49 per 5000 ticks | <100 |
+
+### **UEFI Kernel Benchmarks (QEMU, serial output)**
+
+Cycle-counted benchmarks captured in headless QEMU (TSC cycles):
+
+- **Compute**: 400,000 ops, 26,802,191 cycles (67 cycles/op)
+- **Memory**: 67,108,864 bytes, 1,104,835,143 cycles (16 cycles/byte)
+- **RAMFS File I/O**: 288 ops, 5,397,242 cycles (18740 cycles/op)
+- **UEFI FAT File I/O (USB disk)**: 144 ops, 650,239,253 cycles (4515550 cycles/op)
+- **UEFI Raw Block I/O (USB disk)**: 524288 bytes, write 7,090,924 cycles (13 cycles/byte), read 10,823,826 cycles (20 cycles/byte)
+- **Virtio-Block I/O (disk)**: 512 bytes, write 410,628,641 cycles (802009 cycles/byte), read 2,117,562 cycles (4135 cycles/byte)
+- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,847,526 cycles
+- **UDP/HTTP RX Server (raw)**: rx=397 udp=199 http=198, 133,785,889 cycles
+- **HTTP Loopback**: 50000 requests, 62,973,301 cycles (1259 cycles/req)
+- **Init Device Smoke Tests**: /dev/blk0 (512B, 256 ops, 131072 bytes, 0 mismatches), /dev/loopback (13B echo, 13B read), /dev/net0 (16384B tx, 16384B rx)
+
+Notes:
+- RAMFS is in-kernel (real ops, in-memory).
+- UEFI FAT I/O uses firmware Block I/O + Simple FS on a USB disk image.
+- UEFI Raw Block I/O uses firmware Block I/O on a raw USB disk image.
+- HTTP benchmark is loopback-only (no full IP stack yet). `/dev/net0` uses a minimal UDP echo path with virtio-net when present (UEFI SNP fallback).
+- Raw UDP/HTTP server uses actual RX path; proof run received 397 packets (199 UDP + 198 HTTP).
+- virtio-net RX is online (ARP probe receives 64-byte reply).
+- Proof log saved at `build/boot/proof.log`.
+- Raw frame mode is available via `RSE_NET_RAW=1` for debugging.
+
+### **Linux Baseline (Host, Ubuntu 24.04.3 LTS)**
+
+Baseline captured with `scripts/run_linux_baseline.sh` (Python harness, single-threaded):
+
+- **Compute**: 5,000,000 ops in 4.34s (~1.15M ops/sec)
+- **Memory**: 268,435,456 bytes in 74.38s (~3.61 MB/sec)
+- **File I/O**: 512 ops in 0.018s (~28.4k ops/sec), 1,048,576 bytes (~55.6 MB/sec)
+- **HTTP Loopback**: blocked by sandbox (socket permission denied)
 
 ### **vs Traditional OS**
 
@@ -334,6 +374,8 @@ make
 - [Braided-Torus Design](docs/design/BRAIDED_TORUS_DESIGN.md) - Complete architecture
 - [Braided-Torus Analysis](docs/design/RSE_BRAIDED_TORUS_ANALYSIS.md) - Technical analysis
 - [Final Report](docs/design/BRAIDED_RSE_FINAL_REPORT.md) - Phase 1-3 summary
+- [Projection Exchange Spec](docs/design/RSE_PROJECTION_EXCHANGE_SPEC.md) - Network projection protocol
+- [Projection Task Map](docs/design/RSE_PROJECTION_TASK_MAP.md) - Implementation steps
 
 ### **Phase Reports**
 - [Phase 2 Complete](docs/phase_reports/RSE_PHASE2_COMPLETE.md) - Boundary coupling

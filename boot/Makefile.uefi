@@ -1,0 +1,259 @@
+BOOT_DIR := boot
+BUILD_DIR := build/boot
+DISK := $(BUILD_DIR)/rse_disk.img
+DISK_MBR := $(BUILD_DIR)/rse_disk_mbr.img
+ISO_EFI := $(BUILD_DIR)/rse_efi.iso
+ISO_ROOT := $(BUILD_DIR)/efi_iso
+DATA_IMG := $(BUILD_DIR)/rse_data.img
+RAW_IMG := $(BUILD_DIR)/rse_raw.img
+VIRTIO_IMG := $(BUILD_DIR)/rse_virtio.img
+SHELL_EFI := /usr/share/efi-shell-x64/shellx64.efi
+STARTUP_NSH := $(BUILD_DIR)/startup.nsh
+ESP_ROOT := $(BUILD_DIR)/esp_root
+ESP_IMG := $(BUILD_DIR)/esp.img
+KERNEL := $(BUILD_DIR)/kernel.elf
+NET_PROJ_OBJ := $(BUILD_DIR)/net_projection.o
+LOADER_OBJ := $(BUILD_DIR)/uefi_loader.o
+LOADER_SO := $(BUILD_DIR)/uefi_loader.so
+LOADER_EFI := $(BUILD_DIR)/BOOTX64.EFI
+
+CC := gcc
+CXX := g++
+LD := ld
+USE_GNUEFI ?= 0
+EFI_INC := /usr/include/efi
+EFI_INC_ARCH := /usr/include/efi/x86_64
+EFI_LDS := /usr/lib/elf_x86_64_efi.lds
+EFI_CRT0 := /usr/lib/crt0-efi-x86_64.o
+
+CFLAGS := -I$(EFI_INC) -I$(EFI_INC_ARCH) -fPIC -fshort-wchar -mno-red-zone -ffreestanding \
+	-fno-stack-protector -fcf-protection=none -DHAVE_USE_MS_ABI -O2 -Wall -Wextra
+LDFLAGS_FALLBACK := -nostdlib -znocombreloc -T /usr/lib/elf_x86_64_efi.lds -shared -Bsymbolic \
+	-Wl,--emit-relocs
+LDFLAGS_GNUEFI := -nostdlib -znocombreloc -z notext -shared -Bsymbolic --emit-relocs -T $(EFI_LDS) -L /usr/lib
+
+RSE_TORUS_ID ?= 0
+RSE_NET_EXCHANGE ?= 0
+RSE_SHM_EXCHANGE ?= 0
+RSE_NET_RAW ?= 0
+KERNEL_CFLAGS := -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 \
+	-I$(EFI_INC) -I$(EFI_INC_ARCH) -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=$(RSE_TORUS_ID) -DRSE_NET_EXCHANGE=$(RSE_NET_EXCHANGE) -DRSE_SHM_EXCHANGE=$(RSE_SHM_EXCHANGE) -DRSE_NET_RAW=$(RSE_NET_RAW)
+KERNEL_CXXFLAGS := -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 \
+	-fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -DRSE_TORUS_ID=$(RSE_TORUS_ID) -DRSE_NET_EXCHANGE=$(RSE_NET_EXCHANGE) -DRSE_SHM_EXCHANGE=$(RSE_SHM_EXCHANGE) -DRSE_NET_RAW=$(RSE_NET_RAW)
+KERNEL_LDFLAGS := -T $(BOOT_DIR)/linker.ld -nostdlib -Wl,-z,max-page-size=0x1000 -no-pie
+
+PART_START := 2048
+PART_SIZE := 131072
+ESP_SIZE_KB := 65536
+DATA_SIZE_KB := 65536
+RAW_SIZE_MB := 64
+VIRTIO_SIZE_MB := 64
+NETDEV_HOSTFWD ?=
+NETDEV_OPTS ?= -netdev user,id=net0$(NETDEV_HOSTFWD) -device virtio-net-pci,netdev=net0
+QEMU_EXTRA_OPTS ?=
+
+.PHONY: all run run-fat run-fat-ide run-fat-ehci run-esp run-disk-virtio run-iso clean
+.PHONY: run-disk-ahci run-disk-mbr
+
+all: $(DISK)
+
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+$(KERNEL): $(BOOT_DIR)/kernel.c $(BOOT_DIR)/kernel_os.cpp $(BOOT_DIR)/net_projection.cpp $(BOOT_DIR)/init.c $(BOOT_DIR)/linker.ld | $(BUILD_DIR)
+	$(CC) $(KERNEL_CFLAGS) -c $(BOOT_DIR)/kernel.c -o $(BUILD_DIR)/kernel.o
+	$(CC) $(KERNEL_CFLAGS) -c $(BOOT_DIR)/init.c -o $(BUILD_DIR)/init.o
+	$(CXX) $(KERNEL_CXXFLAGS) -c $(BOOT_DIR)/kernel_os.cpp -o $(BUILD_DIR)/kernel_os.o
+	$(CXX) $(KERNEL_CXXFLAGS) -c $(BOOT_DIR)/net_projection.cpp -o $(NET_PROJ_OBJ)
+	$(CC) $(KERNEL_CFLAGS) $(KERNEL_LDFLAGS) -o $(KERNEL) $(BUILD_DIR)/kernel.o $(BUILD_DIR)/kernel_os.o $(NET_PROJ_OBJ) $(BUILD_DIR)/init.o
+
+$(LOADER_OBJ): $(BOOT_DIR)/uefi_loader.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $(BOOT_DIR)/uefi_loader.c -o $(LOADER_OBJ)
+
+$(LOADER_SO): $(LOADER_OBJ)
+	@if [ "$(USE_GNUEFI)" = "1" ] && [ -f "$(EFI_LDS)" ] && [ -f "$(EFI_CRT0)" ]; then \
+		$(LD) $(LDFLAGS_GNUEFI) -o $(LOADER_SO) $(EFI_CRT0) $(LOADER_OBJ) -lgnuefi -lefi; \
+	else \
+		$(CC) $(LOADER_OBJ) $(LDFLAGS_FALLBACK) -o $(LOADER_SO); \
+	fi
+
+$(LOADER_EFI): $(LOADER_SO)
+	objcopy -j .text -j .sdata -j .data -j .dynamic -j .dynsym \
+		-j .rel* -j .rela* -j .reloc --target=efi-app-x86_64 $(LOADER_SO) $(LOADER_EFI)
+
+$(ESP_ROOT): $(KERNEL) $(LOADER_EFI) | $(BUILD_DIR)
+	rm -rf $(ESP_ROOT)
+	mkdir -p $(ESP_ROOT)/EFI/BOOT
+	cp $(LOADER_EFI) $(ESP_ROOT)/EFI/BOOT/BOOTX64.EFI
+	cp $(KERNEL) $(ESP_ROOT)/kernel.elf
+
+$(ESP_IMG): $(KERNEL) $(LOADER_EFI) | $(BUILD_DIR)
+	rm -f $(ESP_IMG)
+	mkfs.fat -F16 -C $(ESP_IMG) $(ESP_SIZE_KB)
+	mmd -i $(ESP_IMG) ::/EFI
+	mmd -i $(ESP_IMG) ::/EFI/BOOT
+	mcopy -D o -i $(ESP_IMG) $(LOADER_EFI) ::/EFI/BOOT/BOOTX64.EFI
+	@if [ -f $(SHELL_EFI) ]; then \
+		mcopy -D o -i $(ESP_IMG) $(SHELL_EFI) ::/EFI/BOOT/SHELLX64.EFI; \
+	fi
+	mcopy -D o -i $(ESP_IMG) $(KERNEL) ::/kernel.elf
+
+$(DATA_IMG): | $(BUILD_DIR)
+	rm -f $(DATA_IMG)
+	mkfs.fat -F32 -C $(DATA_IMG) $(DATA_SIZE_KB)
+
+$(RAW_IMG): | $(BUILD_DIR)
+	rm -f $(RAW_IMG)
+	dd if=/dev/zero of=$(RAW_IMG) bs=1M count=$(RAW_SIZE_MB)
+
+$(VIRTIO_IMG): | $(BUILD_DIR)
+	rm -f $(VIRTIO_IMG)
+	dd if=/dev/zero of=$(VIRTIO_IMG) bs=1M count=$(VIRTIO_SIZE_MB)
+
+$(DISK): $(KERNEL) $(LOADER_EFI) | $(BUILD_DIR)
+	rm -f $(DISK)
+	dd if=/dev/zero of=$(DISK) bs=1M count=128
+	sgdisk -og $(DISK)
+	sgdisk -n 1:$(PART_START):+64M -t 1:EF00 $(DISK)
+	rm -f $(ESP_IMG)
+	mkfs.fat -F16 -C $(ESP_IMG) $(ESP_SIZE_KB)
+	mmd -i $(ESP_IMG) ::/EFI
+	mmd -i $(ESP_IMG) ::/EFI/BOOT
+	mcopy -D o -i $(ESP_IMG) $(LOADER_EFI) ::/EFI/BOOT/BOOTX64.EFI
+	mcopy -D o -i $(ESP_IMG) $(KERNEL) ::/kernel.elf
+	dd if=$(ESP_IMG) of=$(DISK) bs=512 seek=$(PART_START) conv=notrunc
+
+$(DISK_MBR): $(ESP_IMG) | $(BUILD_DIR)
+	rm -f $(DISK_MBR)
+	dd if=/dev/zero of=$(DISK_MBR) bs=1M count=128
+	printf "label: dos\nlabel-id: 0x1a2b3c4d\nunit: sectors\n\n$(DISK_MBR)1 : start=2048, size=131072, type=c, bootable\n" | sfdisk $(DISK_MBR)
+	dd if=$(ESP_IMG) of=$(DISK_MBR) bs=512 seek=2048 conv=notrunc
+
+$(ISO_EFI): $(ESP_IMG) | $(BUILD_DIR)
+	rm -rf $(ISO_ROOT)
+	mkdir -p $(ISO_ROOT)/EFI/BOOT
+	cp $(ESP_IMG) $(ISO_ROOT)/esp.img
+	# Put loader in ISO root so FS0 can find it.
+	cp $(LOADER_EFI) $(ISO_ROOT)/EFI/BOOT/BOOTX64.EFI
+	@if [ -f $(SHELL_EFI) ]; then \
+		cp $(SHELL_EFI) $(ISO_ROOT)/EFI/BOOT/SHELLX64.EFI; \
+	fi
+	cp $(KERNEL) $(ISO_ROOT)/kernel.elf
+	xorriso -as mkisofs -R -J -V "RSEEFI" \
+		-eltorito-alt-boot -e esp.img -no-emul-boot \
+		-isohybrid-gpt-basdat -append_partition 2 0xef $(ISO_ROOT)/esp.img \
+		-appended_part_as_gpt -o $(ISO_EFI) $(ISO_ROOT)
+
+run: $(DISK) $(VIRTIO_IMG)
+	cp /usr/share/OVMF/OVMF_VARS_4M.fd $(BUILD_DIR)/OVMF_VARS.fd
+	qemu-system-x86_64 -machine q35 -m 512M \
+		-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+		-drive if=pflash,format=raw,file=$(BUILD_DIR)/OVMF_VARS.fd \
+		-device qemu-xhci,id=xhci \
+		-device usb-tablet \
+		-drive if=none,format=raw,file=$(DISK),id=usbdisk \
+		-device usb-storage,drive=usbdisk -boot order=c \
+		-drive if=none,format=raw,file=$(VIRTIO_IMG),id=vdisk \
+		-device virtio-blk-pci,drive=vdisk \
+		$(NETDEV_OPTS) \
+		$(QEMU_EXTRA_OPTS) \
+		-serial stdio -display sdl
+
+run-disk-virtio: $(DISK)
+	cp /usr/share/OVMF/OVMF_VARS_4M.fd $(BUILD_DIR)/OVMF_VARS.fd
+	qemu-system-x86_64 -machine q35 -m 512M \
+		-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+		-drive if=pflash,format=raw,file=$(BUILD_DIR)/OVMF_VARS.fd \
+		-device qemu-xhci,id=xhci \
+		-device usb-tablet \
+		-drive if=none,format=raw,file=$(DISK),id=vdisk \
+		-device virtio-blk-pci,drive=vdisk -boot order=c \
+		-serial stdio -display sdl
+
+run-disk-ahci: $(DISK)
+	cp /usr/share/OVMF/OVMF_VARS_4M.fd $(BUILD_DIR)/OVMF_VARS.fd
+	qemu-system-x86_64 -machine q35 -m 512M \
+		-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+		-drive if=pflash,format=raw,file=$(BUILD_DIR)/OVMF_VARS.fd \
+		-device qemu-xhci,id=xhci \
+		-device usb-tablet \
+		-device ich9-ahci,id=ahci \
+		-drive if=none,format=raw,file=$(DISK),id=hd \
+		-device ide-hd,drive=hd,bus=ahci.0 -boot order=c \
+		-serial stdio -display sdl
+
+run-disk-mbr: $(DISK_MBR)
+	cp /usr/share/OVMF/OVMF_VARS_4M.fd $(BUILD_DIR)/OVMF_VARS.fd
+	qemu-system-x86_64 -machine q35 -m 512M \
+		-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+		-drive if=pflash,format=raw,file=$(BUILD_DIR)/OVMF_VARS.fd \
+		-device qemu-xhci,id=xhci \
+		-device usb-tablet \
+		-device ich9-ahci,id=ahci \
+		-drive if=none,format=raw,file=$(DISK_MBR),id=hdmbr \
+		-device ide-hd,drive=hdmbr,bus=ahci.0 -boot order=c \
+		-serial stdio -display sdl
+
+run-iso: $(ISO_EFI) $(DATA_IMG) $(RAW_IMG) $(VIRTIO_IMG)
+	cp /usr/share/OVMF/OVMF_VARS_4M.fd $(BUILD_DIR)/OVMF_VARS.fd
+	qemu-system-x86_64 -machine q35 -m 512M \
+		-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+		-drive if=pflash,format=raw,file=$(BUILD_DIR)/OVMF_VARS.fd \
+		-cdrom $(ISO_EFI) -boot order=d \
+		-device qemu-xhci,id=xhci \
+		-device usb-tablet \
+		-drive if=none,format=raw,file=$(DATA_IMG),id=usbdisk \
+		-device usb-storage,drive=usbdisk \
+		-drive if=none,format=raw,file=$(RAW_IMG),id=usbraw \
+		-device usb-storage,drive=usbraw \
+		-drive if=none,format=raw,file=$(VIRTIO_IMG),id=vdisk \
+		-device virtio-blk-pci,drive=vdisk \
+		$(NETDEV_OPTS) \
+		$(QEMU_EXTRA_OPTS) \
+		-serial stdio -display none
+
+run-fat: $(ESP_ROOT)
+	cp /usr/share/OVMF/OVMF_VARS_4M.fd $(BUILD_DIR)/OVMF_VARS.fd
+	TMPDIR=$(BUILD_DIR) qemu-system-x86_64 -machine q35 -m 512M \
+		-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+		-drive if=pflash,format=raw,file=$(BUILD_DIR)/OVMF_VARS.fd \
+		-device qemu-xhci,id=xhci \
+		-device usb-tablet \
+		-drive if=none,format=raw,file=fat:rw:$(ESP_ROOT),id=fatdisk \
+		-device virtio-blk-pci,drive=fatdisk -boot order=c \
+		-serial stdio -display sdl
+
+run-fat-ide: $(ESP_ROOT)
+	cp /usr/share/OVMF/OVMF_VARS_4M.fd $(BUILD_DIR)/OVMF_VARS.fd
+	TMPDIR=$(BUILD_DIR) qemu-system-x86_64 -machine q35 -m 512M \
+		-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+		-drive if=pflash,format=raw,file=$(BUILD_DIR)/OVMF_VARS.fd \
+		-device qemu-xhci,id=xhci \
+		-device usb-tablet \
+		-drive if=ide,format=raw,file=fat:rw:$(ESP_ROOT) -boot order=c \
+		-serial stdio -display sdl
+
+run-fat-ehci: $(ESP_ROOT)
+	cp /usr/share/OVMF/OVMF_VARS_4M.fd $(BUILD_DIR)/OVMF_VARS.fd
+	TMPDIR=$(BUILD_DIR) qemu-system-x86_64 -machine q35 -m 512M \
+		-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+		-drive if=pflash,format=raw,file=$(BUILD_DIR)/OVMF_VARS.fd \
+		-device piix3-usb-uhci,id=uhci \
+		-device usb-ehci,id=ehci \
+		-device usb-tablet \
+		-drive if=none,format=raw,file=fat:rw:$(ESP_ROOT),id=usbfat \
+		-device usb-storage,drive=usbfat -boot order=c \
+		-serial stdio -display sdl
+run-esp: $(ESP_IMG)
+	cp /usr/share/OVMF/OVMF_VARS_4M.fd $(BUILD_DIR)/OVMF_VARS.fd
+	qemu-system-x86_64 -machine q35 -m 512M \
+		-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+		-drive if=pflash,format=raw,file=$(BUILD_DIR)/OVMF_VARS.fd \
+		-device qemu-xhci,id=xhci \
+		-device usb-tablet \
+		-drive if=none,format=raw,file=$(ESP_IMG),id=usbesp \
+		-device usb-storage,drive=usbesp -boot order=c \
+		-serial stdio -display sdl
+
+clean:
+	rm -rf $(BUILD_DIR)

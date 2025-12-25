@@ -1,8 +1,13 @@
 #pragma once
 
 #include "Device.h"
-#include <iostream>
 #include <cstring>
+#ifdef RSE_KERNEL
+#include "KernelStubs.h"
+extern "C" void serial_write(const char *s);
+#else
+#include <iostream>
+#endif
 
 /**
  * Console Device Driver for Braided OS
@@ -45,6 +50,12 @@ int console_close(Device* dev) {
 
 // Read from console (stdin)
 ssize_t console_read(Device* dev, void* buf, size_t count) {
+#ifdef RSE_KERNEL
+    (void)dev;
+    (void)buf;
+    (void)count;
+    return 0;
+#else
     ConsoleData* data = (ConsoleData*)dev->private_data;
     
     // If no buffered input, read a line
@@ -81,15 +92,26 @@ ssize_t console_read(Device* dev, void* buf, size_t count) {
     }
     
     return to_copy;
+#endif
 }
 
 // Write to console (stdout/stderr)
 ssize_t console_write(Device* dev, const void* buf, size_t count) {
+#ifdef RSE_KERNEL
+    (void)dev;
+    const char* data = (const char*)buf;
+    for (size_t i = 0; i < count; ++i) {
+        char tmp[2] = {data[i], '\0'};
+        serial_write(tmp);
+    }
+    return (ssize_t)count;
+#else
     // Write directly to stdout (no buffering for simplicity)
     std::cout.write((const char*)buf, count);
     std::cout.flush();
     
     return count;
+#endif
 }
 
 // ioctl (not implemented)
@@ -102,19 +124,51 @@ int console_ioctl(Device* dev, unsigned long request, void* arg) {
  * Create and initialize console device.
  */
 Device* create_console_device() {
-    Device* dev = new Device();
-    
-    strncpy(dev->name, "console", sizeof(dev->name) - 1);
+#ifdef RSE_KERNEL
+    static Device dev_pool[8];
+    static ConsoleData data_pool[8];
+    static uint32_t next_slot = 0;
+
+    if (next_slot >= 8) {
+        serial_write("[RSE] console device pool exhausted\n");
+        return nullptr;
+    }
+
+    Device* dev = &dev_pool[next_slot];
+    ConsoleData* data = &data_pool[next_slot];
+    next_slot++;
+
+    dev->name[0] = '\0';
     dev->type = DeviceType::CHARACTER;
-    dev->private_data = new ConsoleData();
-    
+    dev->private_data = data;
     dev->open = console_open;
     dev->close = console_close;
     dev->read = console_read;
     dev->write = console_write;
     dev->ioctl = console_ioctl;
-    
+
+    data->input_size = 0;
+    data->input_pos = 0;
+    data->has_input = false;
+    data->input_buffer[0] = '\0';
+
+    strncpy(dev->name, "console", sizeof(dev->name) - 1);
     return dev;
+#else
+    Device* dev = new Device();
+
+    strncpy(dev->name, "console", sizeof(dev->name) - 1);
+    dev->type = DeviceType::CHARACTER;
+    dev->private_data = new ConsoleData();
+
+    dev->open = console_open;
+    dev->close = console_close;
+    dev->read = console_read;
+    dev->write = console_write;
+    dev->ioctl = console_ioctl;
+
+    return dev;
+#endif
 }
 
 /**

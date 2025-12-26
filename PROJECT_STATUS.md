@@ -33,9 +33,10 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **Emergent Scheduler** | ⚠️ Prototype | 4/4 internal | Fairness target met in sim |
 | **System Calls** | ⚠️ Partial | 9 implemented | 43 defined |
 | **Memory Management** | ⚠️ Partial | Basic | Page tables + ring3 smoke mapping (no full isolation) |
-| **Virtual File System** | ⚠️ Partial | Basic | MemFS + minimal BlockFS |
+| **Virtual File System** | ⚠️ Partial | Basic | MemFS + BlockFS + per-process FD tables |
 | **BlockFS Persistence** | ⚠️ Prototype | Basic | `/persist` fixed-slot store |
-| **I/O System** | ⚠️ Partial | Basic | Console + block + net stubs |
+| **I/O System** | ⚠️ Partial | Basic | Console + block + net stubs + IRQ EOI |
+| **FD Isolation** | ⚠️ Prototype | exec_vfs_test | Per-process file descriptor tables |
 | **Userspace Runner** | ⚠️ Prototype | Cooperative | In-kernel user tasks |
 | **Ring3 Smoke (UEFI)** | ⚠️ Prototype | UEFI smoke | Per-process page table mapping |
 | **BraidShell** | ⚠️ Demo | Visual demo | Not integrated in kernel |
@@ -44,7 +45,7 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **UI Input (Keyboard/Mouse)** | ✅ Working | Interactive | Dashboard selection + actions |
 | **Projection Exchange (IVSHMEM)** | ⚠️ Lab-only | 3-torus Multi-VM | Shared-memory transport |
 
-**Test Coverage**: Full system test + UEFI bench + Linux baseline + IVSHMEM exchange; external UDP/HTTP proof captured in `build/boot/proof.log`.
+**Test Coverage**: Full system test + UEFI bench + ring3 smoke + Linux baseline + IVSHMEM exchange; external UDP/HTTP proof captured in `build/boot/proof.log`.
 
 ### **What's Left** 🚧
 

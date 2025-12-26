@@ -2,7 +2,11 @@
 
 #include <cstdint>
 #include <cstring>
+#ifdef RSE_KERNEL
+#include "KernelStubs.h"
+#else
 #include <iostream>
+#endif
 
 /**
  * Page Table Implementation for Braided OS

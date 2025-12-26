@@ -30,6 +30,7 @@ constexpr int SYS_WRITE     = 13;
 constexpr int SYS_LSEEK     = 14;
 constexpr int SYS_STAT      = 15;
 constexpr int SYS_UNLINK    = 16;
+constexpr int SYS_LIST      = 17;
 
 // Memory management
 constexpr int SYS_BRK       = 20;
@@ -70,6 +71,13 @@ constexpr int O_RDWR    = 0x0002;  // Open for reading and writing
 constexpr int O_CREAT   = 0x0040;  // Create file if it doesn't exist
 constexpr int O_TRUNC   = 0x0200;  // Truncate file to zero length
 constexpr int O_APPEND  = 0x0400;  // Append to file
+
+// ========== Memory Protection Flags ==========
+
+constexpr int PROT_NONE  = 0x00;
+constexpr int PROT_READ  = 0x01;
+constexpr int PROT_WRITE = 0x02;
+constexpr int PROT_EXEC  = 0x04;
 
 // ========== Seek Whence ==========
 
@@ -149,11 +157,31 @@ inline int64_t lseek(int fd, int64_t offset, int whence) {
     return syscall(SYS_LSEEK, fd, offset, whence);
 }
 
+inline int64_t unlink(const char* path) {
+    return syscall(SYS_UNLINK, (uint64_t)path);
+}
+
+inline int64_t list(const char* path, void* buf, size_t count) {
+    return syscall(SYS_LIST, (uint64_t)path, (uint64_t)buf, count);
+}
+
 /**
  * Memory management wrappers
  */
 inline int64_t brk(void* addr) {
     return syscall(SYS_BRK, (uint64_t)addr);
+}
+
+inline int64_t mmap(void* addr, size_t size, int prot) {
+    return syscall(SYS_MMAP, (uint64_t)addr, size, prot);
+}
+
+inline int64_t munmap(void* addr, size_t size) {
+    return syscall(SYS_MUNMAP, (uint64_t)addr, size);
+}
+
+inline int64_t mprotect(void* addr, size_t size, int prot) {
+    return syscall(SYS_MPROTECT, (uint64_t)addr, size, prot);
 }
 
 } // namespace os

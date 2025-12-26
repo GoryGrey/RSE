@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/betti_hanoi_integrated.dir/demos/betti_hanoi_integrated.cpp.o -o betti_hanoi_integrated  -latomic 

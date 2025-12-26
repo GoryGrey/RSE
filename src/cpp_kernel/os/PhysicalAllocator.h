@@ -3,7 +3,11 @@
 #include "PageTable.h"
 #include <cstdint>
 #include <cstring>
+#ifdef RSE_KERNEL
+#include "KernelStubs.h"
+#else
 #include <iostream>
+#endif
 
 /**
  * Physical Memory Allocator for Braided OS
@@ -95,9 +99,10 @@ public:
      * @param size Total size in bytes
      */
     PhysicalAllocator(uint64_t base_addr, uint64_t size) 
-        : base_addr_(base_addr),
+        : free_frames_(nullptr),
           total_frames_(size / PAGE_SIZE),
-          free_count_(size / PAGE_SIZE) {
+          free_count_(size / PAGE_SIZE),
+          base_addr_(base_addr) {
         
         free_frames_ = new Bitmap(total_frames_);
         

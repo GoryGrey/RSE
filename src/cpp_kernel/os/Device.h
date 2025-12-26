@@ -1,8 +1,15 @@
 #pragma once
 
 #include <cstdint>
+#include <cstddef>
 #include <cstring>
+#ifdef RSE_KERNEL
+#include "KernelStubs.h"
+using ssize_t = long;
+#else
 #include <iostream>
+#include <sys/types.h>
+#endif
 
 /**
  * Device Abstraction for Braided OS

@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/distributed_counter.dir/demos/distributed_counter.cpp.o -o distributed_counter  -latomic 

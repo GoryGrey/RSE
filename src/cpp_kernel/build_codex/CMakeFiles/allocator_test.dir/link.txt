@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/allocator_test.dir/tests/allocator_test.cpp.o -o allocator_test  -lpthread -latomic 

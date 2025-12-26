@@ -5,6 +5,7 @@ FROM node:20-slim
 RUN apt-get update && apt-get install -y \
     g++ \
     cmake \
+    make \
     git \
     python3 \
     && rm -rf /var/lib/apt/lists/*
@@ -12,25 +13,20 @@ RUN apt-get update && apt-get install -y \
 # Set Working Directory
 WORKDIR /app
 
-# Copy Project Files
-COPY package*.json ./
-COPY . .
-
-# Install Node Dependencies
-RUN npm install
-
-# Create C++ Build Directory
-RUN mkdir -p build
-WORKDIR /app/build
-
-# Compile BettiOS Kernel (C++)
-# If CMakeLists.txt exists in src/cpp_kernel, use it
-RUN if [ -f "../src/cpp_kernel/CMakeLists.txt" ]; then \
-    cmake ../src/cpp_kernel && \
-    make; \
+# Build C++ kernel (optional)
+COPY src/cpp_kernel ./src/cpp_kernel
+RUN if [ -f "src/cpp_kernel/CMakeLists.txt" ]; then \
+    cmake -S src/cpp_kernel -B build/cpp_kernel -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build build/cpp_kernel; \
     fi
 
-WORKDIR /app
+# Build Web Dashboard
+COPY web_dashboard/package*.json ./web_dashboard/
+RUN cd web_dashboard && npm install
+COPY web_dashboard ./web_dashboard
+RUN cd web_dashboard && npm run build
 
-# Default Command: Run Verify Suite (JS + Metal)
-CMD ["sh", "-c", "npx tsx scripts/verify_os_capability.ts && if [ -f build/bettios_kernel ]; then ./build/bettios_kernel; else echo '[Skipped] C++ Kernel not built'; fi"]
+EXPOSE 4173
+
+# Default Command: serve the built dashboard
+CMD ["sh", "-c", "cd web_dashboard && npm run preview -- --host 0.0.0.0 --port 4173"]

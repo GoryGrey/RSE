@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/killer_demo_memory_test.dir/tests/killer_demo_memory_test.cpp.o -o killer_demo_memory_test  -lpthread -latomic 

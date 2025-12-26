@@ -2,8 +2,12 @@
 
 #include "OSProcess.h"
 #include "../FixedStructures.h"
-#include <iostream>
 #include <algorithm>
+#ifdef RSE_KERNEL
+#include "KernelStubs.h"
+#else
+#include <iostream>
+#endif
 
 /**
  * TorusScheduler: Per-torus process scheduler.

@@ -3,7 +3,10 @@
 #include "../demos/BettiRDLKernel.h"
 #include "Projection.h"
 
-#include <cmath>
+#include <cstdint>
+#ifdef RSE_KERNEL
+#include "../os/KernelStubs.h"
+#endif
 
 namespace braided {
 
@@ -33,8 +36,13 @@ public:
     bool injectEvent(int dst_x, int dst_y, int dst_z, int src_x, int src_y, int src_z, int payload) {
         return kernel_.injectEvent(dst_x, dst_y, dst_z, src_x, src_y, src_z, payload);
     }
+
+    void flushPendingEvents() {
+        kernel_.flushPendingEvents();
+    }
     
     void tick() {
+        kernel_.flushPendingEvents();
         kernel_.tick();
     }
     
@@ -68,24 +76,27 @@ public:
         // 2. Summary statistics
         proj.total_events_processed = kernel_.getEventsProcessed();
         proj.current_time = kernel_.getCurrentTime();
-        proj.active_processes = 0;  // Not exposed by BettiRDLKernel
-        proj.pending_events = 0;    // Not exposed by BettiRDLKernel
-        proj.edge_count = 0;        // Not exposed by BettiRDLKernel
+        proj.active_processes = kernel_.getActiveProcessCount();
+        proj.pending_events = kernel_.getPendingEventCount();
+        proj.edge_count = kernel_.getEdgeCount();
         
         // 3. Boundary state (x=0 face)
-        // For Phase 1, we'll use dummy data since we can't access internal state
-        for (size_t i = 0; i < Projection::BOUNDARY_SIZE; i++) {
-            proj.boundary_states[i] = 0;
-        }
+        kernel_.fillBoundaryStates(proj.boundary_states.data(),
+                                   Projection::BOUNDARY_SIZE);
         
         // 4. Constraint vector (domain-specific)
         proj.constraint_vector = {};
         
         // Constraint[0]: Total event count (for conservation)
         proj.constraint_vector[0] = static_cast<int32_t>(kernel_.getEventsProcessed() % INT32_MAX);
-        
+        // Constraint[1]: Active process count
+        proj.constraint_vector[1] = static_cast<int32_t>(kernel_.getActiveProcessCount());
+        // Constraint[2]: Edge count
+        proj.constraint_vector[2] = static_cast<int32_t>(kernel_.getEdgeCount());
         // Constraint[3]: Current time
         proj.constraint_vector[3] = static_cast<int32_t>(kernel_.getCurrentTime() % INT32_MAX);
+        // Constraint[4]: Pending event count
+        proj.constraint_vector[4] = static_cast<int32_t>(kernel_.getPendingEventCount());
         
         // 5. Compute hash for integrity
         proj.state_hash = proj.computeHash();
@@ -129,9 +140,10 @@ private:
      */
     bool verifyConsistency(const Projection& proj) const {
         // Check 1: Time consistency (our time should be close to theirs)
-        int64_t time_diff = static_cast<int64_t>(kernel_.getCurrentTime()) - 
+        int64_t time_diff = static_cast<int64_t>(kernel_.getCurrentTime()) -
                            static_cast<int64_t>(proj.current_time);
-        if (std::abs(time_diff) > 10000) {
+        int64_t abs_diff = time_diff < 0 ? -time_diff : time_diff;
+        if (abs_diff > 10000) {
             // Time divergence > 10000 ticks is suspicious
             std::cerr << "[Torus " << torus_id_ << "] Time divergence: " << time_diff << std::endl;
             return false;

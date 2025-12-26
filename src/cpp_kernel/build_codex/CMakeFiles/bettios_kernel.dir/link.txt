@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/bettios_kernel.dir/Microkernel.cpp.o -o bettios_kernel  -latomic 

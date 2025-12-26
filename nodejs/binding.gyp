@@ -8,11 +8,11 @@
         "../src/cpp_kernel"
       ],
       "libraries": [
-        "-L/home/engine/project/build/shared/lib",
+        "-L/home/gorygrey/Apps/RSE/build/shared/lib",
         "-lbetti_rdl_c",
         "-lstdc++",
         "-latomic",
-        "-Wl,-rpath,/home/engine/project/build/shared/lib"
+        "-Wl,-rpath,/home/gorygrey/Apps/RSE/build/shared/lib"
       ],
       "dependencies": [
         "<!(node -p \"require('node-addon-api').gyp\")"

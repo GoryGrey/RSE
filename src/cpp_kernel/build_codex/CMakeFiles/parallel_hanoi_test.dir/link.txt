@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/parallel_hanoi_test.dir/demos/parallel_hanoi_test.cpp.o -o parallel_hanoi_test  -latomic 

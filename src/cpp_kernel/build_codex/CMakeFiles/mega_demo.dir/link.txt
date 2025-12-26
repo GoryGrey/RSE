@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/mega_demo.dir/demos/scale_demos/mega_demo.cpp.o -o mega_demo  -Wl,-rpath,/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex libbetti_rdl_c.so -latomic 

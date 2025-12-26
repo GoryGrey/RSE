@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/rse_native_hanoi.dir/demos/rse_native_hanoi.cpp.o -o rse_native_hanoi  -latomic 

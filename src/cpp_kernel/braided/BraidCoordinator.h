@@ -3,7 +3,11 @@
 #include "Projection.h"
 #include "BraidedKernel.h"
 
+#ifdef RSE_KERNEL
+#include "../os/KernelStubs.h"
+#else
 #include <iostream>
+#endif
 
 namespace braided {
 

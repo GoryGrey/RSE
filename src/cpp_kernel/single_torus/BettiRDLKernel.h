@@ -1,14 +1,20 @@
 #pragma once
 
-#include "../Allocator.h"
 #include "../FixedStructures.h"
 #include "../ToroidalSpace.h"
 
 #include <algorithm>
-#include <chrono>
 #include <cstdint>
+#ifdef RSE_KERNEL
+#include "../os/KernelStubs.h"
+#include <cstddef>
+constexpr std::size_t LATTICE_SIZE = 32 * 32 * 32;
+#else
+#include "../Allocator.h"
+#include <chrono>
 #include <iostream>
 #include <mutex>
+#endif
 
 // Betti-RDL Integration
 // Combines toroidal space (Betti) with time-native events (RDL)
@@ -137,9 +143,11 @@ private:
 
 public:
   BettiRDLKernel() {
+#ifndef RSE_KERNEL
     std::cout << "[BETTI-RDL] Initializing space-time kernel..." << std::endl;
     std::cout << "    > Spatial: ToroidalSpace<32,32,32>" << std::endl;
     std::cout << "    > Temporal: Event-driven with adaptive delays" << std::endl;
+#endif
 
     out_head_.fill(kInvalidEdge);
     out_tail_.fill(kInvalidEdge);
@@ -229,6 +237,15 @@ public:
   // Process at most max_events NEW events, returning the count processed
   // Does not depend on lifetime events_processed total
   int run(int max_events) {
+#ifdef RSE_KERNEL
+    flushPendingEvents();
+    int events_in_run = 0;
+    while (events_in_run < max_events && !event_queue.empty()) {
+      tick();
+      events_in_run++;
+    }
+    return events_in_run;
+#else
     std::cout << "\n[BETTI-RDL] Starting execution..." << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -273,8 +290,33 @@ public:
     }
 
     return events_in_run;
+#endif
   }
 
   unsigned long long getCurrentTime() const { return current_time; }
   unsigned long long getEventsProcessed() const { return events_processed; }
+
+  uint32_t getActiveProcessCount() const {
+    return static_cast<uint32_t>(space.getProcessCount());
+  }
+
+  uint32_t getPendingEventCount() const {
+    return static_cast<uint32_t>(event_queue.size() + pending_events.size());
+  }
+
+  uint32_t getEdgeCount() const {
+    return static_cast<uint32_t>(edge_count_);
+  }
+
+  void fillBoundaryStates(uint32_t *out, size_t count) const {
+    if (!out || count < static_cast<size_t>(kDim * kDim)) {
+      return;
+    }
+    for (int y = 0; y < kDim; ++y) {
+      for (int z = 0; z < kDim; ++z) {
+        const size_t idx = static_cast<size_t>(y * kDim + z);
+        out[idx] = static_cast<uint32_t>(space.getCellProcessCount(0, y, z));
+      }
+    }
+  }
 };

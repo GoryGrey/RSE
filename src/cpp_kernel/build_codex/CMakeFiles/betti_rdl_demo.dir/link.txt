@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/betti_rdl_demo.dir/demos/betti_rdl_demo.cpp.o -o betti_rdl_demo  -latomic 

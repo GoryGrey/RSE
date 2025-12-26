@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/parallel_scaling_test_v2.dir/demos/parallel_scaling_test.cpp.o -o parallel_scaling_test_v2  -latomic 

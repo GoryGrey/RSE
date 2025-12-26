@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/fixed_structures_test.dir/tests/fixed_structures_test.cpp.o -o fixed_structures_test  -lpthread -latomic 

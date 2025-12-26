@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/os_userspace_init.dir/demos/os_userspace_init.cpp.o -o os_userspace_init  -latomic 

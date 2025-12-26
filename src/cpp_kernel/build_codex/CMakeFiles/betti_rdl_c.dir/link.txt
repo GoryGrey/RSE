@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -O3 -DNDEBUG -shared -Wl,-soname,libbetti_rdl_c.so -o libbetti_rdl_c.so CMakeFiles/betti_rdl_c.dir/betti_rdl_c_api.cpp.o  -latomic 

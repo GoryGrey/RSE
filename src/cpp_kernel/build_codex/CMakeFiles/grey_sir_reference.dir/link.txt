@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/grey_sir_reference.dir/demos/scale_demos/grey_sir_reference.cpp.o -o grey_sir_reference  -latomic 

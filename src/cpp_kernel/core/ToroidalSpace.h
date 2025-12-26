@@ -6,7 +6,11 @@
 #include <array>
 #include <cassert>
 #include <cstddef>
+#ifdef RSE_KERNEL
+#include "../os/KernelStubs.h"
+#else
 #include <iostream>
+#endif
 
 // Forward declaration
 struct Process;
@@ -23,8 +27,10 @@ public:
       static_cast<std::size_t>(DEPTH);
 
   ToroidalSpace() {
+#ifndef RSE_KERNEL
     std::cout << "[Metal] ToroidalSpace <" << WIDTH << "x" << HEIGHT << "x"
               << DEPTH << "> Init." << std::endl;
+#endif
   }
 
   // Wrap Coordinate (Topology Logic)
@@ -64,6 +70,11 @@ public:
   }
 
   [[nodiscard]] std::size_t getProcessCount() const { return total_processes_; }
+
+  [[nodiscard]] std::size_t getCellProcessCount(int x, int y, int z) const {
+    const Cell &cell = cells_[index(x, y, z)];
+    return cell.processes.size();
+  }
 
 private:
   struct Cell {

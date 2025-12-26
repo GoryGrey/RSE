@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/hanoi_demo.dir/demos/hanoi_demo.cpp.o -o hanoi_demo  -latomic 

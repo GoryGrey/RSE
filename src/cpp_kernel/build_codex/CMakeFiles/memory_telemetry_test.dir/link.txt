@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/memory_telemetry_test.dir/tests/memory_telemetry_test.cpp.o -o memory_telemetry_test  -lpthread -latomic 

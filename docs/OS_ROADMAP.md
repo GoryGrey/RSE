@@ -256,6 +256,7 @@ Before starting OS development, we must complete:
   - Reliable delivery (TCP or custom)
   - Low latency (< 1ms)
   - Compression (optional)
+  - Spec: `docs/design/RSE_PROJECTION_EXCHANGE_SPEC.md`
 - [ ] Implement network projection exchange
   - Replace in-memory exchange with network
   - Handle network failures gracefully

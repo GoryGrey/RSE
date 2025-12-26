@@ -1,0 +1,1 @@
+/usr/bin/cc -O3 -DNDEBUG CMakeFiles/c_api_test.dir/tests/c_api_test.c.o -o c_api_test  -Wl,-rpath,/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex libbetti_rdl_c.so -latomic 

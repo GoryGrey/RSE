@@ -1,8 +1,13 @@
 #pragma once
 
+#include "Syscall.h"
 #include <cstdint>
 #include <cstring>
+#ifdef RSE_KERNEL
+#include "KernelStubs.h"
+#else
 #include <iostream>
+#endif
 
 /**
  * File Descriptor Management for Braided OS
@@ -12,19 +17,19 @@
 
 namespace os {
 
-// File descriptor flags
-constexpr uint32_t O_RDONLY  = 0x0000;
-constexpr uint32_t O_WRONLY  = 0x0001;
-constexpr uint32_t O_RDWR    = 0x0002;
-constexpr uint32_t O_CREAT   = 0x0040;
-constexpr uint32_t O_TRUNC   = 0x0200;
-constexpr uint32_t O_APPEND  = 0x0400;
-
 // Seek whence (use system defines from unistd.h)
 // SEEK_SET, SEEK_CUR, SEEK_END are already defined
 
-// Forward declaration
+// Forward declarations
 struct MemFSFile;
+struct BlockFSEntry;
+struct Device;
+
+enum class FDKind : uint8_t {
+    FILE,
+    BLOCK_FILE,
+    DEVICE
+};
 
 /**
  * File Descriptor
@@ -34,13 +39,17 @@ struct MemFSFile;
 struct FileDescriptor {
     int32_t fd;                // File descriptor number
     MemFSFile* file;           // Pointer to file
+    BlockFSEntry* block_file;  // Pointer to block-backed file
+    Device* device;            // Pointer to device
     uint64_t offset;           // Current read/write position
     uint32_t flags;            // Open flags (O_RDONLY, O_WRONLY, etc.)
     uint32_t ref_count;        // Reference count (for dup)
+    FDKind kind;               // File vs device
     bool in_use;               // Is this FD allocated?
     
     FileDescriptor() 
-        : fd(-1), file(nullptr), offset(0), flags(0), ref_count(0), in_use(false) {}
+        : fd(-1), file(nullptr), block_file(nullptr), device(nullptr), offset(0), flags(0),
+          ref_count(0), kind(FDKind::FILE), in_use(false) {}
     
     bool isReadable() const {
         return (flags & O_RDWR) || (flags & O_RDONLY) == O_RDONLY;
@@ -48,6 +57,14 @@ struct FileDescriptor {
     
     bool isWritable() const {
         return (flags & O_RDWR) || (flags & O_WRONLY);
+    }
+    
+    bool isDevice() const {
+        return kind == FDKind::DEVICE;
+    }
+
+    bool isBlockFile() const {
+        return kind == FDKind::BLOCK_FILE;
     }
 };
 
@@ -84,15 +101,64 @@ public:
         for (uint32_t i = 3; i < MAX_FDS; i++) {
             if (!fds_[i].in_use) {
                 fds_[i].file = file;
+                fds_[i].block_file = nullptr;
+                fds_[i].device = nullptr;
                 fds_[i].offset = 0;
                 fds_[i].flags = flags;
                 fds_[i].ref_count = 1;
+                fds_[i].kind = FDKind::FILE;
                 fds_[i].in_use = true;
                 return i;
             }
         }
         
         std::cerr << "[FileDescriptorTable] No free FDs!" << std::endl;
+        return -1;
+    }
+
+    /**
+     * Allocate a new device descriptor.
+     */
+    int32_t allocateDevice(Device* device, uint32_t flags) {
+        if (!device) {
+            return -1;
+        }
+        for (uint32_t i = 3; i < MAX_FDS; i++) {
+            if (!fds_[i].in_use) {
+                fds_[i].file = nullptr;
+                fds_[i].block_file = nullptr;
+                fds_[i].device = device;
+                fds_[i].offset = 0;
+                fds_[i].flags = flags;
+                fds_[i].ref_count = 1;
+                fds_[i].kind = FDKind::DEVICE;
+                fds_[i].in_use = true;
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Allocate a new block-backed file descriptor.
+     */
+    int32_t allocateBlock(BlockFSEntry* file, uint32_t flags) {
+        if (!file) {
+            return -1;
+        }
+        for (uint32_t i = 3; i < MAX_FDS; i++) {
+            if (!fds_[i].in_use) {
+                fds_[i].file = nullptr;
+                fds_[i].block_file = file;
+                fds_[i].device = nullptr;
+                fds_[i].offset = 0;
+                fds_[i].flags = flags;
+                fds_[i].ref_count = 1;
+                fds_[i].kind = FDKind::BLOCK_FILE;
+                fds_[i].in_use = true;
+                return i;
+            }
+        }
         return -1;
     }
     
@@ -118,8 +184,11 @@ public:
         fds_[fd].ref_count--;
         if (fds_[fd].ref_count == 0) {
             fds_[fd].file = nullptr;
+            fds_[fd].block_file = nullptr;
+            fds_[fd].device = nullptr;
             fds_[fd].offset = 0;
             fds_[fd].flags = 0;
+            fds_[fd].kind = FDKind::FILE;
             fds_[fd].in_use = false;
         }
     }
@@ -161,6 +230,25 @@ public:
         }
         
         return -1;
+    }
+
+    /**
+     * Bind stdin/stdout/stderr to a device.
+     */
+    void bindStandardDevices(Device* device) {
+        if (!device) {
+            return;
+        }
+        for (int i = 0; i < 3; i++) {
+            fds_[i].file = nullptr;
+            fds_[i].block_file = nullptr;
+            fds_[i].device = device;
+            fds_[i].offset = 0;
+            fds_[i].flags = O_RDWR;
+            fds_[i].ref_count = 1;
+            fds_[i].kind = FDKind::DEVICE;
+            fds_[i].in_use = true;
+        }
     }
     
     /**

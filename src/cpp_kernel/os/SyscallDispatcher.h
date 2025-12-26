@@ -3,8 +3,14 @@
 #include "Syscall.h"
 #include "OSProcess.h"
 #include "TorusScheduler.h"
-#include <iostream>
+#include "VFS.h"
+#include "PhysicalAllocator.h"
 #include <cstring>
+#ifdef RSE_KERNEL
+#include "KernelStubs.h"
+#else
+#include <iostream>
+#endif
 
 /**
  * SyscallDispatcher: Routes system calls to appropriate handlers.
@@ -21,9 +27,12 @@ class SyscallDispatcher;
 struct TorusContext {
     TorusScheduler* scheduler;
     SyscallDispatcher* dispatcher;
+    VFS* vfs;
+    PhysicalAllocator* phys_alloc;
     uint32_t next_pid;
     
-    TorusContext() : scheduler(nullptr), dispatcher(nullptr), next_pid(1) {}
+    TorusContext() : scheduler(nullptr), dispatcher(nullptr), vfs(nullptr),
+                     phys_alloc(nullptr), next_pid(1) {}
 };
 
 // Thread-local torus context (simulated for now)
@@ -132,6 +141,21 @@ inline int64_t sys_fork(uint64_t, uint64_t, uint64_t,
     child->x = parent->x;
     child->y = parent->y;
     child->z = parent->z;
+
+    if (parent->vmem) {
+        VirtualAllocator* cloned = parent->vmem->clone();
+        if (!cloned) {
+            delete child;
+            return -ENOMEM;
+        }
+        child->vmem = cloned;
+        child->memory.page_table = cloned->getPageTable();
+        child->memory.heap_start = cloned->getHeapStart();
+        child->memory.heap_end = cloned->getHeapEnd();
+        child->memory.heap_brk = cloned->getHeapBrk();
+    } else if (current_torus_context && current_torus_context->phys_alloc) {
+        child->initMemory(current_torus_context->phys_alloc);
+    }
     
     // Add child to scheduler
     if (!scheduler->addProcess(child)) {
@@ -184,33 +208,12 @@ inline int64_t sys_kill(uint64_t pid, uint64_t sig, uint64_t,
  */
 inline int64_t sys_write(uint64_t fd, uint64_t buf_addr, uint64_t count,
                          uint64_t, uint64_t, uint64_t) {
-    OSProcess* current = get_current_process();
-    if (!current) {
-        return -ESRCH;
+    if (!current_torus_context || !current_torus_context->vfs) {
+        return -ENOSYS;
     }
-    
-    // Check file descriptor
-    if (fd >= OSProcess::MAX_FDS) {
-        return -EBADF;
-    }
-    
-    FileDescriptor* file = current->getFD(fd);
-    if (!file) {
-        return -EBADF;
-    }
-    
-    // For now, only support stdout/stderr (console output)
-    if (fd == 1 || fd == 2) {
-        const char* buf = (const char*)buf_addr;
-        for (size_t i = 0; i < count; i++) {
-            std::cout << buf[i];
-        }
-        std::cout.flush();
-        return count;
-    }
-    
-    // Real file I/O not implemented yet
-    return -ENOSYS;
+    return current_torus_context->vfs->write(static_cast<int32_t>(fd),
+                                             (const void *)buf_addr,
+                                             static_cast<uint32_t>(count));
 }
 
 /**
@@ -218,30 +221,82 @@ inline int64_t sys_write(uint64_t fd, uint64_t buf_addr, uint64_t count,
  */
 inline int64_t sys_read(uint64_t fd, uint64_t buf_addr, uint64_t count,
                         uint64_t, uint64_t, uint64_t) {
-    OSProcess* current = get_current_process();
-    if (!current) {
-        return -ESRCH;
+    if (!current_torus_context || !current_torus_context->vfs) {
+        return -ENOSYS;
     }
-    
-    // Check file descriptor
-    if (fd >= OSProcess::MAX_FDS) {
-        return -EBADF;
+    return current_torus_context->vfs->read(static_cast<int32_t>(fd),
+                                            (void *)buf_addr,
+                                            static_cast<uint32_t>(count));
+}
+
+/**
+ * sys_open: Open a file
+ */
+inline int64_t sys_open(uint64_t path_addr, uint64_t flags, uint64_t mode,
+                        uint64_t, uint64_t, uint64_t) {
+    if (!current_torus_context || !current_torus_context->vfs) {
+        return -ENOSYS;
     }
-    
-    FileDescriptor* file = current->getFD(fd);
-    if (!file) {
-        return -EBADF;
+    const char* path = reinterpret_cast<const char*>(path_addr);
+    if (!path) {
+        return -EINVAL;
     }
-    
-    // For now, only support stdin (console input)
-    if (fd == 0) {
-        char* buf = (char*)buf_addr;
-        std::cin.read(buf, count);
-        return std::cin.gcount();
+    return current_torus_context->vfs->open(path,
+                                            static_cast<uint32_t>(flags),
+                                            static_cast<uint32_t>(mode));
+}
+
+/**
+ * sys_close: Close a file descriptor
+ */
+inline int64_t sys_close(uint64_t fd, uint64_t, uint64_t,
+                         uint64_t, uint64_t, uint64_t) {
+    if (!current_torus_context || !current_torus_context->vfs) {
+        return -ENOSYS;
     }
-    
-    // Real file I/O not implemented yet
-    return -ENOSYS;
+    return current_torus_context->vfs->close(static_cast<int32_t>(fd));
+}
+
+/**
+ * sys_lseek: Seek within a file
+ */
+inline int64_t sys_lseek(uint64_t fd, uint64_t offset, uint64_t whence,
+                         uint64_t, uint64_t, uint64_t) {
+    if (!current_torus_context || !current_torus_context->vfs) {
+        return -ENOSYS;
+    }
+    return current_torus_context->vfs->lseek(static_cast<int32_t>(fd),
+                                             static_cast<int64_t>(offset),
+                                             static_cast<int>(whence));
+}
+
+/**
+ * sys_unlink: Delete a file
+ */
+inline int64_t sys_unlink(uint64_t path_addr, uint64_t, uint64_t,
+                          uint64_t, uint64_t, uint64_t) {
+    if (!current_torus_context || !current_torus_context->vfs) {
+        return -ENOSYS;
+    }
+    const char* path = reinterpret_cast<const char*>(path_addr);
+    if (!path) {
+        return -EINVAL;
+    }
+    return current_torus_context->vfs->unlink(path);
+}
+
+inline int64_t sys_list(uint64_t path_addr, uint64_t buf_addr, uint64_t count,
+                        uint64_t, uint64_t, uint64_t) {
+    if (!current_torus_context || !current_torus_context->vfs) {
+        return -ENOSYS;
+    }
+    const char* path = reinterpret_cast<const char*>(path_addr);
+    char* buf = reinterpret_cast<char*>(buf_addr);
+    if (!buf || count == 0) {
+        return -EINVAL;
+    }
+    return current_torus_context->vfs->list(path ? path : "/", buf,
+                                           static_cast<uint32_t>(count));
 }
 
 /**
@@ -253,19 +308,50 @@ inline int64_t sys_brk(uint64_t addr, uint64_t, uint64_t,
     if (!current) {
         return -ESRCH;
     }
-    
-    // If addr is 0, return current break
-    if (addr == 0) {
-        return current->memory.heap_brk;
+    if (!current->vmem) {
+        return -ENOSYS;
     }
-    
-    // Set new break
-    if (addr > current->memory.heap_end) {
-        return -ENOMEM;  // Out of memory
+    uint64_t new_brk = current->vmem->brk(addr);
+    if (new_brk == 0) {
+        return -ENOMEM;
     }
-    
-    current->memory.heap_brk = addr;
-    return addr;
+    current->memory.heap_brk = new_brk;
+    return new_brk;
+}
+
+inline int64_t sys_mmap(uint64_t addr, uint64_t size, uint64_t prot,
+                        uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current || !current->vmem) {
+        return -ESRCH;
+    }
+    uint64_t mapped = current->vmem->mmap(addr, size, prot);
+    if (mapped == 0) {
+        return -ENOMEM;
+    }
+    return mapped;
+}
+
+inline int64_t sys_munmap(uint64_t addr, uint64_t size, uint64_t,
+                          uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current || !current->vmem) {
+        return -ESRCH;
+    }
+    current->vmem->munmap(addr, size);
+    return 0;
+}
+
+inline int64_t sys_mprotect(uint64_t addr, uint64_t size, uint64_t prot,
+                            uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current || !current->vmem) {
+        return -ESRCH;
+    }
+    if (!current->vmem->mprotect(addr, size, prot)) {
+        return -EACCES;
+    }
+    return 0;
 }
 
 // ========== System Call Dispatcher ==========
@@ -288,9 +374,17 @@ public:
         register_handler(SYS_FORK, sys_fork);
         register_handler(SYS_WAIT, sys_wait);
         register_handler(SYS_KILL, sys_kill);
+        register_handler(SYS_OPEN, sys_open);
+        register_handler(SYS_CLOSE, sys_close);
         register_handler(SYS_WRITE, sys_write);
         register_handler(SYS_READ, sys_read);
+        register_handler(SYS_LSEEK, sys_lseek);
+        register_handler(SYS_UNLINK, sys_unlink);
+        register_handler(SYS_LIST, sys_list);
         register_handler(SYS_BRK, sys_brk);
+        register_handler(SYS_MMAP, sys_mmap);
+        register_handler(SYS_MUNMAP, sys_munmap);
+        register_handler(SYS_MPROTECT, sys_mprotect);
     }
     
     /**

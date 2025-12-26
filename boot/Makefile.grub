@@ -1,0 +1,62 @@
+BOOT_DIR := boot
+BUILD_DIR := build/boot
+ISO_ROOT := $(BUILD_DIR)/grub_iso
+ISO := $(BUILD_DIR)/rse_grub.iso
+KERNEL := $(BUILD_DIR)/kernel.elf
+LOADER_OBJ := $(BUILD_DIR)/uefi_loader.o
+LOADER_SO := $(BUILD_DIR)/uefi_loader.so
+LOADER_EFI := $(BUILD_DIR)/RSEBOOT.EFI
+
+CC := gcc
+CFLAGS := -I/usr/include/efi -I/usr/include/efi/x86_64 -fPIC -fshort-wchar -mno-red-zone -ffreestanding -fno-stack-protector -O2 -Wall -Wextra
+LDFLAGS := -nostdlib -znocombreloc -T /usr/lib/elf_x86_64_efi.lds -shared -Bsymbolic \
+	-Wl,-e,efi_main
+
+KERNEL_CFLAGS := -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11
+KERNEL_LDFLAGS := -T $(BOOT_DIR)/linker.ld -nostdlib -Wl,-z,max-page-size=0x1000 -no-pie
+
+.PHONY: all iso run clean
+
+all: $(ISO)
+
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+$(KERNEL): $(BOOT_DIR)/kernel.c $(BOOT_DIR)/linker.ld | $(BUILD_DIR)
+	$(CC) $(KERNEL_CFLAGS) -c $(BOOT_DIR)/kernel.c -o $(BUILD_DIR)/kernel.o
+	$(CC) $(KERNEL_CFLAGS) $(KERNEL_LDFLAGS) -o $(KERNEL) $(BUILD_DIR)/kernel.o
+
+$(LOADER_OBJ): $(BOOT_DIR)/uefi_loader.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $(BOOT_DIR)/uefi_loader.c -o $(LOADER_OBJ)
+
+$(LOADER_SO): $(LOADER_OBJ)
+	$(CC) $(LOADER_OBJ) $(LDFLAGS) -o $(LOADER_SO)
+
+$(LOADER_EFI): $(LOADER_SO)
+	objcopy -j .text -j .sdata -j .data -j .dynamic -j .dynsym -j .rel -j .rela \
+		-j .reloc --target=efi-app-x86_64 $(LOADER_SO) $(LOADER_EFI)
+
+$(ISO): $(KERNEL) $(LOADER_EFI) $(BOOT_DIR)/grub.cfg | $(BUILD_DIR)
+	rm -rf $(ISO_ROOT)
+	mkdir -p $(ISO_ROOT)/boot/grub
+	mkdir -p $(ISO_ROOT)/EFI/RSE
+	mkdir -p $(ISO_ROOT)/EFI/BOOT
+	cp $(BOOT_DIR)/grub.cfg $(ISO_ROOT)/boot/grub/grub.cfg
+	cp $(KERNEL) $(ISO_ROOT)/kernel.elf
+	cp $(LOADER_EFI) $(ISO_ROOT)/EFI/RSE/RSEBOOT.EFI
+	cp $(LOADER_EFI) $(ISO_ROOT)/EFI/BOOT/BOOTX64.EFI
+	grub-mkrescue -o $(ISO) -d /usr/lib/grub/x86_64-efi \
+		--modules="part_gpt part_msdos fat iso9660 chain" \
+		--locales="" --themes="" \
+		$(ISO_ROOT)
+
+run: $(ISO)
+	cp /usr/share/OVMF/OVMF_VARS_4M.fd $(BUILD_DIR)/OVMF_VARS.fd
+	qemu-system-x86_64 -machine q35 -m 512M \
+		-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
+		-drive if=pflash,format=raw,file=$(BUILD_DIR)/OVMF_VARS.fd \
+		-cdrom $(ISO) -boot order=d \
+		-serial stdio -display sdl
+
+clean:
+	rm -rf $(BUILD_DIR)

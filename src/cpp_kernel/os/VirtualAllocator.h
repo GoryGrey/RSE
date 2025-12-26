@@ -2,7 +2,11 @@
 
 #include "PageTable.h"
 #include "PhysicalAllocator.h"
+#ifdef RSE_KERNEL
+#include "KernelStubs.h"
+#else
 #include <iostream>
+#endif
 
 /**
  * Virtual Memory Allocator for Braided OS
@@ -274,6 +278,22 @@ public:
     uint64_t getHeapStart() const { return heap_start_; }
     uint64_t getHeapEnd() const { return heap_end_; }
     uint64_t getHeapBrk() const { return heap_brk_; }
+    PageTable* getPageTable() const { return page_table_; }
+    PhysicalAllocator* getPhysicalAllocator() const { return phys_alloc_; }
+
+    VirtualAllocator* clone() const {
+        PageTable* new_pt = page_table_ ? page_table_->clone() : nullptr;
+        if (!new_pt) {
+            return nullptr;
+        }
+        VirtualAllocator* va = new VirtualAllocator(new_pt, phys_alloc_);
+        va->heap_start_ = heap_start_;
+        va->heap_end_ = heap_end_;
+        va->heap_brk_ = heap_brk_;
+        va->stack_start_ = stack_start_;
+        va->stack_end_ = stack_end_;
+        return va;
+    }
     
     /**
      * Print memory statistics.

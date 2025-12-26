@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/threadsafe_scheduler_test.dir/tests/threadsafe_scheduler_test.cpp.o -o threadsafe_scheduler_test  -lpthread -latomic 

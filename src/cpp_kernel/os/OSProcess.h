@@ -2,7 +2,14 @@
 
 #include <cstdint>
 #include <cstring>
+#include "VirtualAllocator.h"
+#ifdef RSE_KERNEL
+#include "KernelStubs.h"
+#else
 #include <iostream>
+#endif
+
+struct rse_syscalls;
 
 /**
  * OSProcess: Real operating system process abstraction.
@@ -52,7 +59,7 @@ struct CPUContext {
  */
 struct MemoryLayout {
     // Virtual address space
-    uint64_t* page_table;       // Pointer to page table
+    PageTable* page_table;      // Pointer to page table
     
     // Code segment
     uint64_t code_start;
@@ -78,15 +85,15 @@ struct MemoryLayout {
 };
 
 /**
- * File descriptor (simplified).
+ * Process-local file descriptor placeholder.
  */
-struct FileDescriptor {
+struct ProcessFD {
     int fd;
     uint64_t offset;
     uint32_t flags;
     void* private_data;
     
-    FileDescriptor() : fd(-1), offset(0), flags(0), private_data(nullptr) {}
+    ProcessFD() : fd(-1), offset(0), flags(0), private_data(nullptr) {}
 };
 
 /**
@@ -117,7 +124,15 @@ public:
     
     // ========== I/O ==========
     static constexpr int MAX_FDS = 64;
-    FileDescriptor open_files[MAX_FDS];
+    ProcessFD open_files[MAX_FDS];
+
+    VirtualAllocator* vmem;
+
+    // Optional userspace entry hook (cooperative in-kernel runner)
+    using UserStepFn = void (*)(OSProcess* proc, void* user_ctx, const ::rse_syscalls* sys);
+    UserStepFn user_step;
+    void* user_ctx;
+    const ::rse_syscalls* syscalls;
     
     // ========== Spatial Position (for Betti integration) ==========
     int x, y, z;                // Position in toroidal space
@@ -133,6 +148,10 @@ public:
           time_slice(100),        // Default time slice
           total_runtime(0),
           last_scheduled(0),
+          vmem(nullptr),
+          user_step(nullptr),
+          user_ctx(nullptr),
+          syscalls(nullptr),
           x(0), y(0), z(0)
     {
         // Initialize standard file descriptors
@@ -143,6 +162,17 @@ public:
         for (int i = 3; i < MAX_FDS; i++) {
             open_files[i].fd = -1;
         }
+    }
+
+    void initMemory(PhysicalAllocator* phys_alloc) {
+        if (vmem) {
+            return;
+        }
+        memory.page_table = new PageTable();
+        vmem = new VirtualAllocator(memory.page_table, phys_alloc);
+        memory.heap_start = vmem->getHeapStart();
+        memory.heap_end = vmem->getHeapEnd();
+        memory.heap_brk = vmem->getHeapBrk();
     }
     
     // ========== State Management ==========
@@ -235,9 +265,17 @@ public:
         // - Run process code for one time slice
         // - Handle system calls
         // - Handle interrupts
-        
+        if (user_step && syscalls) {
+            user_step(this, user_ctx, syscalls);
+        }
         // For now: just consume time
         tick();
+    }
+
+    void setUserEntry(UserStepFn step, void* ctx, const ::rse_syscalls* sys) {
+        user_step = step;
+        user_ctx = ctx;
+        syscalls = sys;
     }
     
     // ========== Memory Management ==========
@@ -246,24 +284,22 @@ public:
      * Allocate memory (sbrk-like).
      */
     uint64_t allocateMemory(uint64_t size) {
-        uint64_t old_brk = memory.heap_brk;
-        memory.heap_brk += size;
-        
-        // Check if we exceeded heap limit
-        if (memory.heap_brk > memory.heap_end) {
-            memory.heap_brk = old_brk;  // Rollback
-            return 0;  // Out of memory
+        if (vmem) {
+            uint64_t addr = vmem->allocate(size);
+            memory.heap_brk = vmem->getHeapBrk();
+            return addr;
         }
-        
-        return old_brk;
+        return 0;
     }
     
     /**
      * Free memory (simplified - no actual deallocation).
      */
     void freeMemory(uint64_t addr) {
-        // In real implementation: mark pages as free
-        // For now: no-op
+        if (vmem) {
+            vmem->free(addr, PAGE_SIZE);
+            memory.heap_brk = vmem->getHeapBrk();
+        }
     }
     
     // ========== File Descriptors ==========
@@ -296,7 +332,7 @@ public:
     /**
      * Get file descriptor.
      */
-    FileDescriptor* getFD(int fd) {
+    ProcessFD* getFD(int fd) {
         if (fd >= 0 && fd < MAX_FDS && open_files[fd].fd != -1) {
             return &open_files[fd];
         }

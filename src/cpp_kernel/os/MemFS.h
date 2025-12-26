@@ -4,7 +4,17 @@
 #include <cstdint>
 #include <cstring>
 #include <cstdlib>
+#include <cstddef>
+#ifdef RSE_KERNEL
+#include "KernelStubs.h"
+extern "C" {
+void* malloc(size_t size);
+void* realloc(void* ptr, size_t size);
+void free(void* ptr);
+}
+#else
 #include <iostream>
+#endif
 
 /**
  * Simple In-Memory File System (MemFS)
@@ -225,6 +235,29 @@ public:
         std::cout << "[MemFS] Files: " << num_files_ << " / " << MAX_FILES
                   << ", Total size: " << (total_size / 1024) << " KB"
                   << std::endl;
+    }
+
+    uint32_t list(char* out, uint32_t max) const {
+        if (!out || max == 0) {
+            return 0;
+        }
+        uint32_t written = 0;
+        for (uint32_t i = 0; i < MAX_FILES; ++i) {
+            if (!files_[i].in_use) {
+                continue;
+            }
+            const char* name = files_[i].name;
+            uint32_t j = 0;
+            while (name[j] && written + 1 < max) {
+                out[written++] = name[j++];
+            }
+            if (written + 1 >= max) {
+                break;
+            }
+            out[written++] = '\n';
+        }
+        out[written] = '\0';
+        return written;
     }
 };
 

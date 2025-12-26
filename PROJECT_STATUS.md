@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-**The Bible - Last Updated: December 26, 2025**
+**The Bible - Last Updated: December 26, 2025 (UEFI bench refresh + ring3 exec smoke pass)**
 
 ---
 
@@ -32,7 +32,7 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **Memory Optimization** | ⚠️ Prototype | Design-validated | O(1) bounded at 450MB |
 | **Emergent Scheduler** | ⚠️ Prototype | 4/4 internal | Fairness target met in sim |
 | **System Calls** | ⚠️ Partial | 9 implemented | 43 defined |
-| **Memory Management** | ⚠️ Partial | Basic | Page tables + ring3 smoke mapping (no full isolation) |
+| **Memory Management** | ⚠️ Partial | Basic | Page tables + ring3 map + exec (no full isolation) |
 | **Virtual File System** | ⚠️ Partial | Basic | MemFS + BlockFS + per-process FD tables |
 | **BlockFS Persistence** | ⚠️ Prototype | Basic | `/persist` fixed-slot store |
 | **I/O System** | ⚠️ Partial | Basic | Console + block + net stubs + IRQ EOI |
@@ -45,7 +45,7 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **UI Input (Keyboard/Mouse)** | ✅ Working | Interactive | Dashboard selection + actions |
 | **Projection Exchange (IVSHMEM)** | ⚠️ Lab-only | 3-torus Multi-VM | Shared-memory transport |
 
-**Test Coverage**: Full system test + UEFI bench + ring3 smoke/exec + Linux baseline + IVSHMEM exchange; external UDP/HTTP proof captured in `build/boot/proof.log`.
+**Test Coverage**: Full system test + UEFI bench + ring3 smoke/exec (UEFI run-iso) + Linux baseline + IVSHMEM exchange; external UDP/HTTP proof captured in `build/boot/proof.log`.
 
 ### **What's Left** 🚧
 
@@ -135,16 +135,16 @@ RSE/
 
 Cycle-counted benchmarks captured in headless QEMU (TSC cycles):
 
-- **Compute**: 400,000 ops, 62,820,749 cycles (157 cycles/op)
-- **Memory**: 67,108,864 bytes, 1,487,532,357 cycles (22 cycles/byte)
-- **RAMFS File I/O**: 288 ops, 9,226,646 cycles (32036 cycles/op)
-- **UEFI FAT File I/O (USB disk)**: 144 ops, 1,051,858,470 cycles (7304572 cycles/op)
-- **UEFI Raw Block I/O (USB disk)**: 524288 bytes, write 7,695,110 cycles (14 cycles/byte), read 13,879,358 cycles (26 cycles/byte)
-- **Virtio-Block I/O (disk)**: 512 bytes, write 490,033,947 cycles (957097 cycles/byte), read 4,059,851 cycles (7929 cycles/byte)
-- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,075,887 cycles
-- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 24,842,814 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
-- **HTTP Loopback**: 50000 requests, 64,460,828 cycles (1289 cycles/req)
-- **Init Device Smoke Tests**: /dev/blk0 (512B, 256 ops, 131072 bytes, 0 mismatches), /dev/loopback (13B echo, 13B read), /dev/net0 (16384B tx, 16384B rx)
+- **Compute**: 400,000 ops, 25,898,701 cycles (64 cycles/op)
+- **Memory**: 67,108,864 bytes, 155,251,839 cycles (2 cycles/byte)
+- **RAMFS File I/O**: 288 ops, 14,595,813 cycles (50679 cycles/op)
+- **UEFI FAT File I/O (USB disk)**: 144 ops, 1,280,419,602 cycles (8891802 cycles/op)
+- **UEFI Raw Block I/O (USB disk)**: 524288 bytes, write 21,276,876 cycles (40 cycles/byte), read 15,944,929 cycles (30 cycles/byte)
+- **Virtio-Block I/O (disk)**: 512 bytes, write 424,047,656 cycles (828218 cycles/byte), read 9,405,237 cycles (18369 cycles/byte)
+- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,119,277 cycles
+- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 426,634,266 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
+- **HTTP Loopback**: 50000 requests, 60,981,343 cycles (1219 cycles/req)
+- **Init Device Smoke Tests**: /dev/blk0 (512B, 256 ops, 131072 bytes, 0 mismatches, 452,010,290 cycles), /dev/loopback (13B echo, 13B read), /dev/net0 (16,384B tx, 16,384B rx, 35,309,646 cycles)
 
 Notes:
 - RAMFS is in-kernel (real ops, in-memory).
@@ -497,6 +497,6 @@ This OS is not built on traditional hierarchies. It's built on:
 
 **Status**: 45% Complete (Prototype) | **Next Milestone**: User-mode isolation + ELF loader
 
-**Last Updated**: December 26, 2025
+**Last Updated**: December 26, 2025 (UEFI bench refresh + ring3 exec smoke pass)
 
 **"Stay degen. Stay future. 🚀"**

@@ -1,7 +1,7 @@
 # RSE (Resilient Spatial Execution)
 
-**Last Updated**: December 26, 2025  
-**Status**: Research prototype. Bootable UEFI kernel with an interactive dashboard (keyboard/mouse) and in-kernel workloads; braided projection exchange works in multi-VM via shared memory. Network transport and user-mode isolation are still in progress.
+**Last Updated**: December 26, 2025 (UEFI bench refresh + ring3 exec smoke pass)  
+**Status**: Research prototype. Bootable UEFI kernel with an interactive dashboard (keyboard/mouse) and in-kernel workloads; braided projection exchange works in multi-VM via shared memory. Ring3 smoke + exec works in UEFI, but full user-mode isolation and network transport are still in progress.
 
 **Quick Links**: [Project Status](PROJECT_STATUS.md) | [Documentation](#documentation)
 
@@ -48,6 +48,7 @@ Key properties:
 - **/dev/net0 UDP loopback** with simple RX/echo path (no full IP stack yet).
 - **Init shell demo** (stdout + cat + device probes).
 - **Cooperative userspace tasks** (in-kernel runner using syscalls).
+- **Ring3 smoke + exec path** in UEFI (page mapping + syscall exec).
 - **Framebuffer dashboard** (boot + benchmark summary panels, keyboard/mouse input, on-screen console).
 - **Braided runtime** (single-node, in-kernel projections + constraint application).
 - **Projection exchange across 3 VMs** via IVSHMEM shared memory transport.
@@ -55,7 +56,7 @@ Key properties:
 
 ## Known Limitations
 
-- No user-mode isolation or ELF loader yet (userspace is cooperative/in-kernel).
+- No full user-mode isolation yet; ring3 smoke + exec works in UEFI, but most userspace remains cooperative/in-kernel.
 - Network RX is working for basic ARP/UDP, but needs stress and driver hardening.
 - No full IP/TCP stack (only minimal IPv4/UDP parsing + echo).
   - Raw frame mode can be enabled at build time: `RSE_NET_RAW=1`.
@@ -68,19 +69,19 @@ Key properties:
 
 Cycle-counted benchmarks captured in headless QEMU (see `PROJECT_STATUS.md` for the latest run):
 
-- **Compute**: 400,000 ops, 62,820,749 cycles (157 cycles/op)
-- **Memory**: 67,108,864 bytes, 1,487,532,357 cycles (22 cycles/byte)
-- **RAMFS File I/O**: 288 ops, 9,226,646 cycles (32036 cycles/op)
-- **UEFI FAT File I/O (USB disk)**: 144 ops, 1,051,858,470 cycles (7304572 cycles/op)
-- **UEFI Raw Block I/O (USB disk)**: 524,288 bytes, write 7,695,110 cycles (14 cycles/byte), read 13,879,358 cycles (26 cycles/byte)
-- **Virtio-Block I/O (disk)**: 512 bytes, write 490,033,947 cycles (957097 cycles/byte), read 4,059,851 cycles (7929 cycles/byte)
-- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,075,887 cycles
-- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 24,842,814 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
-- **HTTP Loopback**: 50,000 requests, 64,460,828 cycles (1289 cycles/req)
+- **Compute**: 400,000 ops, 25,898,701 cycles (64 cycles/op)
+- **Memory**: 67,108,864 bytes, 155,251,839 cycles (2 cycles/byte)
+- **RAMFS File I/O**: 288 ops, 14,595,813 cycles (50679 cycles/op)
+- **UEFI FAT File I/O (USB disk)**: 144 ops, 1,280,419,602 cycles (8891802 cycles/op)
+- **UEFI Raw Block I/O (USB disk)**: 524,288 bytes, write 21,276,876 cycles (40 cycles/byte), read 15,944,929 cycles (30 cycles/byte)
+- **Virtio-Block I/O (disk)**: 512 bytes, write 424,047,656 cycles (828218 cycles/byte), read 9,405,237 cycles (18369 cycles/byte)
+- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,119,277 cycles
+- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 426,634,266 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
+- **HTTP Loopback**: 50,000 requests, 60,981,343 cycles (1219 cycles/req)
 
 Notes:
 - These are **QEMU TSC cycle counts**, not wall-clock time.
-- Latest parsed run: `benchmarks/uefi_bench.json` (raw log: `benchmarks/uefi_serial.log`).
+- Parsed benchmark files live in `benchmarks/uefi_bench.json` (raw log: `benchmarks/uefi_serial.log`); refresh via scripts when needed.
 - Linux baseline results live in `benchmarks/linux_baseline.json`.
 - External UDP/HTTP RX proof log is saved at `build/boot/proof.log`.
 

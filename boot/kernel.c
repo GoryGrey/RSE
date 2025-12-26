@@ -127,6 +127,66 @@ void serial_write_u64(uint64_t value) {
     }
 }
 
+struct gdt_entry {
+    uint16_t limit_low;
+    uint16_t base_low;
+    uint8_t base_mid;
+    uint8_t access;
+    uint8_t gran;
+    uint8_t base_high;
+} __attribute__((packed));
+
+struct gdt_ptr {
+    uint16_t limit;
+    uint64_t base;
+} __attribute__((packed));
+
+static struct gdt_entry gdt_entries[5];
+static struct gdt_ptr gdt_descriptor;
+
+enum {
+    GDT_KERNEL_CODE = 0x08,
+    GDT_KERNEL_DATA = 0x10,
+    GDT_USER_CODE = 0x18,
+    GDT_USER_DATA = 0x20
+};
+
+static void gdt_set_entry(int idx, uint8_t access, uint8_t flags) {
+    gdt_entries[idx].limit_low = 0;
+    gdt_entries[idx].base_low = 0;
+    gdt_entries[idx].base_mid = 0;
+    gdt_entries[idx].access = access;
+    gdt_entries[idx].gran = flags;
+    gdt_entries[idx].base_high = 0;
+}
+
+static void init_gdt_user_segments(void) {
+    gdt_set_entry(0, 0x00, 0x00);
+    gdt_set_entry(1, 0x9A, 0x20);  // Kernel code, long mode
+    gdt_set_entry(2, 0x92, 0x00);  // Kernel data
+    gdt_set_entry(3, 0xFA, 0x20);  // User code, long mode
+    gdt_set_entry(4, 0xF2, 0x00);  // User data
+
+    gdt_descriptor.limit = (uint16_t)(sizeof(gdt_entries) - 1);
+    gdt_descriptor.base = (uint64_t)(uintptr_t)&gdt_entries[0];
+
+    __asm__ volatile("lgdt %0" : : "m"(gdt_descriptor));
+
+    uint16_t data_sel = GDT_KERNEL_DATA;
+    __asm__ volatile(
+        "mov %0, %%ax\n"
+        "mov %%ax, %%ds\n"
+        "mov %%ax, %%es\n"
+        "mov %%ax, %%ss\n"
+        "mov %%ax, %%fs\n"
+        "mov %%ax, %%gs\n"
+        :
+        : "r"(data_sel)
+        : "ax");
+
+    serial_write("[RSE] GDT user segments installed\n");
+}
+
 static inline uint64_t rdtsc(void) {
     uint32_t lo;
     uint32_t hi;
@@ -3859,6 +3919,7 @@ static void kmain(struct rse_boot_info *boot_info) {
     g_boot_info = boot_info;
     serial_init();
     serial_write("[RSE] UEFI kernel start\n");
+    init_gdt_user_segments();
 
     if (boot_info && boot_info->magic == RSE_BOOT_MAGIC) {
         g_uefi_framebuffer.address = (void *)(uintptr_t)boot_info->fb_addr;

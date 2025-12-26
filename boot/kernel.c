@@ -13,10 +13,14 @@
 #ifndef RSE_ENABLE_USERMODE
 #define RSE_ENABLE_USERMODE 0
 #endif
+#ifndef RSE_AUTO_EXIT
+#define RSE_AUTO_EXIT 0
+#endif
 
 void *memcpy(void *dst, const void *src, size_t count);
 void *memset(void *dst, int value, size_t count);
 static void *uefi_alloc_pages(size_t bytes);
+void serial_write(const char *s);
 extern int rse_os_user_map(uint64_t code_vaddr, uint64_t stack_vaddr,
                            uint64_t *code_phys_out, uint64_t *stack_phys_out);
 extern int rse_os_prepare_ring3(uint32_t torus_id);
@@ -92,6 +96,13 @@ static inline uint32_t inl(uint16_t port) {
     uint32_t ret;
     __asm__ volatile("inl %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
+}
+
+static inline void rse_poweroff(void) {
+    outw(0x604, 0x2000);
+    outw(0xB004, 0x2000);
+    outw(0x4004, 0x3400);
+    hlt_loop();
 }
 
 static void serial_init(void) {
@@ -4677,6 +4688,10 @@ static void kmain(struct rse_boot_info *boot_info) {
     if (g_framebuffer) {
         fb_draw_dashboard(g_framebuffer);
     }
+#if RSE_AUTO_EXIT
+    serial_write("[RSE] auto shutdown\n");
+    rse_poweroff();
+#endif
     if (g_framebuffer) {
         uefi_pointer_init(boot_info);
         uefi_keyboard_init(boot_info);

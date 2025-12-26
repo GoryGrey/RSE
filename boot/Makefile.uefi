@@ -37,10 +37,11 @@ RSE_NET_EXCHANGE ?= 0
 RSE_SHM_EXCHANGE ?= 0
 RSE_NET_RAW ?= 0
 RSE_ENABLE_USERMODE ?= 0
-KERNEL_CFLAGS := -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 \
-	-I$(EFI_INC) -I$(EFI_INC_ARCH) -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=$(RSE_TORUS_ID) -DRSE_NET_EXCHANGE=$(RSE_NET_EXCHANGE) -DRSE_SHM_EXCHANGE=$(RSE_SHM_EXCHANGE) -DRSE_NET_RAW=$(RSE_NET_RAW) -DRSE_ENABLE_USERMODE=$(RSE_ENABLE_USERMODE)
-KERNEL_CXXFLAGS := -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 \
-	-fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -DRSE_TORUS_ID=$(RSE_TORUS_ID) -DRSE_NET_EXCHANGE=$(RSE_NET_EXCHANGE) -DRSE_SHM_EXCHANGE=$(RSE_SHM_EXCHANGE) -DRSE_NET_RAW=$(RSE_NET_RAW) -DRSE_ENABLE_USERMODE=$(RSE_ENABLE_USERMODE)
+RSE_AUTO_EXIT ?= 0
+KERNEL_CFLAGS = -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 \
+	-I$(EFI_INC) -I$(EFI_INC_ARCH) -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=$(RSE_TORUS_ID) -DRSE_NET_EXCHANGE=$(RSE_NET_EXCHANGE) -DRSE_SHM_EXCHANGE=$(RSE_SHM_EXCHANGE) -DRSE_NET_RAW=$(RSE_NET_RAW) -DRSE_ENABLE_USERMODE=$(RSE_ENABLE_USERMODE) -DRSE_AUTO_EXIT=$(RSE_AUTO_EXIT)
+KERNEL_CXXFLAGS = -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 \
+	-fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -DRSE_TORUS_ID=$(RSE_TORUS_ID) -DRSE_NET_EXCHANGE=$(RSE_NET_EXCHANGE) -DRSE_SHM_EXCHANGE=$(RSE_SHM_EXCHANGE) -DRSE_NET_RAW=$(RSE_NET_RAW) -DRSE_ENABLE_USERMODE=$(RSE_ENABLE_USERMODE) -DRSE_AUTO_EXIT=$(RSE_AUTO_EXIT)
 KERNEL_LDFLAGS := -T $(BOOT_DIR)/linker.ld -nostdlib -Wl,-z,max-page-size=0x1000 -no-pie
 
 PART_START := 2048
@@ -195,6 +196,7 @@ run-disk-mbr: $(DISK_MBR)
 		-device ide-hd,drive=hdmbr,bus=ahci.0 -boot order=c \
 		-serial stdio -display sdl
 
+run-iso: RSE_AUTO_EXIT=1
 run-iso: $(ISO_EFI) $(DATA_IMG) $(RAW_IMG) $(VIRTIO_IMG)
 	cp /usr/share/OVMF/OVMF_VARS_4M.fd $(BUILD_DIR)/OVMF_VARS.fd
 	qemu-system-x86_64 -machine q35 -m 512M \

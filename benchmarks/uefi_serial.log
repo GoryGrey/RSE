@@ -1,111 +1,9 @@
 mkdir -p build/boot
-gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -c boot/kernel.c -o build/boot/kernel.o
-boot/kernel.c:856:12: warning: ‘ksys_unlink’ defined but not used [-Wunused-function]
-  856 | static int ksys_unlink(const char *name) {
-      |            ^~~~~~~~~~~
-boot/kernel.c:843:12: warning: ‘ksys_read’ defined but not used [-Wunused-function]
-  843 | static int ksys_read(int fd, uint8_t *buf, uint32_t len) {
-      |            ^~~~~~~~~
-boot/kernel.c:830:12: warning: ‘ksys_write’ defined but not used [-Wunused-function]
-  830 | static int ksys_write(int fd, const uint8_t *buf, uint32_t len) {
-      |            ^~~~~~~~~~
-boot/kernel.c:816:12: warning: ‘ksys_close’ defined but not used [-Wunused-function]
-  816 | static int ksys_close(int fd) {
-      |            ^~~~~~~~~~
-boot/kernel.c:788:12: warning: ‘ksys_open’ defined but not used [-Wunused-function]
-  788 | static int ksys_open(const char *name, uint32_t flags) {
-      |            ^~~~~~~~~
-gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -c boot/init.c -o build/boot/init.o
-g++ -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -c boot/kernel_os.cpp -o build/boot/kernel_os.o
-In file included from boot/../src/cpp_kernel/os/SyscallDispatcher.h:5,
-                 from boot/kernel_os.cpp:6:
-boot/../src/cpp_kernel/os/TorusScheduler.h: In constructor ‘os::TorusScheduler::TorusScheduler(uint32_t, Policy)’:
-boot/../src/cpp_kernel/os/TorusScheduler.h:44:16: warning: ‘os::TorusScheduler::current_process_’ will be initialized after [-Wreorder]
-   44 |     OSProcess* current_process_;
-      |                ^~~~~~~~~~~~~~~~
-boot/../src/cpp_kernel/os/TorusScheduler.h:36:12: warning:   ‘os::TorusScheduler::Policy os::TorusScheduler::policy_’ [-Wreorder]
-   36 |     Policy policy_;
-      |            ^~~~~~~
-boot/../src/cpp_kernel/os/TorusScheduler.h:55:5: warning:   when initialized here [-Wreorder]
-   55 |     TorusScheduler(uint32_t torus_id, Policy policy = Policy::FAIR)
-      |     ^~~~~~~~~~~~~~
-boot/../src/cpp_kernel/os/TorusScheduler.h: In member function ‘bool os::TorusScheduler::blockProcess(uint32_t)’:
-boot/../src/cpp_kernel/os/TorusScheduler.h:120:37: warning: ignoring return value of ‘constexpr bool FixedVector<T, CAPACITY>::push_back(const T&) [with T = os::OSProcess*; long unsigned int CAPACITY = 1024]’, declared with attribute ‘nodiscard’ [-Wunused-result]
-  120 |             blocked_queue_.push_back(current_process_);
-      |             ~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
-In file included from boot/../src/cpp_kernel/os/TorusScheduler.h:4:
-boot/../src/cpp_kernel/os/../FixedStructures.h:23:32: note: declared here
-   23 |   [[nodiscard]] constexpr bool push_back(const T &value) {
-      |                                ^~~~~~~~~
-boot/../src/cpp_kernel/os/TorusScheduler.h:131:41: warning: ignoring return value of ‘constexpr bool FixedVector<T, CAPACITY>::push_back(const T&) [with T = os::OSProcess*; long unsigned int CAPACITY = 1024]’, declared with attribute ‘nodiscard’ [-Wunused-result]
-  131 |                 blocked_queue_.push_back(proc);
-      |                 ~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~
-boot/../src/cpp_kernel/os/../FixedStructures.h:23:32: note: declared here
-   23 |   [[nodiscard]] constexpr bool push_back(const T &value) {
-      |                                ^~~~~~~~~
-boot/../src/cpp_kernel/os/TorusScheduler.h: In member function ‘bool os::TorusScheduler::unblockProcess(uint32_t)’:
-boot/../src/cpp_kernel/os/TorusScheduler.h:148:39: warning: ignoring return value of ‘constexpr bool FixedVector<T, CAPACITY>::push_back(const T&) [with T = os::OSProcess*; long unsigned int CAPACITY = 1024]’, declared with attribute ‘nodiscard’ [-Wunused-result]
-  148 |                 ready_queue_.push_back(proc);
-      |                 ~~~~~~~~~~~~~~~~~~~~~~^~~~~~
-boot/../src/cpp_kernel/os/../FixedStructures.h:23:32: note: declared here
-   23 |   [[nodiscard]] constexpr bool push_back(const T &value) {
-      |                                ^~~~~~~~~
-boot/../src/cpp_kernel/os/TorusScheduler.h: In member function ‘void os::TorusScheduler::tick()’:
-boot/../src/cpp_kernel/os/TorusScheduler.h:255:39: warning: ignoring return value of ‘constexpr bool FixedVector<T, CAPACITY>::push_back(const T&) [with T = os::OSProcess*; long unsigned int CAPACITY = 1024]’, declared with attribute ‘nodiscard’ [-Wunused-result]
-  255 |                 ready_queue_.push_back(current_process_);
-      |                 ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
-boot/../src/cpp_kernel/os/../FixedStructures.h:23:32: note: declared here
-   23 |   [[nodiscard]] constexpr bool push_back(const T &value) {
-      |                                ^~~~~~~~~
-boot/../src/cpp_kernel/os/TorusScheduler.h:262:41: warning: ignoring return value of ‘constexpr bool FixedVector<T, CAPACITY>::push_back(const T&) [with T = os::OSProcess*; long unsigned int CAPACITY = 1024]’, declared with attribute ‘nodiscard’ [-Wunused-result]
-  262 |                 blocked_queue_.push_back(current_process_);
-      |                 ~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
-boot/../src/cpp_kernel/os/../FixedStructures.h:23:32: note: declared here
-   23 |   [[nodiscard]] constexpr bool push_back(const T &value) {
-      |                                ^~~~~~~~~
-In file included from boot/../src/cpp_kernel/os/VFS.h:3,
-                 from boot/../src/cpp_kernel/os/SyscallDispatcher.h:6:
-boot/../src/cpp_kernel/os/FileDescriptor.h: In member function ‘void os::FileDescriptorTable::free(int32_t)’:
-boot/../src/cpp_kernel/os/FileDescriptor.h:137:26: warning: comparison of integer expressions of different signedness: ‘int32_t’ {aka ‘int’} and ‘const uint32_t’ {aka ‘const unsigned int’} [-Wsign-compare]
-  137 |         if (fd < 0 || fd >= MAX_FDS) {
-      |                       ~~~^~~~~~~~~~
-boot/../src/cpp_kernel/os/FileDescriptor.h: In member function ‘os::FileDescriptor* os::FileDescriptorTable::get(int32_t)’:
-boot/../src/cpp_kernel/os/FileDescriptor.h:168:26: warning: comparison of integer expressions of different signedness: ‘int32_t’ {aka ‘int’} and ‘const uint32_t’ {aka ‘const unsigned int’} [-Wsign-compare]
-  168 |         if (fd < 0 || fd >= MAX_FDS) {
-      |                       ~~~^~~~~~~~~~
-boot/../src/cpp_kernel/os/SyscallDispatcher.h: In function ‘int64_t os::sys_wait(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t)’:
-boot/../src/cpp_kernel/os/SyscallDispatcher.h:177:34: warning: unused parameter ‘status_ptr’ [-Wunused-parameter]
-  177 | inline int64_t sys_wait(uint64_t status_ptr, uint64_t, uint64_t,
-      |                         ~~~~~~~~~^~~~~~~~~~
-In file included from boot/kernel_os.cpp:13:
-boot/../src/cpp_kernel/os/ConsoleDevice.h: In function ‘int os::console_open(Device*)’:
-boot/../src/cpp_kernel/os/ConsoleDevice.h:40:26: warning: unused parameter ‘dev’ [-Wunused-parameter]
-   40 | int console_open(Device* dev) {
-      |                  ~~~~~~~~^~~
-boot/../src/cpp_kernel/os/ConsoleDevice.h: In function ‘int os::console_close(Device*)’:
-boot/../src/cpp_kernel/os/ConsoleDevice.h:46:27: warning: unused parameter ‘dev’ [-Wunused-parameter]
-   46 | int console_close(Device* dev) {
-      |                   ~~~~~~~~^~~
-boot/../src/cpp_kernel/os/ConsoleDevice.h: In function ‘int os::console_ioctl(Device*, long unsigned int, void*)’:
-boot/../src/cpp_kernel/os/ConsoleDevice.h:118:27: warning: unused parameter ‘dev’ [-Wunused-parameter]
-  118 | int console_ioctl(Device* dev, unsigned long request, void* arg) {
-      |                   ~~~~~~~~^~~
-boot/../src/cpp_kernel/os/ConsoleDevice.h:118:46: warning: unused parameter ‘request’ [-Wunused-parameter]
-  118 | int console_ioctl(Device* dev, unsigned long request, void* arg) {
-      |                                ~~~~~~~~~~~~~~^~~~~~~
-boot/../src/cpp_kernel/os/ConsoleDevice.h:118:61: warning: unused parameter ‘arg’ [-Wunused-parameter]
-  118 | int console_ioctl(Device* dev, unsigned long request, void* arg) {
-      |                                                       ~~~~~~^~~
-boot/kernel_os.cpp: In function ‘void os_apply_constraints(TorusRuntime*, uint32_t, uint32_t, const braided::Projection&)’:
-boot/kernel_os.cpp:595:22: warning: comparison of integer expressions of different signedness: ‘int32_t’ {aka ‘int’} and ‘unsigned int’ [-Wsign-compare]
-  595 |     if (src_pressure > dst_pressure + kPressureSkew) {
-      |         ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-boot/kernel_os.cpp: In function ‘char* strncpy(char*, const char*, size_t)’:
-boot/kernel_os.cpp:149:9: warning: ‘nonnull’ argument ‘dst’ compared to NULL [-Wnonnull-compare]
-  149 |     if (!dst || n == 0) {
-      |         ^~~~
-gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -T boot/linker.ld -nostdlib -Wl,-z,max-page-size=0x1000 -no-pie -o build/boot/kernel.elf build/boot/kernel.o build/boot/kernel_os.o build/boot/init.o
-/usr/bin/ld: warning: build/boot/kernel.elf has a LOAD segment with RWX permissions
+gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=0 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=0 -DRSE_NET_RAW=0 -c boot/kernel.c -o build/boot/kernel.o
+gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=0 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=0 -DRSE_NET_RAW=0 -c boot/init.c -o build/boot/init.o
+g++ -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -DRSE_TORUS_ID=0 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=0 -DRSE_NET_RAW=0 -c boot/kernel_os.cpp -o build/boot/kernel_os.o
+g++ -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -DRSE_TORUS_ID=0 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=0 -DRSE_NET_RAW=0 -c boot/net_projection.cpp -o build/boot/net_projection.o
+gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=0 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=0 -DRSE_NET_RAW=0 -T boot/linker.ld -nostdlib -Wl,-z,max-page-size=0x1000 -no-pie -o build/boot/kernel.elf build/boot/kernel.o build/boot/kernel_os.o build/boot/net_projection.o build/boot/init.o
 gcc -I/usr/include/efi -I/usr/include/efi/x86_64 -fPIC -fshort-wchar -mno-red-zone -ffreestanding -fno-stack-protector -fcf-protection=none -DHAVE_USE_MS_ABI -O2 -Wall -Wextra -c boot/uefi_loader.c -o build/boot/uefi_loader.o
 objcopy -j .text -j .sdata -j .data -j .dynamic -j .dynsym \
 	-j .rel* -j .rela* -j .reloc --target=efi-app-x86_64 build/boot/uefi_loader.so build/boot/BOOTX64.EFI
@@ -131,14 +29,14 @@ xorriso 1.5.6 : RockRidge filesystem manipulator, libburnia project.
 Drive current: -outdev 'stdio:build/boot/rse_efi.iso'
 Media current: stdio file, overwriteable
 Media status : is blank
-Media summary: 0 sessions, 0 data blocks, 0 data,  173g free
+Media summary: 0 sessions, 0 data blocks, 0 data,  172g free
 Added to ISO image: directory '/'='/home/gorygrey/Apps/RSE/build/boot/efi_iso'
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : WARNING : Boot image load size exceeds 65535 blocks of 512 bytes. Will record 0 in El Torito to extend ESP to end-of-medium.
-xorriso : UPDATE :  24.38% done
-ISO image produced: 85930 sectors
-Written to medium : 85930 sectors at LBA 0
+xorriso : UPDATE :  28.57% done
+ISO image produced: 66238 sectors
+Written to medium : 66238 sectors at LBA 0
 Writing to 'stdio:build/boot/rse_efi.iso' completed successfully.
 
 rm -f build/boot/rse_data.img
@@ -148,18 +46,19 @@ rm -f build/boot/rse_raw.img
 dd if=/dev/zero of=build/boot/rse_raw.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.0672939 s, 997 MB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.0782266 s, 858 MB/s
 rm -f build/boot/rse_virtio.img
 dd if=/dev/zero of=build/boot/rse_virtio.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.0822089 s, 816 MB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.0832512 s, 806 MB/s
 cp /usr/share/OVMF/OVMF_VARS_4M.fd build/boot/OVMF_VARS.fd
 qemu-system-x86_64 -machine q35 -m 512M \
 	-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
 	-drive if=pflash,format=raw,file=build/boot/OVMF_VARS.fd \
 	-cdrom build/boot/rse_efi.iso -boot order=d \
 	-device qemu-xhci,id=xhci \
+	-device usb-tablet \
 	-drive if=none,format=raw,file=build/boot/rse_data.img,id=usbdisk \
 	-device usb-storage,drive=usbdisk \
 	-drive if=none,format=raw,file=build/boot/rse_raw.img,id=usbraw \
@@ -167,6 +66,7 @@ qemu-system-x86_64 -machine q35 -m 512M \
 	-drive if=none,format=raw,file=build/boot/rse_virtio.img,id=vdisk \
 	-device virtio-blk-pci,drive=vdisk \
 	-netdev user,id=net0 -device virtio-net-pci,netdev=net0 \
+	 \
 	-serial stdio -display none
 [2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01H[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x2,0xFFFF,0x0)
 BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1F,0x2)/Sata(0x2,0xFFFF,0x0)
@@ -183,13 +83,14 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] load_file alloc ok
 [RSE] load_file read ok
 [RSE] Kernel read ok
-[RSE] seg paddr=0x0000000010000000 memsz=0x000000000000f778 pages=0x0000000000000010
-[RSE] seg paddr=0x0000000010010000 memsz=0x0000000002681d00 pages=0x0000000000002682
+[RSE] seg paddr=0x0000000010000000 memsz=0x000000000001a120 pages=0x000000000000001b
+[RSE] seg paddr=0x000000001001b000 memsz=0x00000000028e6b58 pages=0x00000000000028e7
 [RSE] Kernel load ok
 [RSE] GOP framebuffer ok
 [RSE] Jumping to kernel
 [RSE] Jumping to kernel
 [RSE] UEFI kernel start
+[RSE] GDT user segments installed
 [RSE] UEFI framebuffer online
 [RSE] benchmarks begin
 [RSE] init workloads start
@@ -200,56 +101,90 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] braid C events=300 active=4 edges=1 pending=1
 [RSE] braided smoke done
 [RSE] virtio-net mac=82:84:0:18:52:86
+[RSE] virtio-net mergeable rxbuf on
 [RSE] virtio-net modern online
 [RSE] virtio-net online
 [RSE] torus init 0
+[user] fs start pid=1 torus=0
 [init] start
 [init] torus=0
-[init] compute ops=2000000 cycles=30600577 checksum=9791868472914447520
-[init] pipe stage0 q0=8064 q1=8064 cycles=2319075
-[init] memfs ops=640 bytes=172032 cycles=23919640
+[init] compute ops=2000000 cycles=38103686 checksum=9791868472914447520
+[init] pipe stage0 q0=8064 q1=8064 cycles=9054175
+[init] using /persist
+[init] memfs ops=640 bytes=524288 cycles=723504182
 [init] block device test
-[init] /dev/blk0 size=512 ops=256 bytes=131072 mismatches=0 cycles=489391890
+[init] /dev/blk0 size=512 ops=256 bytes=131072 mismatches=0 cycles=453326785
 [init] loopback test
 [init] loopback wrote=13 read=13
+rse> help
+help: echo, cat, ls, probe, ps
+rse> ps
+ps: torus=0 pid=1
+rse> echo shell-online
+shell-online
+rse> cat /persist/hello.txt
+hello from RSE shell
+rse> ls /
+ls: empty
+
+rse> ls /persist
+user.txt
+hello.txt
+
+rse> probe devices
+probe /dev/blk0 ok
+probe /dev/net0 ok
+probe /dev/loopback ok
 [RSE] torus init 1
+[user] net start pid=1 torus=1
 [init] start
 [init] torus=1
-[init] compute ops=6000000 cycles=102264498 checksum=8086429594797147306
-[init] memstress bytes=16777216 cycles=236758052 checksum=2139095040
-[init] pipe stage1 in=8064 out=8064 cycles=4315981 checksum=1544256
+[init] compute ops=6000000 cycles=104520304 checksum=8086429594797147306
+[init] memstress bytes=16777216 cycles=915028660 checksum=2139095040
+[init] pipe stage1 in=8064 out=8064 cycles=1490612 checksum=1544256
 [RSE] torus init 2
+[user] compute start pid=1 torus=2
+[user] compute cycles=372714 checksum=9537272341150758256
 [init] start
 [init] torus=2
-[init] compute ops=2000000 cycles=27601717 checksum=9791868472914447520
-[init] pipe stage2a in=8064 out=8064 cycles=745117 checksum=516109
-[init] pipe stage2b in=16128 wrote=16128 cycles=33827871 checksum=2060365
+[init] compute ops=2000000 cycles=34965053 checksum=9791868472914447520
+[init] pipe stage2a in=8064 out=8064 cycles=1094912 checksum=516109
+[RSE] virtio-net tx stalled idx=12
+[init] pipe stage2b in=16128 wrote=16128 cycles=95060880 checksum=2060365
 [init] net0 test
-[init] net0 wrote=16384 read=0 cycles=29054737
+[init] net0 wrote=16384 read=16384 cycles=68546244
+[RSE] userspace run start
+[RSE] userspace run done
 [RSE] braid scheduler start
-[RSE] torus load a=5 b=1 c=1
-[RSE] torus load a=5 b=1 c=1
+[RSE] torus load a=5 b=1 c=0
+[user] net rx timeout
+[RSE] torus load a=5 b=1 c=0
 [RSE] os braid cycles=1
 [RSE] braid scheduler done
 [RSE] compute benchmark start
-[RSE] compute ops=400000 cycles=43817749 cycles/op=109 checksum=4180332335208930419
+[RSE] compute ops=400000 cycles=62820749 cycles/op=157 checksum=4180332335208930419
 [RSE] memory benchmark start
-[RSE] memory bytes=67108864 cycles=1327683435 cycles/byte=19
+[RSE] memory bytes=67108864 cycles=1487532357 cycles/byte=22
 [RSE] ramfs benchmark start
-[RSE] ramfs ops=288 cycles=9056761 cycles/op=31447 checksum=12533760 files=0
+[RSE] ramfs ops=288 cycles=9226646 cycles/op=32036 checksum=12533760 files=0
 [RSE] UEFI FS benchmark start
-[RSE] UEFI FS ops=144 cycles=876928544 cycles/op=6089781 checksum=12533760
+[RSE] UEFI FS ops=144 cycles=1051858470 cycles/op=7304572 checksum=12533760
 [RSE] UEFI block benchmark start
-[RSE] UEFI block bytes=524288 write cycles=33398157 write cycles/byte=63 read cycles=12766993 read cycles/byte=24 checksum=66846720
+[RSE] UEFI block bytes=524288 write cycles=7695110 write cycles/byte=14 read cycles=13879358 read cycles/byte=26 checksum=66846720
 [RSE] virtio-blk capacity=131072
 [RSE] virtio-blk modern online
 [RSE] virtio-blk benchmark start
-[RSE] virtio desc req=495017984 data=268500992 status=495018112
+[RSE] virtio desc req=508985344 data=268550144 status=508985472
 [RSE] virtio-blk notify idx=0 used=0
 [RSE] virtio-blk notify idx=1 used=1
-[RSE] virtio-blk bytes=512 write cycles=421211251 write cycles/byte=822678 read cycles=5698057 read cycles/byte=11129 checksum=65280
-[RSE] net arp bytes=0 cycles=117256564
+[RSE] virtio-blk bytes=512 write cycles=490033947 write cycles/byte=957097 read cycles=4059851 read cycles/byte=7929 checksum=65280
+[RSE] virtio-net rx used idx=1 len=76
+[RSE] net arp bytes=64 cycles=2075887
+[RSE] udp/http server benchmark start
+[RSE] udp/http server rx=0 udp=0 http=0 cycles=24842814
 [RSE] http loopback benchmark start
-[RSE] http requests=50000 cycles=52402981 cycles/req=1048 checksum=218650000
+[RSE] http requests=50000 cycles=64460828 cycles/req=1289 checksum=218650000
 [RSE] benchmarks end
-qemu-system-x86_64: terminating on signal 15 from pid 163189 (timeout)
+[RSE] UEFI pointer online
+[RSE] UEFI keyboard online
+qemu-system-x86_64: terminating on signal 15 from pid 317142 (timeout)

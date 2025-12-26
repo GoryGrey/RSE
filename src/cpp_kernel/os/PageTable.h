@@ -235,6 +235,17 @@ public:
         
         return &(*l2_tables_[l1_idx])[l2_idx];
     }
+
+    const PageTableEntry* getPTE(uint64_t virt_addr) const {
+        uint32_t l1_idx = get_l1_index(virt_addr);
+        uint32_t l2_idx = get_l2_index(virt_addr);
+        
+        if (!l2_tables_[l1_idx]) {
+            return nullptr;
+        }
+        
+        return &(*l2_tables_[l1_idx])[l2_idx];
+    }
     
     /**
      * Check if a virtual address is mapped.

@@ -52,11 +52,19 @@ struct FileDescriptor {
           ref_count(0), kind(FDKind::FILE), in_use(false) {}
     
     bool isReadable() const {
-        return (flags & O_RDWR) || (flags & O_RDONLY) == O_RDONLY;
+        return (flags & O_WRONLY) == 0;
     }
     
     bool isWritable() const {
-        return (flags & O_RDWR) || (flags & O_WRONLY);
+        return (flags & O_WRONLY) != 0 || (flags & O_RDWR) != 0;
+    }
+
+    bool closeOnExec() const {
+        return (flags & O_CLOEXEC) != 0;
+    }
+
+    void clearCloseOnExec() {
+        flags &= ~O_CLOEXEC;
     }
     
     bool isDevice() const {
@@ -230,6 +238,14 @@ public:
         }
         
         return -1;
+    }
+
+    void closeOnExec() {
+        for (uint32_t i = 3; i < MAX_FDS; i++) {
+            if (fds_[i].in_use && fds_[i].closeOnExec()) {
+                free(static_cast<int32_t>(i));
+            }
+        }
     }
 
     /**

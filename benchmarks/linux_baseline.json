@@ -1,5 +1,5 @@
 {
-  "timestamp": 1766674153.698537,
+  "timestamp": 1766756093.8455856,
   "platform": "Linux-6.8.0-90-generic-x86_64-with-glibc2.39",
   "os_release": {
     "PRETTY_NAME": "Ubuntu 24.04.3 LTS",
@@ -19,18 +19,18 @@
   "cpu_count": 4,
   "compute": {
     "ops": 5000000,
-    "ns": 4341326350,
+    "ns": 3795418583,
     "checksum": 10424877247416579514
   },
   "memory": {
     "bytes": 268435456,
-    "ns": 74377977498,
+    "ns": 65893613497,
     "checksum": 679280640
   },
   "file_io": {
     "ops": 512,
     "bytes": 1048576,
-    "ns": 18033317
+    "ns": 17583188
   },
   "http_loopback": {
     "error": "permission denied: [Errno 1] Operation not permitted"

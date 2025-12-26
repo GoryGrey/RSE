@@ -1,6 +1,6 @@
 # RSE (Resilient Spatial Execution)
 
-**Last Updated**: December 25, 2025  
+**Last Updated**: December 26, 2025  
 **Status**: Research prototype. Bootable UEFI kernel with an interactive dashboard (keyboard/mouse) and in-kernel workloads; braided projection exchange works in multi-VM via shared memory. Network transport and user-mode isolation are still in progress.
 
 **Quick Links**: [Project Status](PROJECT_STATUS.md) | [Documentation](#documentation)
@@ -10,6 +10,10 @@
 ## Overview
 
 RSE explores a braided-torus execution model for coordinating computation without a global scheduler. The core idea is to run multiple toroidal lattices (tori) in parallel and periodically exchange **fixed-size projections** of state to apply constraints cyclically (A -> B -> C -> A). This keeps coordination overhead constant (O(1) projection size) while preserving autonomy across tori.
+
+This repo contains both layers:
+- **Runtime**: the Betti-RDL single-torus + braided execution engine (standalone library/runtime).
+- **OS**: a bootable UEFI kernel scaffold with syscalls, VFS, devices, and userspace runner.
 
 This repo contains:
 - Bootable UEFI kernel with an OS scaffold and in-kernel workload harness.
@@ -64,18 +68,19 @@ Key properties:
 
 Cycle-counted benchmarks captured in headless QEMU (see `PROJECT_STATUS.md` for the latest run):
 
-- **Compute**: 400,000 ops, 26,802,191 cycles (67 cycles/op)
-- **Memory**: 67,108,864 bytes, 1,104,835,143 cycles (16 cycles/byte)
-- **RAMFS File I/O**: 288 ops, 5,397,242 cycles (18740 cycles/op)
-- **UEFI FAT File I/O (USB disk)**: 144 ops, 650,239,253 cycles (4515550 cycles/op)
-- **UEFI Raw Block I/O (USB disk)**: 524,288 bytes, write 7,090,924 cycles (13 cycles/byte), read 10,823,826 cycles (20 cycles/byte)
-- **Virtio-Block I/O (disk)**: 512 bytes, write 410,628,641 cycles (802009 cycles/byte), read 2,117,562 cycles (4135 cycles/byte)
-- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,847,526 cycles
-- **UDP/HTTP RX Server (raw)**: rx=397 udp=199 http=198, 133,785,889 cycles
-- **HTTP Loopback**: 50,000 requests, 62,973,301 cycles (1259 cycles/req)
+- **Compute**: 400,000 ops, 62,820,749 cycles (157 cycles/op)
+- **Memory**: 67,108,864 bytes, 1,487,532,357 cycles (22 cycles/byte)
+- **RAMFS File I/O**: 288 ops, 9,226,646 cycles (32036 cycles/op)
+- **UEFI FAT File I/O (USB disk)**: 144 ops, 1,051,858,470 cycles (7304572 cycles/op)
+- **UEFI Raw Block I/O (USB disk)**: 524,288 bytes, write 7,695,110 cycles (14 cycles/byte), read 13,879,358 cycles (26 cycles/byte)
+- **Virtio-Block I/O (disk)**: 512 bytes, write 490,033,947 cycles (957097 cycles/byte), read 4,059,851 cycles (7929 cycles/byte)
+- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,075,887 cycles
+- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 24,842,814 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
+- **HTTP Loopback**: 50,000 requests, 64,460,828 cycles (1289 cycles/req)
 
 Notes:
 - These are **QEMU TSC cycle counts**, not wall-clock time.
+- Latest parsed run: `benchmarks/uefi_bench.json` (raw log: `benchmarks/uefi_serial.log`).
 - Linux baseline results live in `benchmarks/linux_baseline.json`.
 - External UDP/HTTP RX proof log is saved at `build/boot/proof.log`.
 

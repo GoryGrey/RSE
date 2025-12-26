@@ -34,10 +34,10 @@ Added to ISO image: directory '/'='/home/gorygrey/Apps/RSE/build/net_exchange/to
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : WARNING : Boot image load size exceeds 65535 blocks of 512 bytes. Will record 0 in El Torito to extend ESP to end-of-medium.
-xorriso : UPDATE :  23.87% done
+xorriso : UPDATE :  25.83% done
 xorriso : UPDATE : Thank you for being patient. Working since 1 seconds.
-ISO image produced: 66234 sectors
-Written to medium : 66234 sectors at LBA 0
+ISO image produced: 66240 sectors
+Written to medium : 66240 sectors at LBA 0
 Writing to 'stdio:/home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_efi.iso' completed successfully.
 
 rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_data.img
@@ -47,12 +47,12 @@ rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_raw.img
 dd if=/dev/zero of=/home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_raw.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.135403 s, 496 MB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.100048 s, 671 MB/s
 rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_virtio.img
 dd if=/dev/zero of=/home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_virtio.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.0824074 s, 814 MB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.119648 s, 561 MB/s
 cp /usr/share/OVMF/OVMF_VARS_4M.fd /home/gorygrey/Apps/RSE/build/net_exchange/torus2/OVMF_VARS.fd
 qemu-system-x86_64 -machine q35 -m 512M \
 	-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
@@ -84,13 +84,14 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] load_file alloc ok
 [RSE] load_file read ok
 [RSE] Kernel read ok
-[RSE] seg paddr=0x0000000010000000 memsz=0x0000000000018120 pages=0x0000000000000019
-[RSE] seg paddr=0x0000000010019000 memsz=0x0000000002862a78 pages=0x0000000000002863
+[RSE] seg paddr=0x0000000010000000 memsz=0x000000000001b120 pages=0x000000000000001c
+[RSE] seg paddr=0x000000001001c000 memsz=0x00000000028e6b78 pages=0x00000000000028e7
 [RSE] Kernel load ok
 [RSE] GOP framebuffer ok
 [RSE] Jumping to kernel
 [RSE] Jumping to kernel
 [RSE] UEFI kernel start
+[RSE] GDT user segments installed
 [RSE] UEFI framebuffer online
 [RSE] benchmarks begin
 [RSE] init workloads start
@@ -105,12 +106,12 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [user] fs start pid=1 torus=0
 [init] start
 [init] torus=0
-[init] compute ops=2000000 cycles=112009658 checksum=9791868472914447520
-[init] pipe stage0 q0=8064 q1=8064 cycles=2473712
+[init] compute ops=2000000 cycles=39380108 checksum=9791868472914447520
+[init] pipe stage0 q0=8064 q1=8064 cycles=2392741
 [init] using /persist
-[init] memfs ops=640 bytes=524288 cycles=2958980279
+[init] memfs ops=640 bytes=524288 cycles=1094379572
 [init] block device test
-[init] /dev/blk0 size=512 ops=256 bytes=131072 mismatches=0 cycles=2236119035
+[init] /dev/blk0 size=512 ops=256 bytes=131072 mismatches=0 cycles=468660349
 [init] loopback test
 [init] loopback wrote=13 read=13
 rse> help
@@ -136,19 +137,19 @@ probe /dev/loopback ok
 [user] net start pid=1 torus=1
 [init] start
 [init] torus=1
-[init] compute ops=6000000 cycles=190076211 checksum=8086429594797147306
-[init] memstress bytes=16777216 cycles=449759592 checksum=2139095040
-[init] pipe stage1 in=8064 out=8064 cycles=1506345 checksum=1544256
+[init] compute ops=6000000 cycles=127933848 checksum=8086429594797147306
+[init] memstress bytes=16777216 cycles=275221166 checksum=2139095040
+[init] pipe stage1 in=8064 out=8064 cycles=2311163 checksum=1544256
 [RSE] torus init 2
 [user] compute start pid=1 torus=2
-[user] compute cycles=394653 checksum=9537272341150758256
+[user] compute cycles=418164 checksum=9537272341150758256
 [init] start
 [init] torus=2
-[init] compute ops=2000000 cycles=30568861 checksum=9791868472914447520
-[init] pipe stage2a in=8064 out=8064 cycles=3163665 checksum=516109
-[init] pipe stage2b in=16128 wrote=16128 cycles=11099075 checksum=2060365
+[init] compute ops=2000000 cycles=69837718 checksum=9791868472914447520
+[init] pipe stage2a in=8064 out=8064 cycles=2471521 checksum=516109
+[init] pipe stage2b in=16128 wrote=16128 cycles=39023543 checksum=2060365
 [init] net0 test
-[init] net0 wrote=16384 read=16384 cycles=12364580
+[init] net0 wrote=16384 read=16384 cycles=13200867
 [RSE] userspace run start
 [RSE] userspace run done
 [RSE] braid scheduler start
@@ -163,27 +164,27 @@ probe /dev/loopback ok
 [RSE] shm projection recv torus=0 seq=1
 [RSE] shm projection recv torus=1 seq=1
 [RSE] compute benchmark start
-[RSE] compute ops=400000 cycles=24382672 cycles/op=60 checksum=4180332335208930419
+[RSE] compute ops=400000 cycles=34690411 cycles/op=86 checksum=4180332335208930419
 [RSE] memory benchmark start
-[RSE] memory bytes=67108864 cycles=5574656816 cycles/byte=83
+[RSE] memory bytes=67108864 cycles=2136544557 cycles/byte=31
 [RSE] ramfs benchmark start
-[RSE] ramfs ops=288 cycles=10623493 cycles/op=36887 checksum=12533760 files=0
+[RSE] ramfs ops=288 cycles=9612398 cycles/op=33376 checksum=12533760 files=0
 [RSE] UEFI FS benchmark start
-[RSE] UEFI FS ops=144 cycles=2775151856 cycles/op=19271887 checksum=12533760
+[RSE] UEFI FS ops=144 cycles=1658730022 cycles/op=11518958 checksum=12533760
 [RSE] UEFI block benchmark start
-[RSE] UEFI block bytes=524288 write cycles=15994025 write cycles/byte=30 read cycles=37362052 read cycles/byte=71 checksum=66846720
+[RSE] UEFI block bytes=524288 write cycles=14122035 write cycles/byte=26 read cycles=29583691 read cycles/byte=56 checksum=66846720
 [RSE] virtio-blk capacity=131072
 [RSE] virtio-blk modern online
 [RSE] virtio-blk benchmark start
-[RSE] virtio desc req=509022208 data=268541952 status=509022336
+[RSE] virtio desc req=495714304 data=268554240 status=495714432
 [RSE] virtio-blk notify idx=0 used=0
 [RSE] virtio-blk notify idx=1 used=1
-[RSE] virtio-blk bytes=512 write cycles=445954769 write cycles/byte=871005 read cycles=1889020 read cycles/byte=3689 checksum=65280
+[RSE] virtio-blk bytes=512 write cycles=479362682 write cycles/byte=936255 read cycles=7401358 read cycles/byte=14455 checksum=65280
 [RSE] udp/http server benchmark start
-[RSE] udp/http server rx=0 udp=0 http=0 cycles=534835315
+[RSE] udp/http server rx=0 udp=0 http=0 cycles=680862607
 [RSE] http loopback benchmark start
-[RSE] http requests=50000 cycles=71827127 cycles/req=1436 checksum=218650000
+[RSE] http requests=50000 cycles=69066263 cycles/req=1381 checksum=218650000
 [RSE] benchmarks end
 [RSE] UEFI pointer online
 [RSE] UEFI keyboard online
-qemu-system-x86_64: terminating on signal 15 from pid 297911 (make)
+qemu-system-x86_64: terminating on signal 15 from pid 316747 (make)

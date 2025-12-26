@@ -39,6 +39,12 @@ public:
         blockfs_ = fs;
     }
 
+    void closeOnExec() {
+        if (fd_table_) {
+            fd_table_->closeOnExec();
+        }
+    }
+
     Device* lookupDevice(const char* path) const {
         if (!device_mgr_ || !path) {
             return nullptr;

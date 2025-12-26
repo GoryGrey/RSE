@@ -60,6 +60,103 @@ inline uint32_t allocate_pid() {
     return current_torus_context->next_pid++;
 }
 
+inline bool enforce_user_memory(OSProcess* proc) {
+    return proc && proc->vmem && !proc->user_step;
+}
+
+inline bool validate_user_range(OSProcess* proc, uint64_t addr, uint64_t size, bool write) {
+    if (!enforce_user_memory(proc)) {
+        return true;
+    }
+    return proc->vmem->validateUserRange(addr, size, write);
+}
+
+inline bool read_user_bytes(OSProcess* proc, uint64_t addr, void* dst, uint64_t size) {
+    if (!dst || size == 0) {
+        return false;
+    }
+    if (!enforce_user_memory(proc)) {
+        if (!addr) {
+            return false;
+        }
+        const uint8_t* src = reinterpret_cast<const uint8_t*>(addr);
+        uint8_t* out = static_cast<uint8_t*>(dst);
+        for (uint64_t i = 0; i < size; ++i) {
+            out[i] = src[i];
+        }
+        return true;
+    }
+    return proc->vmem->readUser(dst, addr, size);
+}
+
+inline bool copy_user_string(OSProcess* proc, uint64_t addr, char* dst,
+                             uint32_t cap, uint32_t* out_len) {
+    if (!dst || cap == 0 || addr == 0) {
+        return false;
+    }
+    uint32_t idx = 0;
+    char c = '\0';
+    do {
+        if (idx + 1 >= cap) {
+            return false;
+        }
+        if (!read_user_bytes(proc, addr + idx, &c, 1)) {
+            return false;
+        }
+        dst[idx++] = c;
+    } while (c != '\0');
+    if (out_len) {
+        *out_len = idx;
+    }
+    return true;
+}
+
+struct ExecStringTable {
+    static constexpr uint32_t kMaxPtrs = 32;
+    static constexpr uint32_t kStorageBytes = 4096;
+    const char* ptrs[kMaxPtrs + 1];
+    char storage[kStorageBytes];
+    uint32_t count;
+    uint32_t used;
+};
+
+inline bool collect_exec_strings(OSProcess* proc, uint64_t list_ptr,
+                                 ExecStringTable* out) {
+    if (!out) {
+        return false;
+    }
+    out->count = 0;
+    out->used = 0;
+    for (uint32_t i = 0; i <= ExecStringTable::kMaxPtrs; ++i) {
+        out->ptrs[i] = nullptr;
+    }
+    if (list_ptr == 0) {
+        return true;
+    }
+    for (uint32_t i = 0; i < ExecStringTable::kMaxPtrs; ++i) {
+        uint64_t str_ptr = 0;
+        if (!read_user_bytes(proc, list_ptr + i * sizeof(uint64_t),
+                             &str_ptr, sizeof(str_ptr))) {
+            return false;
+        }
+        if (str_ptr == 0) {
+            out->count = i;
+            return true;
+        }
+        if (out->used >= ExecStringTable::kStorageBytes) {
+            return false;
+        }
+        uint32_t len = 0;
+        if (!copy_user_string(proc, str_ptr, out->storage + out->used,
+                              ExecStringTable::kStorageBytes - out->used, &len)) {
+            return false;
+        }
+        out->ptrs[i] = out->storage + out->used;
+        out->used += len;
+    }
+    return false;
+}
+
 // ========== System Call Handlers ==========
 
 /**
@@ -207,21 +304,32 @@ inline int64_t sys_kill(uint64_t pid, uint64_t sig, uint64_t,
 /**
  * sys_exec: Replace current process image with a new ELF binary.
  */
-inline int64_t sys_exec(uint64_t path_ptr, uint64_t, uint64_t,
+inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
                         uint64_t, uint64_t, uint64_t) {
-    const char* path = reinterpret_cast<const char*>(path_ptr);
-    if (!path) {
-        return -EINVAL;
-    }
-    if (!current_torus_context || !current_torus_context->vfs || !current_torus_context->phys_alloc) {
-        return -ENOSYS;
-    }
     OSProcess* current = get_current_process();
     if (!current) {
         return -ESRCH;
     }
+    if (!current_torus_context || !current_torus_context->vfs || !current_torus_context->phys_alloc) {
+        return -ENOSYS;
+    }
 
-    int32_t fd = current_torus_context->vfs->open(path, O_RDONLY);
+    static constexpr uint32_t kMaxPath = 256;
+    char path_buf[kMaxPath] = {};
+    if (!copy_user_string(current, path_ptr, path_buf, kMaxPath, nullptr)) {
+        return -EFAULT;
+    }
+
+    ExecStringTable argv = {};
+    ExecStringTable envp = {};
+    if (!collect_exec_strings(current, argv_ptr, &argv)) {
+        return -EFAULT;
+    }
+    if (!collect_exec_strings(current, envp_ptr, &envp)) {
+        return -EFAULT;
+    }
+
+    int32_t fd = current_torus_context->vfs->open(path_buf, O_RDONLY);
     if (fd < 0) {
         return -ENOENT;
     }
@@ -270,23 +378,52 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t, uint64_t,
         return -EINVAL;
     }
 
-    if (!current->vmem) {
-        current->initMemory(current_torus_context->phys_alloc);
+    VirtualAllocator* old_vmem = current->vmem;
+    MemoryLayout old_mem = current->memory;
+    CPUContext old_ctx = current->context;
+
+    PageTable* new_pt = new PageTable();
+    if (!new_pt) {
+#ifndef RSE_KERNEL
+        delete[] image_buf;
+#endif
+        return -ENOMEM;
+    }
+    VirtualAllocator* new_va = new VirtualAllocator(new_pt, current_torus_context->phys_alloc);
+    if (!new_va) {
+        delete new_pt;
+#ifndef RSE_KERNEL
+        delete[] image_buf;
+#endif
+        return -ENOMEM;
     }
 
-    // Exec replaces the address space; we don't reclaim old mappings yet.
-    PageTable* new_pt = new PageTable();
-    VirtualAllocator* new_va = new VirtualAllocator(new_pt, current_torus_context->phys_alloc);
     current->vmem = new_va;
+    current->memory = MemoryLayout();
     current->memory.page_table = new_pt;
+    current->context = CPUContext();
 
-    if (!current->loadElfImage(image_buf, total)) {
+    if (!current->loadElfImageWithArgs(image_buf, total, argv.ptrs, envp.ptrs)) {
+        delete new_va;
+        delete new_pt;
+        current->vmem = old_vmem;
+        current->memory = old_mem;
+        current->context = old_ctx;
 #ifndef RSE_KERNEL
         delete[] image_buf;
 #endif
         return -EINVAL;
     }
 
+    if (current_torus_context->vfs) {
+        current_torus_context->vfs->closeOnExec();
+    }
+    if (old_vmem) {
+        delete old_vmem;
+    }
+    if (old_mem.page_table) {
+        delete old_mem.page_table;
+    }
     current->setUserEntry(nullptr, nullptr, nullptr);
 #ifndef RSE_KERNEL
     delete[] image_buf;
@@ -302,6 +439,10 @@ inline int64_t sys_write(uint64_t fd, uint64_t buf_addr, uint64_t count,
     if (!current_torus_context || !current_torus_context->vfs) {
         return -ENOSYS;
     }
+    OSProcess* current = get_current_process();
+    if (count != 0 && !validate_user_range(current, buf_addr, count, false)) {
+        return -EFAULT;
+    }
     return current_torus_context->vfs->write(static_cast<int32_t>(fd),
                                              (const void *)buf_addr,
                                              static_cast<uint32_t>(count));
@@ -314,6 +455,10 @@ inline int64_t sys_read(uint64_t fd, uint64_t buf_addr, uint64_t count,
                         uint64_t, uint64_t, uint64_t) {
     if (!current_torus_context || !current_torus_context->vfs) {
         return -ENOSYS;
+    }
+    OSProcess* current = get_current_process();
+    if (count != 0 && !validate_user_range(current, buf_addr, count, true)) {
+        return -EFAULT;
     }
     return current_torus_context->vfs->read(static_cast<int32_t>(fd),
                                             (void *)buf_addr,
@@ -328,11 +473,13 @@ inline int64_t sys_open(uint64_t path_addr, uint64_t flags, uint64_t mode,
     if (!current_torus_context || !current_torus_context->vfs) {
         return -ENOSYS;
     }
-    const char* path = reinterpret_cast<const char*>(path_addr);
-    if (!path) {
-        return -EINVAL;
+    OSProcess* current = get_current_process();
+    static constexpr uint32_t kMaxPath = 256;
+    char path_buf[kMaxPath] = {};
+    if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
+        return -EFAULT;
     }
-    return current_torus_context->vfs->open(path,
+    return current_torus_context->vfs->open(path_buf,
                                             static_cast<uint32_t>(flags),
                                             static_cast<uint32_t>(mode));
 }
@@ -369,11 +516,13 @@ inline int64_t sys_unlink(uint64_t path_addr, uint64_t, uint64_t,
     if (!current_torus_context || !current_torus_context->vfs) {
         return -ENOSYS;
     }
-    const char* path = reinterpret_cast<const char*>(path_addr);
-    if (!path) {
-        return -EINVAL;
+    OSProcess* current = get_current_process();
+    static constexpr uint32_t kMaxPath = 256;
+    char path_buf[kMaxPath] = {};
+    if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
+        return -EFAULT;
     }
-    return current_torus_context->vfs->unlink(path);
+    return current_torus_context->vfs->unlink(path_buf);
 }
 
 inline int64_t sys_list(uint64_t path_addr, uint64_t buf_addr, uint64_t count,
@@ -381,10 +530,22 @@ inline int64_t sys_list(uint64_t path_addr, uint64_t buf_addr, uint64_t count,
     if (!current_torus_context || !current_torus_context->vfs) {
         return -ENOSYS;
     }
-    const char* path = reinterpret_cast<const char*>(path_addr);
+    OSProcess* current = get_current_process();
+    const char* path = "/";
+    static constexpr uint32_t kMaxPath = 256;
+    char path_buf[kMaxPath] = {};
+    if (path_addr != 0) {
+        if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
+            return -EFAULT;
+        }
+        path = path_buf;
+    }
     char* buf = reinterpret_cast<char*>(buf_addr);
     if (!buf || count == 0) {
         return -EINVAL;
+    }
+    if (!validate_user_range(current, buf_addr, count, true)) {
+        return -EFAULT;
     }
     return current_torus_context->vfs->list(path ? path : "/", buf,
                                            static_cast<uint32_t>(count));

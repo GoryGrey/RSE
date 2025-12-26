@@ -25,6 +25,17 @@ struct rse_syscalls;
 
 namespace os {
 
+inline size_t cstr_len(const char* s) {
+    size_t len = 0;
+    if (!s) {
+        return 0;
+    }
+    while (s[len] != '\0') {
+        len++;
+    }
+    return len;
+}
+
 enum class ProcessState : uint8_t {
     READY,      // Waiting to run
     RUNNING,    // Currently executing on CPU
@@ -244,12 +255,26 @@ public:
         }
         uint64_t stack_bytes = align_up(stack_size);
         memory.stack_end = vmem->getStackEnd();
-        memory.stack_start = memory.stack_end - stack_bytes;
+        uint64_t guard = stack_bytes > PAGE_SIZE ? PAGE_SIZE : 0;
+        memory.stack_start = memory.stack_end - stack_bytes + guard;
         memory.stack_pointer = sp;
 
         context.rip = image.entry;
         context.rsp = sp;
+        if (context.rflags == 0) {
+            context.rflags = 0x202;
+        }
         return true;
+    }
+
+    bool loadElfImageWithArgs(const uint8_t* data, size_t size,
+                              const char* const* argv,
+                              const char* const* envp,
+                              uint64_t stack_size = 64 * 1024) {
+        if (!loadElfImage(data, size, stack_size)) {
+            return false;
+        }
+        return setupUserStack(argv, envp);
     }
     
     // ========== State Management ==========
@@ -435,6 +460,105 @@ public:
                   << " runtime=" << total_runtime
                   << " slice=" << time_slice
                   << std::endl;
+    }
+
+private:
+    bool setupUserStack(const char* const* argv, const char* const* envp) {
+        if (!vmem) {
+            return false;
+        }
+        uint64_t sp = memory.stack_pointer;
+        const uint64_t stack_min = memory.stack_start;
+
+        uint32_t argc = 0;
+        uint32_t envc = 0;
+        if (argv) {
+            while (argv[argc]) {
+                argc++;
+            }
+        }
+        if (envp) {
+            while (envp[envc]) {
+                envc++;
+            }
+        }
+
+        static constexpr uint32_t kMaxArgs = 32;
+        static constexpr uint32_t kMaxEnv = 32;
+        if (argc > kMaxArgs || envc > kMaxEnv) {
+            return false;
+        }
+
+        uint64_t argv_addrs[kMaxArgs] = {};
+        uint64_t envp_addrs[kMaxEnv] = {};
+
+        for (uint32_t i = 0; i < argc; ++i) {
+            size_t len = cstr_len(argv[i]) + 1;
+            if (sp < stack_min + len) {
+                return false;
+            }
+            sp -= static_cast<uint64_t>(len);
+            if (!vmem->writeUser(sp, argv[i], len)) {
+                return false;
+            }
+            argv_addrs[i] = sp;
+        }
+
+        for (uint32_t i = 0; i < envc; ++i) {
+            size_t len = cstr_len(envp[i]) + 1;
+            if (sp < stack_min + len) {
+                return false;
+            }
+            sp -= static_cast<uint64_t>(len);
+            if (!vmem->writeUser(sp, envp[i], len)) {
+                return false;
+            }
+            envp_addrs[i] = sp;
+        }
+
+        sp &= ~0xFULL;
+
+        auto push_u64 = [&](uint64_t value) -> bool {
+            if (sp < stack_min + sizeof(uint64_t)) {
+                return false;
+            }
+            sp -= sizeof(uint64_t);
+            return vmem->writeUser(sp, &value, sizeof(uint64_t));
+        };
+
+        if (!push_u64(0)) {
+            return false;
+        }
+        for (uint32_t i = envc; i-- > 0;) {
+            if (!push_u64(envp_addrs[i])) {
+                return false;
+            }
+        }
+        uint64_t envp_ptr = sp;
+
+        if (!push_u64(0)) {
+            return false;
+        }
+        for (uint32_t i = argc; i-- > 0;) {
+            if (!push_u64(argv_addrs[i])) {
+                return false;
+            }
+        }
+        uint64_t argv_ptr = sp;
+
+        if (!push_u64(argc)) {
+            return false;
+        }
+
+        context.rsp = sp;
+        context.rdi = argc;
+        context.rsi = argv_ptr;
+        context.rdx = envp_ptr;
+        if (context.rflags == 0) {
+            context.rflags = 0x202;
+        }
+        memory.stack_pointer = sp;
+        return true;
     }
 };
 

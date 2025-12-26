@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-**The Bible - Last Updated: December 25, 2025**
+**The Bible - Last Updated: December 26, 2025**
 
 ---
 
@@ -18,6 +18,8 @@ Not by distributing across machines, but by eliminating architectural bottleneck
 ---
 
 ## 📊 Current Status: **45% COMPLETE (Prototype)**
+
+This status covers both the runtime (Betti-RDL engine) and the OS scaffold contained in this repo.
 
 ### **What Works (Prototype)** ✅
 
@@ -41,7 +43,7 @@ Not by distributing across machines, but by eliminating architectural bottleneck
 | **UI Input (Keyboard/Mouse)** | ✅ Working | Interactive | Dashboard selection + actions |
 | **Projection Exchange (IVSHMEM)** | ⚠️ Lab-only | 3-torus Multi-VM | Shared-memory transport |
 
-**Test Coverage**: Internal smoke + bench logs. No external validation yet.
+**Test Coverage**: Full system test + UEFI bench + Linux baseline + IVSHMEM exchange; external UDP/HTTP proof captured in `build/boot/proof.log`.
 
 ### **What's Left** 🚧
 
@@ -131,15 +133,15 @@ RSE/
 
 Cycle-counted benchmarks captured in headless QEMU (TSC cycles):
 
-- **Compute**: 400,000 ops, 26,802,191 cycles (67 cycles/op)
-- **Memory**: 67,108,864 bytes, 1,104,835,143 cycles (16 cycles/byte)
-- **RAMFS File I/O**: 288 ops, 5,397,242 cycles (18740 cycles/op)
-- **UEFI FAT File I/O (USB disk)**: 144 ops, 650,239,253 cycles (4515550 cycles/op)
-- **UEFI Raw Block I/O (USB disk)**: 524288 bytes, write 7,090,924 cycles (13 cycles/byte), read 10,823,826 cycles (20 cycles/byte)
-- **Virtio-Block I/O (disk)**: 512 bytes, write 410,628,641 cycles (802009 cycles/byte), read 2,117,562 cycles (4135 cycles/byte)
-- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,847,526 cycles
-- **UDP/HTTP RX Server (raw)**: rx=397 udp=199 http=198, 133,785,889 cycles
-- **HTTP Loopback**: 50000 requests, 62,973,301 cycles (1259 cycles/req)
+- **Compute**: 400,000 ops, 62,820,749 cycles (157 cycles/op)
+- **Memory**: 67,108,864 bytes, 1,487,532,357 cycles (22 cycles/byte)
+- **RAMFS File I/O**: 288 ops, 9,226,646 cycles (32036 cycles/op)
+- **UEFI FAT File I/O (USB disk)**: 144 ops, 1,051,858,470 cycles (7304572 cycles/op)
+- **UEFI Raw Block I/O (USB disk)**: 524288 bytes, write 7,695,110 cycles (14 cycles/byte), read 13,879,358 cycles (26 cycles/byte)
+- **Virtio-Block I/O (disk)**: 512 bytes, write 490,033,947 cycles (957097 cycles/byte), read 4,059,851 cycles (7929 cycles/byte)
+- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,075,887 cycles
+- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 24,842,814 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
+- **HTTP Loopback**: 50000 requests, 64,460,828 cycles (1289 cycles/req)
 - **Init Device Smoke Tests**: /dev/blk0 (512B, 256 ops, 131072 bytes, 0 mismatches), /dev/loopback (13B echo, 13B read), /dev/net0 (16384B tx, 16384B rx)
 
 Notes:
@@ -147,7 +149,7 @@ Notes:
 - UEFI FAT I/O uses firmware Block I/O + Simple FS on a USB disk image.
 - UEFI Raw Block I/O uses firmware Block I/O on a raw USB disk image.
 - HTTP benchmark is loopback-only (no full IP stack yet). `/dev/net0` uses a minimal UDP echo path with virtio-net when present (UEFI SNP fallback).
-- Raw UDP/HTTP server uses actual RX path; proof run received 397 packets (199 UDP + 198 HTTP).
+- Raw UDP/HTTP server uses actual RX path; proof run received 393 packets (197 UDP + 196 HTTP).
 - virtio-net RX is online (ARP probe receives 64-byte reply).
 - Proof log saved at `build/boot/proof.log`.
 - Raw frame mode is available via `RSE_NET_RAW=1` for debugging.
@@ -156,10 +158,10 @@ Notes:
 
 Baseline captured with `scripts/run_linux_baseline.sh` (Python harness, single-threaded):
 
-- **Compute**: 5,000,000 ops in 4.34s (~1.15M ops/sec)
-- **Memory**: 268,435,456 bytes in 74.38s (~3.61 MB/sec)
-- **File I/O**: 512 ops in 0.018s (~28.4k ops/sec), 1,048,576 bytes (~55.6 MB/sec)
-- **HTTP Loopback**: blocked by sandbox (socket permission denied)
+- **Compute**: 5,000,000 ops in 3.80s (~1.32M ops/sec)
+- **Memory**: 268,435,456 bytes in 65.89s (~4.07 MB/sec)
+- **File I/O**: 512 ops in 0.018s (~29.1k ops/sec), 1,048,576 bytes (~59.6 MB/sec)
+- **HTTP Loopback**: permission denied (sandbox blocks sockets)
 
 ### **vs Traditional OS**
 
@@ -491,8 +493,8 @@ This OS is not built on traditional hierarchies. It's built on:
 
 ---
 
-**Status**: 85% Complete | **Next Milestone**: Bootable OS (2-3 weeks)
+**Status**: 45% Complete (Prototype) | **Next Milestone**: User-mode isolation + ELF loader
 
-**Last Updated**: December 18, 2025
+**Last Updated**: December 26, 2025
 
 **"Stay degen. Stay future. 🚀"**

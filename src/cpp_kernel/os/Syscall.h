@@ -60,6 +60,7 @@ constexpr int EBADF     = 9;   // Bad file descriptor
 constexpr int ECHILD    = 10;  // No child processes
 constexpr int ENOMEM    = 12;  // Out of memory
 constexpr int EACCES    = 13;  // Permission denied
+constexpr int EFAULT    = 14;  // Bad address
 constexpr int EINVAL    = 22;  // Invalid argument
 constexpr int ENOSYS    = 38;  // Function not implemented
 
@@ -71,6 +72,7 @@ constexpr int O_RDWR    = 0x0002;  // Open for reading and writing
 constexpr int O_CREAT   = 0x0040;  // Create file if it doesn't exist
 constexpr int O_TRUNC   = 0x0200;  // Truncate file to zero length
 constexpr int O_APPEND  = 0x0400;  // Append to file
+constexpr int O_CLOEXEC = 0x80000; // Close on exec
 
 // ========== Memory Protection Flags ==========
 
@@ -114,8 +116,12 @@ inline int64_t fork() {
     return syscall(SYS_FORK);
 }
 
+inline int64_t execve(const char* path, const char* const* argv, const char* const* envp) {
+    return syscall(SYS_EXEC, (uint64_t)path, (uint64_t)argv, (uint64_t)envp);
+}
+
 inline int64_t exec(const char* path) {
-    return syscall(SYS_EXEC, (uint64_t)path);
+    return execve(path, nullptr, nullptr);
 }
 
 inline int64_t exit(int status) {

@@ -9,6 +9,8 @@
 #include "rse_boot.h"
 #include "rse_syscalls.h"
 
+#define RSE_ENABLE_USERMODE 0
+
 void *memcpy(void *dst, const void *src, size_t count);
 void *memset(void *dst, int value, size_t count);
 
@@ -149,8 +151,50 @@ enum {
     GDT_KERNEL_CODE = 0x08,
     GDT_KERNEL_DATA = 0x10,
     GDT_USER_CODE = 0x18,
-    GDT_USER_DATA = 0x20
+    GDT_USER_DATA = 0x20,
+    GDT_TSS = 0x28
 };
+
+struct tss64 {
+    uint32_t reserved0;
+    uint64_t rsp0;
+    uint64_t rsp1;
+    uint64_t rsp2;
+    uint64_t reserved1;
+    uint64_t ist1;
+    uint64_t ist2;
+    uint64_t ist3;
+    uint64_t ist4;
+    uint64_t ist5;
+    uint64_t ist6;
+    uint64_t ist7;
+    uint64_t reserved2;
+    uint16_t reserved3;
+    uint16_t iomap_base;
+} __attribute__((packed));
+
+struct idt_entry {
+    uint16_t offset_low;
+    uint16_t selector;
+    uint8_t ist;
+    uint8_t type_attr;
+    uint16_t offset_mid;
+    uint32_t offset_high;
+    uint32_t zero;
+} __attribute__((packed));
+
+struct idt_ptr {
+    uint16_t limit;
+    uint64_t base;
+} __attribute__((packed));
+
+static struct tss64 g_tss;
+static uint8_t g_user_kernel_stack[16384] __attribute__((aligned(16)));
+static uint8_t g_user_stack[8192] __attribute__((aligned(16)));
+static struct idt_entry g_idt[256];
+static struct idt_ptr g_idt_desc;
+static uint64_t g_user_mode_kernel_rsp;
+static volatile int g_user_mode_exited;
 
 static void gdt_set_entry(int idx, uint8_t access, uint8_t flags) {
     gdt_entries[idx].limit_low = 0;
@@ -159,6 +203,123 @@ static void gdt_set_entry(int idx, uint8_t access, uint8_t flags) {
     gdt_entries[idx].access = access;
     gdt_entries[idx].gran = flags;
     gdt_entries[idx].base_high = 0;
+}
+
+static void gdt_set_tss_descriptor(int idx, uint64_t base, uint32_t limit) {
+    gdt_entries[idx].limit_low = (uint16_t)(limit & 0xFFFF);
+    gdt_entries[idx].base_low = (uint16_t)(base & 0xFFFF);
+    gdt_entries[idx].base_mid = (uint8_t)((base >> 16) & 0xFF);
+    gdt_entries[idx].access = 0x89;
+    gdt_entries[idx].gran = (uint8_t)((limit >> 16) & 0x0F);
+    gdt_entries[idx].base_high = (uint8_t)((base >> 24) & 0xFF);
+
+    uint8_t* high = (uint8_t*)&gdt_entries[idx + 1];
+    uint64_t base_high = base >> 32;
+    high[0] = (uint8_t)(base_high & 0xFF);
+    high[1] = (uint8_t)((base_high >> 8) & 0xFF);
+    high[2] = (uint8_t)((base_high >> 16) & 0xFF);
+    high[3] = (uint8_t)((base_high >> 24) & 0xFF);
+    high[4] = 0;
+    high[5] = 0;
+    high[6] = 0;
+    high[7] = 0;
+}
+
+static void set_idt_entry(int vec, void (*handler)(void), uint8_t type_attr) {
+    uint64_t addr = (uint64_t)(uintptr_t)handler;
+    g_idt[vec].offset_low = (uint16_t)(addr & 0xFFFF);
+    g_idt[vec].selector = GDT_KERNEL_CODE;
+    g_idt[vec].ist = 0;
+    g_idt[vec].type_attr = type_attr;
+    g_idt[vec].offset_mid = (uint16_t)((addr >> 16) & 0xFFFF);
+    g_idt[vec].offset_high = (uint32_t)(addr >> 32);
+    g_idt[vec].zero = 0;
+}
+
+struct int80_frame {
+    uint64_t rax, rbx, rcx, rdx;
+    uint64_t rsi, rdi, rbp;
+    uint64_t r8, r9, r10, r11, r12, r13, r14, r15;
+    uint64_t rip, cs, rflags, rsp, ss;
+};
+
+static void user_mode_return(void) {
+    g_user_mode_exited = 1;
+}
+
+__attribute__((used)) static void int80_handler(struct int80_frame* frame) {
+    if (!frame) {
+        return;
+    }
+    switch (frame->rax) {
+        case 0:
+            serial_write("[RSE] user syscall ping\n");
+            frame->rax = 0;
+            break;
+        case 1:
+            frame->cs = GDT_KERNEL_CODE;
+            frame->ss = GDT_KERNEL_DATA;
+            frame->rip = (uint64_t)(uintptr_t)user_mode_return;
+            frame->rsp = g_user_mode_kernel_rsp;
+            frame->rflags |= 0x200;
+            break;
+        default:
+            frame->rax = (uint64_t)-1;
+            break;
+    }
+}
+
+__attribute__((naked, unused)) static void int80_stub(void) {
+    __asm__ volatile(
+        "push %r15\n"
+        "push %r14\n"
+        "push %r13\n"
+        "push %r12\n"
+        "push %r11\n"
+        "push %r10\n"
+        "push %r9\n"
+        "push %r8\n"
+        "push %rbp\n"
+        "push %rdi\n"
+        "push %rsi\n"
+        "push %rdx\n"
+        "push %rcx\n"
+        "push %rbx\n"
+        "push %rax\n"
+        "mov %rsp, %rdi\n"
+        "call int80_handler\n"
+        "pop %rax\n"
+        "pop %rbx\n"
+        "pop %rcx\n"
+        "pop %rdx\n"
+        "pop %rsi\n"
+        "pop %rdi\n"
+        "pop %rbp\n"
+        "pop %r8\n"
+        "pop %r9\n"
+        "pop %r10\n"
+        "pop %r11\n"
+        "pop %r12\n"
+        "pop %r13\n"
+        "pop %r14\n"
+        "pop %r15\n"
+        "iretq\n");
+}
+
+__attribute__((unused)) static void init_idt(void) {
+    memset(g_idt, 0, sizeof(g_idt));
+    set_idt_entry(0x80, int80_stub, 0xEE);
+    g_idt_desc.limit = (uint16_t)(sizeof(g_idt) - 1);
+    g_idt_desc.base = (uint64_t)(uintptr_t)&g_idt[0];
+    __asm__ volatile("lidt %0" : : "m"(g_idt_desc));
+}
+
+static void init_tss(void) {
+    memset(&g_tss, 0, sizeof(g_tss));
+    g_tss.rsp0 = (uint64_t)(uintptr_t)g_user_kernel_stack + sizeof(g_user_kernel_stack);
+    g_tss.iomap_base = sizeof(g_tss);
+    gdt_set_tss_descriptor(5, (uint64_t)(uintptr_t)&g_tss, sizeof(g_tss) - 1);
+    __asm__ volatile("ltr %0" : : "r"((uint16_t)GDT_TSS));
 }
 
 static uint16_t read_cs(void) {
@@ -210,6 +371,10 @@ static void init_gdt_user_segments(void) {
         : "r"(data_sel)
         : "ax");
 
+    init_tss();
+#if RSE_ENABLE_USERMODE
+    init_idt();
+#endif
     serial_write("[RSE] GDT user segments installed\n");
 }
 
@@ -222,6 +387,47 @@ static inline uint64_t rdtsc(void) {
 
 uint64_t kernel_rdtsc(void) {
     return rdtsc();
+}
+
+__attribute__((naked, unused)) static void user_mode_entry(void) {
+    __asm__ volatile(
+        "mov $0, %rax\n"
+        "int $0x80\n"
+        "mov $1, %rax\n"
+        "int $0x80\n"
+        "hlt\n");
+}
+
+__attribute__((unused)) static void enter_user_mode(uint64_t entry, uint64_t user_stack) {
+    uint64_t rflags = 0;
+    __asm__ volatile("pushfq; pop %0" : "=r"(rflags));
+    rflags |= 0x200;
+    __asm__ volatile("mov %%rsp, %0" : "=r"(g_user_mode_kernel_rsp));
+    uint64_t cs = GDT_USER_CODE | 0x3;
+    uint64_t ss = GDT_USER_DATA | 0x3;
+    __asm__ volatile(
+        "pushq %0\n"
+        "pushq %1\n"
+        "pushq %2\n"
+        "pushq %3\n"
+        "pushq %4\n"
+        "iretq\n"
+        :
+        : "r"(ss), "r"(user_stack), "r"(rflags), "r"(cs), "r"(entry)
+        : "memory");
+}
+
+__attribute__((unused)) static void run_user_mode_smoke(void) {
+    uint64_t user_stack = (uint64_t)(uintptr_t)g_user_stack + sizeof(g_user_stack);
+    user_stack &= ~0xFULL;
+    g_user_mode_exited = 0;
+    serial_write("[RSE] user mode smoke begin\n");
+    enter_user_mode((uint64_t)(uintptr_t)user_mode_entry, user_stack);
+    if (g_user_mode_exited) {
+        serial_write("[RSE] user mode smoke ok\n");
+    } else {
+        serial_write("[RSE] user mode smoke exit missing\n");
+    }
 }
 
 static uint64_t xorshift64(uint64_t *state) {
@@ -3276,6 +3482,9 @@ static void run_benchmarks(struct rse_boot_info *boot_info, int do_init) {
     bench_net_arp();
     bench_udp_http_server();
     bench_http_loopback();
+#if RSE_ENABLE_USERMODE
+    run_user_mode_smoke();
+#endif
     serial_write("[RSE] benchmarks end\n");
     g_metrics.metrics_valid = 1;
 }
@@ -3295,6 +3504,16 @@ void *memset(void *dst, int value, size_t count) {
         d[i] = (uint8_t)value;
     }
     return dst;
+}
+
+void *__memcpy_chk(void *dst, const void *src, size_t count, size_t dstlen) {
+    (void)dstlen;
+    return memcpy(dst, src, count);
+}
+
+void *__memset_chk(void *dst, int value, size_t count, size_t dstlen) {
+    (void)dstlen;
+    return memset(dst, value, count);
 }
 
 static void fb_clear(struct limine_framebuffer *fb, uint32_t color) {

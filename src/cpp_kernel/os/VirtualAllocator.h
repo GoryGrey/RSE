@@ -267,8 +267,14 @@ public:
         if (stack_end_ < stack_start_ + size) {
             return 0;
         }
+        uint64_t guard = size > PAGE_SIZE ? PAGE_SIZE : 0;
         uint64_t stack_base = stack_end_ - size;
-        if (!mapRange(stack_base, size, PTE_USER | PTE_WRITABLE, nullptr, 0)) {
+        uint64_t mapped_base = stack_base + guard;
+        uint64_t mapped_size = size - guard;
+        if (mapped_size == 0) {
+            return 0;
+        }
+        if (!mapRange(mapped_base, mapped_size, PTE_USER | PTE_WRITABLE, nullptr, 0)) {
             return 0;
         }
         return stack_end_;
@@ -326,6 +332,106 @@ public:
     uint64_t getStackEnd() const { return stack_end_; }
     PageTable* getPageTable() const { return page_table_; }
     PhysicalAllocator* getPhysicalAllocator() const { return phys_alloc_; }
+
+    bool isUserRange(uint64_t addr, uint64_t size) const {
+        if (size == 0) {
+            return true;
+        }
+        const uint64_t user_min = 0x1000;
+        uint64_t end = addr + size - 1;
+        if (end < addr) {
+            return false;
+        }
+        return addr >= user_min && end < stack_end_;
+    }
+
+    bool validateUserRange(uint64_t addr, uint64_t size, bool write) const {
+        if (!isUserRange(addr, size) || !page_table_) {
+            return false;
+        }
+        uint64_t virt_start = align_down(addr);
+        uint64_t virt_end = align_up(addr + size);
+        for (uint64_t virt = virt_start; virt < virt_end; virt += PAGE_SIZE) {
+            const PageTableEntry* pte = page_table_->getPTE(virt);
+            if (!pte || !pte->isPresent() || !pte->isUser()) {
+                return false;
+            }
+            if (write && !pte->isWritable()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool readUser(void* dst, uint64_t src, uint64_t size) const {
+        if (!dst || size == 0) {
+            return false;
+        }
+        if (!isUserRange(src, size) || !page_table_ || !phys_alloc_) {
+            return false;
+        }
+        uint8_t* out = static_cast<uint8_t*>(dst);
+        uint64_t addr = src;
+        uint64_t remaining = size;
+        while (remaining > 0) {
+            uint64_t phys = page_table_->translate(addr);
+            if (phys == 0) {
+                return false;
+            }
+            void* phys_ptr = phys_alloc_->ptrFromPhys(phys);
+            if (!phys_ptr) {
+                return false;
+            }
+            uint64_t page_off = phys & (PAGE_SIZE - 1);
+            uint64_t chunk = PAGE_SIZE - page_off;
+            if (chunk > remaining) {
+                chunk = remaining;
+            }
+            const uint8_t* src = static_cast<const uint8_t*>(phys_ptr);
+            for (uint64_t i = 0; i < chunk; ++i) {
+                out[i] = src[i];
+            }
+            out += chunk;
+            addr += chunk;
+            remaining -= chunk;
+        }
+        return true;
+    }
+
+    bool writeUser(uint64_t dst, const void* src, uint64_t size) const {
+        if (!src || size == 0) {
+            return false;
+        }
+        if (!isUserRange(dst, size) || !page_table_ || !phys_alloc_) {
+            return false;
+        }
+        const uint8_t* in = static_cast<const uint8_t*>(src);
+        uint64_t addr = dst;
+        uint64_t remaining = size;
+        while (remaining > 0) {
+            uint64_t phys = page_table_->translate(addr);
+            if (phys == 0) {
+                return false;
+            }
+            void* phys_ptr = phys_alloc_->ptrFromPhys(phys);
+            if (!phys_ptr) {
+                return false;
+            }
+            uint64_t page_off = phys & (PAGE_SIZE - 1);
+            uint64_t chunk = PAGE_SIZE - page_off;
+            if (chunk > remaining) {
+                chunk = remaining;
+            }
+            uint8_t* dst = static_cast<uint8_t*>(phys_ptr);
+            for (uint64_t i = 0; i < chunk; ++i) {
+                dst[i] = in[i];
+            }
+            in += chunk;
+            addr += chunk;
+            remaining -= chunk;
+        }
+        return true;
+    }
 
     VirtualAllocator* clone() const {
         PageTable* new_pt = page_table_ ? page_table_->clone() : nullptr;
@@ -385,7 +491,10 @@ private:
 
             void* page_ptr = phys_alloc_->ptrFromPhys(phys);
             if (page_ptr) {
-                std::memset(page_ptr, 0, PAGE_SIZE);
+                uint8_t* dst = static_cast<uint8_t*>(page_ptr);
+                for (uint64_t i = 0; i < PAGE_SIZE; ++i) {
+                    dst[i] = 0;
+                }
             }
 
             if (init_data && data_remaining > 0) {
@@ -397,9 +506,11 @@ private:
                 if (copy_size > data_remaining) {
                     copy_size = data_remaining;
                 }
-                std::memcpy(static_cast<uint8_t*>(page_ptr) + data_offset,
-                            init_data + (init_size - data_remaining),
-                            copy_size);
+                uint8_t* dst = static_cast<uint8_t*>(page_ptr) + data_offset;
+                const uint8_t* src = init_data + (init_size - data_remaining);
+                for (uint64_t i = 0; i < copy_size; ++i) {
+                    dst[i] = src[i];
+                }
                 data_remaining -= copy_size;
             }
 

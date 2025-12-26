@@ -140,6 +140,7 @@ make
 ## Documentation
 
 - `PROJECT_STATUS.md` - current implementation status and benchmark logs
+- `docs/phase_reports/` and `docs/status/` - legacy phase docs (historical, not current status)
 - `docs/design/BRAIDED_TORUS_DESIGN.md` - projection model and braid coordinator
 - `docs/design/RSE_PROJECTION_EXCHANGE_SPEC.md` - projection exchange wire spec
 - `docs/design/RSE_PROJECTION_TASK_MAP.md` - implementation steps

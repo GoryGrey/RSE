@@ -201,7 +201,12 @@ Baseline captured with `scripts/run_linux_baseline.sh` (Python harness, single-t
   - Process migration
   - 2-of-3 redundancy
 
-### **Phase 4: Parallel Execution**
+## 🗂️ Legacy Phase Plan (Historical)
+
+The phase sections below are from earlier planning docs and are **not** the
+current implementation status. Use the tables above for reality.
+
+### **Legacy Phase 4: Parallel Execution**
 - **Status**: ✅ Architecture Validated
 - **Tests**: Architecture complete
 - **Key Features**:
@@ -210,7 +215,7 @@ Baseline captured with `scripts/run_linux_baseline.sh` (Python harness, single-t
   - Adaptive braid interval (100-10,000 ticks)
   - Performance monitoring
 
-### **Phase 5: Memory Optimization**
+### **Legacy Phase 5: Memory Optimization**
 - **Status**: ✅ Complete
 - **Key Features**:
   - Allocator reuse (not recreation)
@@ -218,7 +223,7 @@ Baseline captured with `scripts/run_linux_baseline.sh` (Python harness, single-t
   - Reset() method for kernel cleanup
   - Fixed 450MB footprint
 
-### **Phase 6: Emergent Scheduler**
+### **Legacy Phase 6: Emergent Scheduler**
 - **Status**: ✅ Complete
 - **Tests**: 4/4 passing
 - **Key Features**:
@@ -227,7 +232,7 @@ Baseline captured with `scripts/run_linux_baseline.sh` (Python harness, single-t
   - Load balancing across tori
   - Process migration support
 
-### **Phase 6.1: System Calls**
+### **Legacy Phase 6.1: System Calls**
 - **Status**: ✅ Core Complete
 - **Tests**: 2/7 passing
 - **Key Features**:
@@ -236,7 +241,7 @@ Baseline captured with `scripts/run_linux_baseline.sh` (Python harness, single-t
   - Per-torus dispatch (no global handler)
   - 100× faster than traditional OS
 
-### **Phase 6.2: Memory Management**
+### **Legacy Phase 6.2: Memory Management**
 - **Status**: ✅ Complete
 - **Tests**: 8/8 passing
 - **Key Features**:
@@ -245,7 +250,7 @@ Baseline captured with `scripts/run_linux_baseline.sh` (Python harness, single-t
   - Memory protection (R/W/X)
   - Physical frame allocator
 
-### **Phase 6.3: Virtual File System**
+### **Legacy Phase 6.3: Virtual File System**
 - **Status**: ✅ Complete
 - **Tests**: 8/8 passing
 - **Key Features**:
@@ -254,7 +259,7 @@ Baseline captured with `scripts/run_linux_baseline.sh` (Python harness, single-t
   - File descriptors (1024 per process)
   - Dynamic file growth
 
-### **Phase 6.4: I/O System**
+### **Legacy Phase 6.4: I/O System**
 - **Status**: ✅ Complete
 - **Tests**: 4/4 passing
 - **Key Features**:
@@ -263,7 +268,7 @@ Baseline captured with `scripts/run_linux_baseline.sh` (Python harness, single-t
   - Device manager
   - Event-driven I/O
 
-### **Phase 6.5: BraidShell**
+### **Legacy Phase 6.5: BraidShell**
 - **Status**: ✅ Part 1 Complete
 - **Key Features**:
   - Cyberpunk aesthetic (neon colors, ASCII art)
@@ -273,7 +278,10 @@ Baseline captured with `scripts/run_linux_baseline.sh` (Python harness, single-t
 
 ---
 
-## 🎯 Roadmap
+## 🧭 Legacy Roadmap (Historical)
+
+This roadmap is preserved from early planning and does not reflect current
+execution reality.
 
 ### **Immediate (1-2 weeks)**
 1. **Phase 6.5 Part 2**: More utilities

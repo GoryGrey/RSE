@@ -127,9 +127,7 @@ struct PageTableEntry {
 struct L2PageTable {
     PageTableEntry entries[L2_ENTRIES];
     
-    L2PageTable() {
-        std::memset(entries, 0, sizeof(entries));
-    }
+    L2PageTable() = default;
     
     PageTableEntry& operator[](uint32_t index) {
         return entries[index];

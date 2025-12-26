@@ -176,6 +176,7 @@ inline int64_t sys_fork(uint64_t, uint64_t, uint64_t,
  */
 inline int64_t sys_wait(uint64_t status_ptr, uint64_t, uint64_t,
                         uint64_t, uint64_t, uint64_t) {
+    (void)status_ptr;
     OSProcess* current = get_current_process();
     if (!current) {
         return -ESRCH;

@@ -50,6 +50,7 @@ public:
         // In C++, we would iterate the map. 
         // For benchmarks, we just count them to simulate load.
         size_t procs = space.getProcessCount();
+        (void)procs;
         
         // "Context Switch" Simulation
         // In a real scheduler, we would swap register states here.

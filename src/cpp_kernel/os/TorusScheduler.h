@@ -53,8 +53,8 @@ private:
     
 public:
     TorusScheduler(uint32_t torus_id, Policy policy = Policy::FAIR)
-        : current_process_(nullptr),
-          policy_(policy),
+        : policy_(policy),
+          current_process_(nullptr),
           total_ticks_(0),
           idle_ticks_(0),
           context_switches_(0),
@@ -117,7 +117,7 @@ public:
         // Check if it's the current process
         if (current_process_ && current_process_->pid == pid) {
             current_process_->setBlocked();
-            blocked_queue_.push_back(current_process_);
+            (void)blocked_queue_.push_back(current_process_);
             current_process_ = nullptr;
             return true;
         }
@@ -128,7 +128,7 @@ public:
                 OSProcess* proc = ready_queue_[i];
                 ready_queue_.erase_at(i);
                 proc->setBlocked();
-                blocked_queue_.push_back(proc);
+                (void)blocked_queue_.push_back(proc);
                 return true;
             }
         }
@@ -145,7 +145,7 @@ public:
                 OSProcess* proc = blocked_queue_[i];
                 blocked_queue_.erase_at(i);
                 proc->setReady();
-                ready_queue_.push_back(proc);
+                (void)ready_queue_.push_back(proc);
                 return true;
             }
         }
@@ -252,14 +252,14 @@ public:
                 // Preempt: save context and put back in ready queue
                 current_process_->saveContext();
                 current_process_->setReady();
-                ready_queue_.push_back(current_process_);
+                (void)ready_queue_.push_back(current_process_);
                 current_process_ = nullptr;
                 context_switches_++;
             }
             // Check if process blocked itself
             else if (current_process_->isBlocked()) {
                 // Move to blocked queue
-                blocked_queue_.push_back(current_process_);
+                (void)blocked_queue_.push_back(current_process_);
                 current_process_ = nullptr;
                 context_switches_++;
             }

@@ -20,14 +20,6 @@
 
 namespace os {
 
-#ifdef RSE_KERNEL
-extern "C" int rse_block_read(uint64_t lba, void* buf, uint32_t blocks);
-extern "C" int rse_block_write(uint64_t lba, const void* buf, uint32_t blocks);
-#else
-inline int rse_block_read(uint64_t, void*, uint32_t) { return -1; }
-inline int rse_block_write(uint64_t, const void*, uint32_t) { return -1; }
-#endif
-
 class VFS {
 private:
     MemFS* fs_;

@@ -14,11 +14,11 @@ struct Process {
 static void testToroidalSpaceVoxelCapacity() {
   ToroidalSpace<32, 32, 32, 4> space;
 
-  Process p1{1};
-  Process p2{2};
-  Process p3{3};
-  Process p4{4};
-  Process p5{5};
+  [[maybe_unused]] Process p1{1};
+  [[maybe_unused]] Process p2{2};
+  [[maybe_unused]] Process p3{3};
+  [[maybe_unused]] Process p4{4};
+  [[maybe_unused]] Process p5{5};
 
   assert(space.addProcess(&p1, 0, 0, 0));
   assert(space.addProcess(&p2, 0, 0, 0));
@@ -36,7 +36,7 @@ static void testToroidalSpaceVoxelCapacity() {
   assert(space.getProcessCount() == 4);
 
   // Wrap invariants (32 wraps to 0)
-  Process p6{6};
+  [[maybe_unused]] Process p6{6};
   assert(!space.addProcess(&p6, 32, 0, 0));
 }
 
@@ -68,9 +68,9 @@ static void testFixedMinHeapCapacityAndOrder() {
 
   // Canonical ordering
   assert(heap.top().t == 1 && heap.top().id == 0);
-  heap.pop();
+  (void)heap.pop();
   assert(heap.top().t == 1 && heap.top().id == 1);
-  heap.pop();
+  (void)heap.pop();
   assert(heap.top().t == 2);
 }
 
@@ -83,13 +83,13 @@ static void testFixedAdjacencyCapacity() {
     std::uint32_t from = static_cast<std::uint32_t>(i % LATTICE_SIZE);
     std::uint32_t to = static_cast<std::uint32_t>((i + 1) % LATTICE_SIZE);
 
-    int fx = static_cast<int>(from / 1024u);
-    int fy = static_cast<int>((from % 1024u) / 32u);
-    int fz = static_cast<int>(from % 32u);
+    [[maybe_unused]] int fx = static_cast<int>(from / 1024u);
+    [[maybe_unused]] int fy = static_cast<int>((from % 1024u) / 32u);
+    [[maybe_unused]] int fz = static_cast<int>(from % 32u);
 
-    int tx = static_cast<int>(to / 1024u);
-    int ty = static_cast<int>((to % 1024u) / 32u);
-    int tz = static_cast<int>(to % 32u);
+    [[maybe_unused]] int tx = static_cast<int>(to / 1024u);
+    [[maybe_unused]] int ty = static_cast<int>((to % 1024u) / 32u);
+    [[maybe_unused]] int tz = static_cast<int>(to % 32u);
 
     assert(kernel.createEdge(fx, fy, fz, tx, ty, tz, 1));
   }

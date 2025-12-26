@@ -38,12 +38,14 @@ struct ConsoleData {
 
 // Open console
 int console_open(Device* dev) {
+    (void)dev;
     std::cout << "[Console] Opened" << std::endl;
     return 0;
 }
 
 // Close console
 int console_close(Device* dev) {
+    (void)dev;
     std::cout << "[Console] Closed" << std::endl;
     return 0;
 }
@@ -97,8 +99,8 @@ ssize_t console_read(Device* dev, void* buf, size_t count) {
 
 // Write to console (stdout/stderr)
 ssize_t console_write(Device* dev, const void* buf, size_t count) {
-#ifdef RSE_KERNEL
     (void)dev;
+#ifdef RSE_KERNEL
     const char* data = (const char*)buf;
     for (size_t i = 0; i < count; ++i) {
         char tmp[2] = {data[i], '\0'};
@@ -116,6 +118,9 @@ ssize_t console_write(Device* dev, const void* buf, size_t count) {
 
 // ioctl (not implemented)
 int console_ioctl(Device* dev, unsigned long request, void* arg) {
+    (void)dev;
+    (void)request;
+    (void)arg;
     std::cerr << "[Console] ioctl not implemented" << std::endl;
     return -1;
 }

@@ -166,7 +166,7 @@ public:
      * Free a file descriptor.
      */
     void free(int32_t fd) {
-        if (fd < 0 || fd >= MAX_FDS) {
+        if (fd < 0 || static_cast<uint32_t>(fd) >= MAX_FDS) {
             std::cerr << "[FileDescriptorTable] Invalid FD: " << fd << std::endl;
             return;
         }
@@ -198,7 +198,7 @@ public:
      * Returns nullptr if invalid or not in use.
      */
     FileDescriptor* get(int32_t fd) {
-        if (fd < 0 || fd >= MAX_FDS) {
+        if (fd < 0 || static_cast<uint32_t>(fd) >= MAX_FDS) {
             return nullptr;
         }
         

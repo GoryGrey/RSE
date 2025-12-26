@@ -8,23 +8,24 @@ PHDRS {
 SECTIONS {
     . = 0x10000000;
 
-    .text : ALIGN(16) {
+    .text : ALIGN(0x1000) {
         *(.text .text.*)
     } :text
 
-    .rodata : ALIGN(16) {
+    .rodata : ALIGN(0x1000) {
         *(.rodata .rodata.*)
     } :text
 
-    .limine_reqs : ALIGN(16) {
+    .limine_reqs : ALIGN(0x1000) {
         KEEP(*(.limine_reqs))
     } :text
 
-    .data : ALIGN(16) {
+    . = ALIGN(0x1000);
+    .data : ALIGN(0x1000) {
         *(.data .data.*)
     } :data
 
-    .bss : ALIGN(16) {
+    .bss : ALIGN(0x1000) {
         *(COMMON)
         *(.bss .bss.*)
     } :data

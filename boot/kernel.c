@@ -783,6 +783,7 @@ static bool setup_user_pages(uint64_t *entry_out, uint64_t *stack_out) {
         '/', 'r', 'i', 'n', 'g', '3', '.', 'e', 'l', 'f', 0x00
     };
 
+    serial_write("[RSE] user setup start\n");
     if (!entry_out || !stack_out) {
         return false;
     }
@@ -792,6 +793,9 @@ static bool setup_user_pages(uint64_t *entry_out, uint64_t *stack_out) {
     if (rse_os_prepare_ring3(0)) {
         user_code = user_code_exec;
         user_code_len = sizeof(user_code_exec);
+        serial_write("[RSE] user setup ring3 ready\n");
+    } else {
+        serial_write("[RSE] user setup ring3 unavailable\n");
     }
 
     uint64_t os_code_phys = 0;
@@ -799,6 +803,9 @@ static bool setup_user_pages(uint64_t *entry_out, uint64_t *stack_out) {
     if (rse_os_user_map(USER_VADDR_BASE, USER_STACK_VADDR, &os_code_phys, &os_stack_phys)) {
         g_user_code_page = (uint8_t *)(uintptr_t)os_code_phys;
         g_user_stack_page = (uint8_t *)(uintptr_t)os_stack_phys;
+        serial_write("[RSE] user setup os map ok\n");
+    } else {
+        serial_write("[RSE] user setup os map failed\n");
     }
 
     if (!g_user_code_page) {
@@ -3962,6 +3969,13 @@ static void run_benchmarks(struct rse_boot_info *boot_info, int do_init) {
     } else {
         serial_write("[RSE] benchmarks: skipping workload init\n");
     }
+#if RSE_ENABLE_USERMODE
+    if (g_os_initialized) {
+        serial_write("[RSE] user mode exec smoke start\n");
+        run_user_mode_smoke_guarded();
+        serial_write("[RSE] user mode exec smoke done\n");
+    }
+#endif
     bench_compute();
     bench_memory();
     bench_files();
@@ -3971,9 +3985,6 @@ static void run_benchmarks(struct rse_boot_info *boot_info, int do_init) {
     bench_net_arp();
     bench_udp_http_server();
     bench_http_loopback();
-#if RSE_ENABLE_USERMODE
-    run_user_mode_smoke_guarded();
-#endif
     serial_write("[RSE] benchmarks end\n");
     g_metrics.metrics_valid = 1;
 }

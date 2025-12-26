@@ -58,10 +58,12 @@ static bool map_user_page(os::OSProcess* proc, uint64_t vaddr, uint64_t flags, u
     if (!proc || !phys_out || !proc->memory.page_table || !proc->vmem) {
         return false;
     }
+    serial_write("[RSE] user map page begin\n");
     uint64_t page = os::align_down(vaddr);
     uint64_t existing = proc->memory.page_table->translate(page);
     if (existing != 0) {
         *phys_out = existing;
+        serial_write("[RSE] user map page existing\n");
         return true;
     }
     os::PhysicalAllocator* phys_alloc = proc->vmem->getPhysicalAllocator();
@@ -72,10 +74,12 @@ static bool map_user_page(os::OSProcess* proc, uint64_t vaddr, uint64_t flags, u
     if (phys == 0) {
         return false;
     }
+    serial_write("[RSE] user map page alloc\n");
     if (!proc->memory.page_table->map(page, phys, flags)) {
         phys_alloc->freeFrame(phys);
         return false;
     }
+    serial_write("[RSE] user map page mapped\n");
     *phys_out = phys;
     return true;
 }
@@ -85,18 +89,22 @@ extern "C" int rse_os_user_map(uint64_t code_vaddr, uint64_t stack_vaddr,
     if (!code_phys_out || !stack_phys_out) {
         return 0;
     }
+    serial_write("[RSE] user map begin\n");
     os::OSProcess* proc = g_ring3_proc ? g_ring3_proc : user_procs[0][0];
     if (!proc || !proc->vmem || !proc->memory.page_table) {
         return 0;
     }
     if (!map_user_page(proc, code_vaddr, os::PTE_PRESENT | os::PTE_USER, code_phys_out)) {
+        serial_write("[RSE] user map code fail\n");
         return 0;
     }
     if (!map_user_page(proc, stack_vaddr,
                        os::PTE_PRESENT | os::PTE_USER | os::PTE_WRITABLE,
                        stack_phys_out)) {
+        serial_write("[RSE] user map stack fail\n");
         return 0;
     }
+    serial_write("[RSE] user map ok\n");
     proc->memory.code_start = code_vaddr;
     proc->memory.code_end = code_vaddr + os::PAGE_SIZE;
     proc->memory.stack_start = stack_vaddr;

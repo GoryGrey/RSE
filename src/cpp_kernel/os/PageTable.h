@@ -138,6 +138,21 @@ struct L2PageTable {
     }
 };
 
+#ifdef RSE_KERNEL
+constexpr uint32_t KERNEL_L2_POOL_SIZE = 256;
+
+inline L2PageTable* alloc_kernel_l2_table() {
+    static L2PageTable pool[KERNEL_L2_POOL_SIZE];
+    static uint32_t used = 0;
+    if (used >= KERNEL_L2_POOL_SIZE) {
+        return nullptr;
+    }
+    L2PageTable* table = &pool[used++];
+    std::memset(table, 0, sizeof(L2PageTable));
+    return table;
+}
+#endif
+
 /**
  * Level 1 Page Table (Page Directory)
  * 
@@ -153,6 +168,9 @@ public:
         std::memset(l2_tables_, 0, sizeof(l2_tables_));
     }
     
+#ifdef RSE_KERNEL
+    ~PageTable() = default;
+#else
     ~PageTable() {
         // Free all L2 tables
         for (uint32_t i = 0; i < L1_ENTRIES; i++) {
@@ -161,6 +179,7 @@ public:
             }
         }
     }
+#endif
     
     /**
      * Map a virtual address to a physical address.
@@ -171,7 +190,11 @@ public:
         
         // Allocate L2 table if needed
         if (!l2_tables_[l1_idx]) {
+#ifdef RSE_KERNEL
+            l2_tables_[l1_idx] = alloc_kernel_l2_table();
+#else
             l2_tables_[l1_idx] = new L2PageTable();
+#endif
             if (!l2_tables_[l1_idx]) {
                 return false;  // Out of memory
             }

@@ -129,8 +129,7 @@ int main() {
     std::cout << "\n[RSE] userspace init (simulated) starting" << std::endl;
 
     os::MemFS memfs;
-    os::FileDescriptorTable fd_table;
-    os::VFS vfs(&memfs, &fd_table);
+    os::VFS vfs(&memfs);
     os::DeviceManager dev_mgr;
     os::Device* console = os::create_console_device();
     os::Device* dev_null = os::create_null_device();
@@ -149,7 +148,6 @@ int main() {
         }
     }
     vfs.setDeviceManager(&dev_mgr);
-    fd_table.bindStandardDevices(console);
     os::TorusScheduler scheduler(0);
     os::SyscallDispatcher dispatcher;
     os::TorusContext torus;
@@ -160,6 +158,7 @@ int main() {
 
     uint32_t pid = os::allocate_pid();
     os::OSProcess* init = new os::OSProcess(pid, 0, 0);
+    init->fd_table.bindStandardDevices(console);
     scheduler.addProcess(init);
     scheduler.tick();
 

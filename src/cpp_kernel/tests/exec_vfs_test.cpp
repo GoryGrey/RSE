@@ -104,8 +104,7 @@ int main() {
   std::cout << "[Exec VFS Tests]" << std::endl;
 
   os::MemFS fs;
-  os::FileDescriptorTable fdt;
-  os::VFS vfs(&fs, &fdt);
+  os::VFS vfs(&fs);
   os::TorusScheduler scheduler(0);
   os::SyscallDispatcher dispatcher;
 
@@ -129,13 +128,14 @@ int main() {
   writeElfImage(image, reinterpret_cast<const uint8_t*>(payload), sizeof(payload), 0x500000);
 
   const char path[] = "/hello.elf";
-  int32_t fd = vfs.open(path, os::O_CREAT | os::O_TRUNC | os::O_WRONLY);
+  int32_t fd = vfs.open(&proc.fd_table, path, os::O_CREAT | os::O_TRUNC | os::O_WRONLY);
   assert(fd >= 0);
-  int64_t written = vfs.write(fd, image.data(), image.size());
+  int64_t written = vfs.write(&proc.fd_table, fd, image.data(), image.size());
   assert(written == static_cast<int64_t>(image.size()));
-  vfs.close(fd);
+  vfs.close(&proc.fd_table, fd);
 
-  int32_t cloexec_fd = vfs.open("/tmp.txt", os::O_CREAT | os::O_TRUNC | os::O_WRONLY | os::O_CLOEXEC);
+  int32_t cloexec_fd = vfs.open(&proc.fd_table, "/tmp.txt",
+                                os::O_CREAT | os::O_TRUNC | os::O_WRONLY | os::O_CLOEXEC);
   assert(cloexec_fd >= 0);
 
   auto writeUserString = [&](const char* str) -> uint64_t {
@@ -171,7 +171,7 @@ int main() {
   assert(proc.context.rdi == 2);
   assert(proc.context.rsi != 0);
   assert(proc.context.rdx != 0);
-  assert(fdt.get(cloexec_fd) == nullptr);
+  assert(proc.fd_table.get(cloexec_fd) == nullptr);
 
   uint64_t phys_addr = proc.memory.page_table->translate(0x500000);
   assert(phys_addr != 0);

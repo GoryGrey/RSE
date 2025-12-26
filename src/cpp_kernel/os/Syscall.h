@@ -51,18 +51,42 @@ constexpr int SYS_NANOSLEEP = 42;
 
 // ========== Error Codes ==========
 
+#ifndef EPERM
 constexpr int EPERM     = 1;   // Operation not permitted
+#endif
+#ifndef ENOENT
 constexpr int ENOENT    = 2;   // No such file or directory
+#endif
+#ifndef ESRCH
 constexpr int ESRCH     = 3;   // No such process
+#endif
+#ifndef EINTR
 constexpr int EINTR     = 4;   // Interrupted system call
+#endif
+#ifndef EIO
 constexpr int EIO       = 5;   // I/O error
+#endif
+#ifndef EBADF
 constexpr int EBADF     = 9;   // Bad file descriptor
+#endif
+#ifndef ECHILD
 constexpr int ECHILD    = 10;  // No child processes
+#endif
+#ifndef ENOMEM
 constexpr int ENOMEM    = 12;  // Out of memory
+#endif
+#ifndef EACCES
 constexpr int EACCES    = 13;  // Permission denied
+#endif
+#ifndef EFAULT
 constexpr int EFAULT    = 14;  // Bad address
+#endif
+#ifndef EINVAL
 constexpr int EINVAL    = 22;  // Invalid argument
+#endif
+#ifndef ENOSYS
 constexpr int ENOSYS    = 38;  // Function not implemented
+#endif
 
 // ========== File Flags ==========
 
@@ -83,13 +107,21 @@ constexpr int PROT_EXEC  = 0x04;
 
 // ========== Seek Whence ==========
 
+#ifndef SEEK_SET
 constexpr int SEEK_SET  = 0;  // Seek from beginning of file
+#endif
+#ifndef SEEK_CUR
 constexpr int SEEK_CUR  = 1;  // Seek from current position
+#endif
+#ifndef SEEK_END
 constexpr int SEEK_END  = 2;  // Seek from end of file
+#endif
 
 // ========== Wait Options ==========
 
+#ifndef WNOHANG
 constexpr int WNOHANG   = 1;  // Don't block if no child has exited
+#endif
 
 // ========== System Call Handler Type ==========
 

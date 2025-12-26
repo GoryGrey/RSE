@@ -4,6 +4,7 @@
 #include <cstring>
 #include "VirtualAllocator.h"
 #include "ElfLoader.h"
+#include "FileDescriptor.h"
 #ifdef RSE_KERNEL
 #include "KernelStubs.h"
 #else
@@ -97,18 +98,6 @@ struct MemoryLayout {
 };
 
 /**
- * Process-local file descriptor placeholder.
- */
-struct ProcessFD {
-    int fd;
-    uint64_t offset;
-    uint32_t flags;
-    void* private_data;
-    
-    ProcessFD() : fd(-1), offset(0), flags(0), private_data(nullptr) {}
-};
-
-/**
  * OSProcess: Full operating system process.
  */
 class OSProcess {
@@ -135,8 +124,7 @@ public:
     uint64_t last_scheduled;    // Last time this process was scheduled
     
     // ========== I/O ==========
-    static constexpr int MAX_FDS = 64;
-    ProcessFD open_files[MAX_FDS];
+    FileDescriptorTable fd_table;
 
     VirtualAllocator* vmem;
 
@@ -166,14 +154,6 @@ public:
           syscalls(nullptr),
           x(0), y(0), z(0)
     {
-        // Initialize standard file descriptors
-        open_files[0].fd = 0;  // stdin
-        open_files[1].fd = 1;  // stdout
-        open_files[2].fd = 2;  // stderr
-        
-        for (int i = 3; i < MAX_FDS; i++) {
-            open_files[i].fd = -1;
-        }
     }
 
     void initMemory(PhysicalAllocator* phys_alloc) {
@@ -402,43 +382,6 @@ public:
             vmem->free(addr, PAGE_SIZE);
             memory.heap_brk = vmem->getHeapBrk();
         }
-    }
-    
-    // ========== File Descriptors ==========
-    
-    /**
-     * Allocate a file descriptor.
-     */
-    int allocateFD() {
-        for (int i = 3; i < MAX_FDS; i++) {
-            if (open_files[i].fd == -1) {
-                open_files[i].fd = i;
-                return i;
-            }
-        }
-        return -1;  // No free FDs
-    }
-    
-    /**
-     * Free a file descriptor.
-     */
-    void freeFD(int fd) {
-        if (fd >= 0 && fd < MAX_FDS) {
-            open_files[fd].fd = -1;
-            open_files[fd].offset = 0;
-            open_files[fd].flags = 0;
-            open_files[fd].private_data = nullptr;
-        }
-    }
-    
-    /**
-     * Get file descriptor.
-     */
-    ProcessFD* getFD(int fd) {
-        if (fd >= 0 && fd < MAX_FDS && open_files[fd].fd != -1) {
-            return &open_files[fd];
-        }
-        return nullptr;
     }
     
     // ========== Debugging ==========

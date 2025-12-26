@@ -23,13 +23,12 @@ namespace os {
 class VFS {
 private:
     MemFS* fs_;
-    FileDescriptorTable* fd_table_;
     DeviceManager* device_mgr_;
     BlockFS* blockfs_;
     
 public:
-    VFS(MemFS* fs, FileDescriptorTable* fd_table)
-        : fs_(fs), fd_table_(fd_table), device_mgr_(nullptr), blockfs_(nullptr) {}
+    VFS(MemFS* fs)
+        : fs_(fs), device_mgr_(nullptr), blockfs_(nullptr) {}
 
     void setDeviceManager(DeviceManager* mgr) {
         device_mgr_ = mgr;
@@ -37,12 +36,6 @@ public:
 
     void setBlockFS(BlockFS* fs) {
         blockfs_ = fs;
-    }
-
-    void closeOnExec() {
-        if (fd_table_) {
-            fd_table_->closeOnExec();
-        }
     }
 
     Device* lookupDevice(const char* path) const {
@@ -87,14 +80,18 @@ public:
      * @param mode Permissions (if creating)
      * @return File descriptor, or -1 on error
      */
-    int32_t open(const char* path, uint32_t flags, uint32_t mode = 0644) {
+    int32_t open(FileDescriptorTable* fd_table, const char* path,
+                 uint32_t flags, uint32_t mode = 0644) {
+        if (!fd_table) {
+            return -EINVAL;
+        }
         // Device nodes (/dev/*)
         Device* dev = lookupDevice(path);
         if (dev) {
             if (dev->open) {
                 dev->open(dev);
             }
-            int32_t fd = fd_table_->allocateDevice(dev, flags);
+            int32_t fd = fd_table->allocateDevice(dev, flags);
             if (fd < 0) {
                 std::cerr << "[VFS] Failed to allocate device FD" << std::endl;
                 return -1;
@@ -116,13 +113,13 @@ public:
             if (flags & O_TRUNC) {
                 blockfs_->truncate(entry);
             }
-            int32_t fd = fd_table_->allocateBlock(entry, flags);
+            int32_t fd = fd_table->allocateBlock(entry, flags);
             if (fd < 0) {
                 std::cerr << "[VFS] Failed to allocate BlockFS FD" << std::endl;
                 return -1;
             }
             if (flags & O_APPEND) {
-                FileDescriptor* desc = fd_table_->get(fd);
+                FileDescriptor* desc = fd_table->get(fd);
                 if (desc) {
                     desc->offset = entry->size;
                 }
@@ -154,7 +151,7 @@ public:
         }
         
         // Allocate file descriptor
-        int32_t fd = fd_table_->allocate(file, flags);
+        int32_t fd = fd_table->allocate(file, flags);
         if (fd < 0) {
             std::cerr << "[VFS] Failed to allocate FD" << std::endl;
             return -1;
@@ -162,7 +159,7 @@ public:
         
         // If O_APPEND, set offset to end
         if (flags & O_APPEND) {
-            FileDescriptor* desc = fd_table_->get(fd);
+            FileDescriptor* desc = fd_table->get(fd);
             if (desc) {
                 desc->offset = file->size;
             }
@@ -179,9 +176,12 @@ public:
      * @param count Number of bytes to read
      * @return Number of bytes read, or -1 on error
      */
-    int64_t read(int32_t fd, void* buf, uint32_t count) {
+    int64_t read(FileDescriptorTable* fd_table, int32_t fd, void* buf, uint32_t count) {
+        if (!fd_table) {
+            return -EINVAL;
+        }
         // Get file descriptor
-        FileDescriptor* desc = fd_table_->get(fd);
+        FileDescriptor* desc = fd_table->get(fd);
         if (!desc) {
             std::cerr << "[VFS] Invalid FD: " << fd << std::endl;
             return -1;
@@ -306,9 +306,12 @@ public:
      * @param count Number of bytes to write
      * @return Number of bytes written, or -1 on error
      */
-    int64_t write(int32_t fd, const void* buf, uint32_t count) {
+    int64_t write(FileDescriptorTable* fd_table, int32_t fd, const void* buf, uint32_t count) {
+        if (!fd_table) {
+            return -EINVAL;
+        }
         // Get file descriptor
-        FileDescriptor* desc = fd_table_->get(fd);
+        FileDescriptor* desc = fd_table->get(fd);
         if (!desc) {
             std::cerr << "[VFS] Invalid FD: " << fd << std::endl;
             return -1;
@@ -438,8 +441,11 @@ public:
      * @param fd File descriptor
      * @return 0 on success, -1 on error
      */
-    int32_t close(int32_t fd) {
-        FileDescriptor* desc = fd_table_->get(fd);
+    int32_t close(FileDescriptorTable* fd_table, int32_t fd) {
+        if (!fd_table) {
+            return -EINVAL;
+        }
+        FileDescriptor* desc = fd_table->get(fd);
         if (!desc) {
             std::cerr << "[VFS] Invalid FD: " << fd << std::endl;
             return -1;
@@ -449,7 +455,7 @@ public:
             desc->device->close(desc->device);
         }
         
-        fd_table_->free(fd);
+        fd_table->free(fd);
         
         return 0;
     }
@@ -462,8 +468,11 @@ public:
      * @param whence SEEK_SET, SEEK_CUR, or SEEK_END
      * @return New offset, or -1 on error
      */
-    int64_t lseek(int32_t fd, int64_t offset, int whence) {
-        FileDescriptor* desc = fd_table_->get(fd);
+    int64_t lseek(FileDescriptorTable* fd_table, int32_t fd, int64_t offset, int whence) {
+        if (!fd_table) {
+            return -EINVAL;
+        }
+        FileDescriptor* desc = fd_table->get(fd);
         if (!desc) {
             std::cerr << "[VFS] Invalid FD: " << fd << std::endl;
             return -1;
@@ -572,7 +581,45 @@ public:
         if (!buf || max == 0) {
             return -EINVAL;
         }
-        if (path && (strcmp(path, "/persist") == 0 || strcmp(path, "/persist/") == 0)) {
+        const char* target = path ? path : "/";
+        if (strcmp(target, "/") == 0 || strcmp(target, "") == 0) {
+            uint32_t written = 0;
+            auto append_entry = [&](const char* entry) {
+                if (!entry) {
+                    return;
+                }
+                uint32_t i = 0;
+                while (entry[i] && written + 1 < max) {
+                    buf[written++] = entry[i++];
+                }
+                if (written + 1 < max) {
+                    buf[written++] = '\n';
+                }
+            };
+            if (device_mgr_) {
+                append_entry("dev/");
+            }
+            if (blockfs_ && blockfs_->isMounted()) {
+                append_entry("persist/");
+            }
+            if (written < max) {
+                int32_t got = (int32_t)fs_->list(buf + written, max - written);
+                if (got > 0) {
+                    written += (uint32_t)got;
+                }
+            }
+            if (written < max) {
+                buf[written] = '\0';
+            }
+            return (int32_t)written;
+        }
+        if (strcmp(target, "/dev") == 0 || strcmp(target, "/dev/") == 0) {
+            if (!device_mgr_) {
+                return -1;
+            }
+            return (int32_t)device_mgr_->list(buf, max);
+        }
+        if (strcmp(target, "/persist") == 0 || strcmp(target, "/persist/") == 0) {
             if (!blockfs_ || !blockfs_->isMounted()) {
                 return -1;
             }
@@ -584,9 +631,11 @@ public:
     /**
      * Print VFS statistics.
      */
-    void printStats() const {
+    void printStats(const FileDescriptorTable* fd_table) const {
         fs_->printStats();
-        fd_table_->printStats();
+        if (fd_table) {
+            fd_table->printStats();
+        }
         if (blockfs_) {
             blockfs_->printStats();
         }

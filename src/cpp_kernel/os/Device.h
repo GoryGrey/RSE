@@ -149,6 +149,29 @@ public:
             }
         }
     }
+
+    uint32_t list(char* out, uint32_t max) const {
+        if (!out || max == 0) {
+            return 0;
+        }
+        uint32_t written = 0;
+        for (uint32_t i = 0; i < num_devices_; ++i) {
+            if (!devices_[i]) {
+                continue;
+            }
+            const char* name = devices_[i]->name;
+            uint32_t j = 0;
+            while (name[j] && written + 1 < max) {
+                out[written++] = name[j++];
+            }
+            if (written + 1 >= max) {
+                break;
+            }
+            out[written++] = '\n';
+        }
+        out[written] = '\0';
+        return written;
+    }
     
     /**
      * Get number of registered devices.

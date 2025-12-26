@@ -114,6 +114,10 @@ inline int64_t fork() {
     return syscall(SYS_FORK);
 }
 
+inline int64_t exec(const char* path) {
+    return syscall(SYS_EXEC, (uint64_t)path);
+}
+
 inline int64_t exit(int status) {
     return syscall(SYS_EXIT, status);
 }

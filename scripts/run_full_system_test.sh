@@ -45,6 +45,7 @@ CPP_TESTS=(
   c_api_test
   elf_loader_test
   elf_process_test
+  exec_vfs_test
 )
 for test_bin in "${CPP_TESTS[@]}"; do
   test_path="${ROOT_DIR}/build/cpp_kernel/${test_bin}"

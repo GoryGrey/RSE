@@ -205,6 +205,96 @@ inline int64_t sys_kill(uint64_t pid, uint64_t sig, uint64_t,
 }
 
 /**
+ * sys_exec: Replace current process image with a new ELF binary.
+ */
+inline int64_t sys_exec(uint64_t path_ptr, uint64_t, uint64_t,
+                        uint64_t, uint64_t, uint64_t) {
+    const char* path = reinterpret_cast<const char*>(path_ptr);
+    if (!path) {
+        return -EINVAL;
+    }
+    if (!current_torus_context || !current_torus_context->vfs || !current_torus_context->phys_alloc) {
+        return -ENOSYS;
+    }
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+
+    int32_t fd = current_torus_context->vfs->open(path, O_RDONLY);
+    if (fd < 0) {
+        return -ENOENT;
+    }
+
+    static constexpr uint32_t kChunk = 4096;
+    static constexpr uint32_t kMaxElfSize = 512 * 1024;
+#ifdef RSE_KERNEL
+    static uint8_t image[kMaxElfSize];
+    uint8_t* image_buf = image;
+#else
+    uint8_t* image_buf = new uint8_t[kMaxElfSize];
+    if (!image_buf) {
+        current_torus_context->vfs->close(fd);
+        return -ENOMEM;
+    }
+#endif
+
+    uint32_t total = 0;
+    while (true) {
+        if (total + kChunk > kMaxElfSize) {
+            current_torus_context->vfs->close(fd);
+#ifndef RSE_KERNEL
+            delete[] image_buf;
+#endif
+            return -ENOMEM;
+        }
+        int64_t bytes = current_torus_context->vfs->read(fd, image_buf + total, kChunk);
+        if (bytes < 0) {
+            current_torus_context->vfs->close(fd);
+#ifndef RSE_KERNEL
+            delete[] image_buf;
+#endif
+            return -EIO;
+        }
+        if (bytes == 0) {
+            break;
+        }
+        total += static_cast<uint32_t>(bytes);
+    }
+    current_torus_context->vfs->close(fd);
+
+    if (total == 0) {
+#ifndef RSE_KERNEL
+        delete[] image_buf;
+#endif
+        return -EINVAL;
+    }
+
+    if (!current->vmem) {
+        current->initMemory(current_torus_context->phys_alloc);
+    }
+
+    // Exec replaces the address space; we don't reclaim old mappings yet.
+    PageTable* new_pt = new PageTable();
+    VirtualAllocator* new_va = new VirtualAllocator(new_pt, current_torus_context->phys_alloc);
+    current->vmem = new_va;
+    current->memory.page_table = new_pt;
+
+    if (!current->loadElfImage(image_buf, total)) {
+#ifndef RSE_KERNEL
+        delete[] image_buf;
+#endif
+        return -EINVAL;
+    }
+
+    current->setUserEntry(nullptr, nullptr, nullptr);
+#ifndef RSE_KERNEL
+    delete[] image_buf;
+#endif
+    return 0;
+}
+
+/**
  * sys_write: Write to file descriptor
  */
 inline int64_t sys_write(uint64_t fd, uint64_t buf_addr, uint64_t count,
@@ -375,6 +465,7 @@ public:
         register_handler(SYS_FORK, sys_fork);
         register_handler(SYS_WAIT, sys_wait);
         register_handler(SYS_KILL, sys_kill);
+        register_handler(SYS_EXEC, sys_exec);
         register_handler(SYS_OPEN, sys_open);
         register_handler(SYS_CLOSE, sys_close);
         register_handler(SYS_WRITE, sys_write);

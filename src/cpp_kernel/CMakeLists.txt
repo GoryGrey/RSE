@@ -132,6 +132,12 @@ if(NOT MSVC)
     target_link_libraries(elf_process_test atomic)
 endif()
 
+# Exec + VFS integration test
+add_executable(exec_vfs_test tests/exec_vfs_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(exec_vfs_test atomic)
+endif()
+
 # Memory Telemetry Test
 add_executable(memory_telemetry_test tests/memory_telemetry_test.cpp)
 if(NOT MSVC)

@@ -141,7 +141,8 @@ struct gdt_ptr {
     uint64_t base;
 } __attribute__((packed));
 
-static struct gdt_entry gdt_entries[5];
+enum { GDT_ENTRY_COUNT = 8 };
+static struct gdt_entry gdt_entries[GDT_ENTRY_COUNT];
 static struct gdt_ptr gdt_descriptor;
 
 enum {
@@ -160,7 +161,16 @@ static void gdt_set_entry(int idx, uint8_t access, uint8_t flags) {
     gdt_entries[idx].base_high = 0;
 }
 
+static uint16_t read_cs(void) {
+    uint16_t cs;
+    __asm__ volatile("mov %%cs, %0" : "=r"(cs));
+    return cs;
+}
+
 static void init_gdt_user_segments(void) {
+    uint16_t cs = read_cs();
+    uint16_t cs_index = (uint16_t)(cs >> 3);
+
     gdt_set_entry(0, 0x00, 0x00);
     gdt_set_entry(1, 0x9A, 0x20);  // Kernel code, long mode
     gdt_set_entry(2, 0x92, 0x00);  // Kernel data
@@ -170,7 +180,23 @@ static void init_gdt_user_segments(void) {
     gdt_descriptor.limit = (uint16_t)(sizeof(gdt_entries) - 1);
     gdt_descriptor.base = (uint64_t)(uintptr_t)&gdt_entries[0];
 
+    if (cs_index > 0 && cs_index < GDT_ENTRY_COUNT &&
+        cs_index != (GDT_KERNEL_CODE >> 3) &&
+        cs_index != (GDT_USER_CODE >> 3)) {
+        gdt_set_entry((int)cs_index, 0x9A, 0x20);
+    }
+
     __asm__ volatile("lgdt %0" : : "m"(gdt_descriptor));
+
+    __asm__ volatile(
+        "pushq %[cs]\n"
+        "leaq 1f(%%rip), %%rax\n"
+        "pushq %%rax\n"
+        "lretq\n"
+        "1:\n"
+        :
+        : [cs] "i"(GDT_KERNEL_CODE)
+        : "rax", "memory");
 
     uint16_t data_sel = GDT_KERNEL_DATA;
     __asm__ volatile(

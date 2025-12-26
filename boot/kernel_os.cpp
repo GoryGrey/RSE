@@ -52,6 +52,7 @@ struct UserProgramState {
 
 static os::OSProcess* user_procs[kTorusCount][1 + kExtraProcs] = {};
 static UserProgramState user_states[kTorusCount][1 + kExtraProcs] = {};
+static os::OSProcess* g_ring3_proc = nullptr;
 
 static bool map_user_page(os::OSProcess* proc, uint64_t vaddr, uint64_t flags, uint64_t* phys_out) {
     if (!proc || !phys_out || !proc->memory.page_table || !proc->vmem) {
@@ -84,7 +85,7 @@ extern "C" int rse_os_user_map(uint64_t code_vaddr, uint64_t stack_vaddr,
     if (!code_phys_out || !stack_phys_out) {
         return 0;
     }
-    os::OSProcess* proc = user_procs[0][0];
+    os::OSProcess* proc = g_ring3_proc ? g_ring3_proc : user_procs[0][0];
     if (!proc || !proc->vmem || !proc->memory.page_table) {
         return 0;
     }
@@ -103,6 +104,7 @@ extern "C" int rse_os_user_map(uint64_t code_vaddr, uint64_t stack_vaddr,
     proc->memory.stack_pointer = stack_vaddr + os::PAGE_SIZE;
     return 1;
 }
+
 
 static void user_log_prefix(os::OSProcess* proc, const rse_syscalls* sys, const char* tag) {
     if (!proc || !sys || !tag) {
@@ -492,6 +494,12 @@ static os::OSProcess* create_process(uint32_t torus_id, uint32_t slot, uint32_t 
     return new (storage[torus_id][slot]) os::OSProcess(pid, parent_pid, torus_id);
 }
 
+static os::OSProcess* create_ring3_process(uint32_t pid, uint32_t parent_pid) {
+    alignas(os::OSProcess) static uint8_t storage[sizeof(os::OSProcess)];
+    return new (storage) os::OSProcess(pid, parent_pid, 0);
+}
+
+
 static int os_open_shim(const char *name, uint32_t flags) {
     return (int)os::syscall(os::SYS_OPEN, (uint64_t)name, flags, 0644);
 }
@@ -635,6 +643,159 @@ struct TorusRuntime {
     os::SyscallDispatcher* dispatcher;
     os::PhysicalAllocator* phys_alloc;
 };
+
+static bool build_ring3_elf_image(uint8_t* out, size_t cap, size_t* size_out) {
+    if (!out || cap < 512) {
+        return false;
+    }
+    for (size_t i = 0; i < cap; ++i) {
+        out[i] = 0;
+    }
+
+    const char msg[] = "ring3 elf ok\n";
+    const uint32_t msg_len = (uint32_t)(sizeof(msg) - 1);
+    static constexpr uint64_t kEntry = 0x40000000ull;
+
+    uint8_t payload[128] = {};
+    size_t idx = 0;
+    auto emit = [&](uint8_t b) { payload[idx++] = b; };
+    auto emit_u32 = [&](uint32_t v) {
+        emit((uint8_t)(v & 0xffu));
+        emit((uint8_t)((v >> 8) & 0xffu));
+        emit((uint8_t)((v >> 16) & 0xffu));
+        emit((uint8_t)((v >> 24) & 0xffu));
+    };
+
+    emit(0x48); emit(0xC7); emit(0xC0); emit_u32(os::SYS_WRITE);
+    emit(0x48); emit(0xC7); emit(0xC7); emit_u32(1);
+    emit(0x48); emit(0x8D); emit(0x35);
+    size_t disp_off = idx;
+    emit_u32(0);
+    size_t lea_next = idx;
+    emit(0x48); emit(0xC7); emit(0xC2); emit_u32(msg_len);
+    emit(0xCD); emit(0x80);
+    emit(0x48); emit(0xC7); emit(0xC0); emit_u32(os::SYS_EXIT);
+    emit(0x48); emit(0x31); emit(0xFF);
+    emit(0xCD); emit(0x80);
+    emit(0xF4);
+    size_t msg_pos = idx;
+    for (uint32_t i = 0; i < msg_len; ++i) {
+        emit((uint8_t)msg[i]);
+    }
+
+    uint32_t disp = (uint32_t)(msg_pos - lea_next);
+    payload[disp_off + 0] = (uint8_t)(disp & 0xffu);
+    payload[disp_off + 1] = (uint8_t)((disp >> 8) & 0xffu);
+    payload[disp_off + 2] = (uint8_t)((disp >> 16) & 0xffu);
+    payload[disp_off + 3] = (uint8_t)((disp >> 24) & 0xffu);
+
+    const size_t payload_len = idx;
+    const size_t payload_off = 0x100;
+    const size_t total = payload_off + payload_len;
+    if (total > cap) {
+        return false;
+    }
+
+    os::Elf64_Ehdr ehdr = {};
+    ehdr.e_ident[os::EI_MAG0] = os::ELF_MAGIC_0;
+    ehdr.e_ident[os::EI_MAG1] = os::ELF_MAGIC_1;
+    ehdr.e_ident[os::EI_MAG2] = os::ELF_MAGIC_2;
+    ehdr.e_ident[os::EI_MAG3] = os::ELF_MAGIC_3;
+    ehdr.e_ident[os::EI_CLASS] = os::ELFCLASS64;
+    ehdr.e_ident[os::EI_DATA] = os::ELFDATA2LSB;
+    ehdr.e_ident[os::EI_VERSION] = 1;
+    ehdr.e_machine = os::EM_X86_64;
+    ehdr.e_entry = kEntry;
+    ehdr.e_phoff = sizeof(os::Elf64_Ehdr);
+    ehdr.e_phentsize = sizeof(os::Elf64_Phdr);
+    ehdr.e_phnum = 1;
+    ehdr.e_ehsize = sizeof(os::Elf64_Ehdr);
+
+    os::Elf64_Phdr phdr = {};
+    phdr.p_type = os::PT_LOAD;
+    phdr.p_flags = os::PF_R | os::PF_X;
+    phdr.p_offset = payload_off;
+    phdr.p_vaddr = kEntry;
+    phdr.p_paddr = kEntry;
+    phdr.p_filesz = payload_len;
+    phdr.p_memsz = 0x1000;
+    phdr.p_align = 0x1000;
+
+    memcpy_local(out, &ehdr, sizeof(ehdr));
+    memcpy_local(out + ehdr.e_phoff, &phdr, sizeof(phdr));
+    memcpy_local(out + payload_off, payload, payload_len);
+
+    if (size_out) {
+        *size_out = total;
+    }
+    return true;
+}
+
+static bool install_ring3_elf(TorusRuntime& rt, os::OSProcess* proc) {
+    if (!rt.vfs || !proc) {
+        return false;
+    }
+    uint8_t image[512] = {};
+    size_t image_size = 0;
+    if (!build_ring3_elf_image(image, sizeof(image), &image_size)) {
+        return false;
+    }
+    const char path[] = "/ring3.elf";
+    int32_t fd = rt.vfs->open(&proc->fd_table, path,
+                              os::O_CREAT | os::O_TRUNC | os::O_WRONLY);
+    if (fd < 0) {
+        serial_write("[RSE] ring3 elf open failed\n");
+        return false;
+    }
+    int64_t written = rt.vfs->write(&proc->fd_table, fd, image, (uint32_t)image_size);
+    rt.vfs->close(&proc->fd_table, fd);
+    if (written != (int64_t)image_size) {
+        serial_write("[RSE] ring3 elf write failed\n");
+        return false;
+    }
+    return true;
+}
+
+static TorusRuntime g_runtimes[kTorusCount] = {};
+static int g_runtimes_ready = 0;
+
+extern "C" int rse_os_prepare_ring3(uint32_t torus_id) {
+    if (!g_runtimes_ready || !g_ring3_proc) {
+        return 0;
+    }
+    if (torus_id != 0 || torus_id >= kTorusCount) {
+        return 0;
+    }
+    TorusRuntime& rt = g_runtimes[torus_id];
+    if (!rt.scheduler || !rt.dispatcher) {
+        return 0;
+    }
+    current_torus_id = torus_id;
+    os::current_torus_context = &rt.ctx;
+    rt.scheduler->forceCurrentProcess(g_ring3_proc);
+    return 1;
+}
+
+extern "C" int64_t rse_os_syscall_dispatch(int64_t num,
+                                           uint64_t arg1, uint64_t arg2,
+                                           uint64_t arg3, uint64_t arg4,
+                                           uint64_t arg5, uint64_t arg6) {
+    if (!os::current_torus_context || !os::current_torus_context->dispatcher) {
+        return -1;
+    }
+    return os::syscall((int)num, arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+extern "C" int rse_os_ring3_entry(uint64_t* entry_out) {
+    if (!entry_out || !g_ring3_proc) {
+        return 0;
+    }
+    if (g_ring3_proc->context.rip == 0) {
+        return 0;
+    }
+    *entry_out = g_ring3_proc->context.rip;
+    return 1;
+}
 
 static void braid_log_loads(TorusRuntime* runtimes) {
     serial_write("[RSE] torus load a=");
@@ -1079,7 +1240,11 @@ static void os_braid_exchange(TorusRuntime* runtimes, uint64_t timestamp) {
 }
 
 extern "C" void rse_os_run(void) {
-    TorusRuntime runtimes[kTorusCount] = {};
+    if (g_runtimes_ready) {
+        serial_write("[RSE] os runtime already initialized\n");
+        return;
+    }
+    TorusRuntime* runtimes = g_runtimes;
     const bool has_block = (rse_block_init() == 0);
     const uint32_t block_size = has_block ? rse_block_size() : 0;
     const uint64_t block_total = has_block ? rse_block_total_blocks() : 0;
@@ -1148,6 +1313,17 @@ extern "C" void rse_os_run(void) {
         extra->fd_table.bindStandardDevices(rt.console);
         rt.scheduler->addProcess(extra);
         user_procs[0][1 + i] = extra;
+    }
+
+    if (!g_ring3_proc) {
+        TorusRuntime& rt = runtimes[0];
+        g_ring3_proc = create_ring3_process(rt.ctx.next_pid++, 0);
+        g_ring3_proc->initMemory(rt.phys_alloc);
+        g_ring3_proc->fd_table.bindStandardDevices(rt.console);
+        rt.scheduler->addProcess(g_ring3_proc);
+        if (!install_ring3_elf(rt, g_ring3_proc)) {
+            serial_write("[RSE] ring3 elf install failed\n");
+        }
     }
 
     struct rse_syscalls sys = {
@@ -1232,4 +1408,6 @@ extern "C" void rse_os_run(void) {
 #if RSE_SHM_EXCHANGE
     os_shm_exchange(runtimes);
 #endif
+
+    g_runtimes_ready = 1;
 }

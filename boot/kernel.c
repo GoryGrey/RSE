@@ -19,6 +19,16 @@ void *memset(void *dst, int value, size_t count);
 static void *uefi_alloc_pages(size_t bytes);
 extern int rse_os_user_map(uint64_t code_vaddr, uint64_t stack_vaddr,
                            uint64_t *code_phys_out, uint64_t *stack_phys_out);
+extern int rse_os_prepare_ring3(uint32_t torus_id);
+extern int64_t rse_os_syscall_dispatch(int64_t num,
+                                       uint64_t arg1, uint64_t arg2,
+                                       uint64_t arg3, uint64_t arg4,
+                                       uint64_t arg5, uint64_t arg6);
+extern int rse_os_ring3_entry(uint64_t *entry_out);
+
+#define RSE_SYS_EXEC 2u
+#define RSE_SYS_EXIT 3u
+#define RSE_SYS_WRITE 13u
 
 __attribute__((used, section(".limine_reqs")))
 LIMINE_REQUESTS_START_MARKER;
@@ -297,6 +307,12 @@ struct int80_frame {
     uint64_t rip, cs, rflags, rsp, ss;
 };
 
+static bool build_user_page_table(uint64_t code_phys, uint64_t stack_phys);
+
+#define USER_VADDR_BASE 0x40000000ull
+#define USER_STACK_VADDR (USER_VADDR_BASE + 0x1000ull)
+#define USER_STACK_TOP (USER_VADDR_BASE + 0x2000ull)
+
 struct exc_frame {
     uint64_t rax, rbx, rcx, rdx;
     uint64_t rsi, rdi, rbp;
@@ -341,20 +357,42 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
     if (!frame) {
         return;
     }
-    switch (frame->rax) {
-        case 0:
-            serial_write("[RSE] user syscall ping\n");
-            frame->rax = 0;
-            break;
-        case 1:
-            frame->cs = GDT_KERNEL_CODE;
-            frame->ss = GDT_KERNEL_DATA;
-            frame->rip = (uint64_t)(uintptr_t)user_mode_return;
-            frame->rsp = g_user_mode_kernel_rsp;
-            break;
-        default:
-            frame->rax = (uint64_t)-1;
-            break;
+    uint64_t call = frame->rax;
+    if (call == 0) {
+        serial_write("[RSE] user syscall ping\n");
+        frame->rax = 0;
+        return;
+    }
+    if (call == 1) {
+        frame->cs = GDT_KERNEL_CODE;
+        frame->ss = GDT_KERNEL_DATA;
+        frame->rip = (uint64_t)(uintptr_t)user_mode_return;
+        frame->rsp = g_user_mode_kernel_rsp;
+        return;
+    }
+
+    int64_t rc = rse_os_syscall_dispatch((int64_t)call,
+                                         frame->rdi, frame->rsi, frame->rdx,
+                                         frame->r10, frame->r8, frame->r9);
+    frame->rax = (uint64_t)rc;
+    if (call == RSE_SYS_EXIT) {
+        frame->cs = GDT_KERNEL_CODE;
+        frame->ss = GDT_KERNEL_DATA;
+        frame->rip = (uint64_t)(uintptr_t)user_mode_return;
+        frame->rsp = g_user_mode_kernel_rsp;
+        return;
+    }
+    if (call == RSE_SYS_EXEC && rc == 0) {
+        uint64_t entry = 0;
+        if (rse_os_ring3_entry(&entry)) {
+            uint64_t code_phys = 0;
+            uint64_t stack_phys = 0;
+            if (rse_os_user_map(entry, USER_STACK_VADDR, &code_phys, &stack_phys)) {
+                build_user_page_table(code_phys, stack_phys);
+            }
+            frame->rip = entry;
+            frame->rsp = USER_STACK_TOP;
+        }
     }
 }
 
@@ -542,10 +580,6 @@ __attribute__((naked, unused)) static void irq_stub(void) {
 #define PTE_NX (1ull << 63)
 #define PTE_ADDR_MASK 0x000FFFFFFFFFF000ull
 
-#define USER_VADDR_BASE 0x40000000ull
-#define USER_STACK_VADDR (USER_VADDR_BASE + 0x1000ull)
-#define USER_STACK_TOP (USER_VADDR_BASE + 0x2000ull)
-
 static bool build_user_page_table(uint64_t code_phys, uint64_t stack_phys) {
     if (!g_user_pml4) {
         g_user_pml4 = (uint64_t *)uefi_alloc_pages(4096u);
@@ -706,16 +740,47 @@ __attribute__((naked, unused)) static void user_mode_entry(void) {
 }
 
 static bool setup_user_pages(uint64_t *entry_out, uint64_t *stack_out) {
-    static const uint8_t user_code[] = {
+    static const uint8_t user_code_ping[] = {
         0x48, 0xC7, 0xC0, 0x00, 0x00, 0x00, 0x00,
         0xCD, 0x80,
         0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00,
         0xCD, 0x80,
         0xF4
     };
+    __attribute__((unused)) static const uint8_t user_code_syscall[] = {
+        0x48, 0xC7, 0xC0, RSE_SYS_WRITE, 0x00, 0x00, 0x00,
+        0x48, 0xC7, 0xC7, 0x01, 0x00, 0x00, 0x00,
+        0x48, 0x8D, 0x35, 0x1A, 0x00, 0x00, 0x00,
+        0x48, 0xC7, 0xC2, 0x10, 0x00, 0x00, 0x00,
+        0xCD, 0x80,
+        0x48, 0xC7, 0xC0, RSE_SYS_EXIT, 0x00, 0x00, 0x00,
+        0x48, 0xC7, 0xC7, 0x00, 0x00, 0x00, 0x00,
+        0xCD, 0x80,
+        0xF4,
+        'u','s','e','r',' ','s','y','s','c','a','l','l',' ','o','k','\n'
+    };
+    static const uint8_t user_code_exec[] = {
+        0x48, 0xC7, 0xC0, RSE_SYS_EXEC, 0x00, 0x00, 0x00,
+        0x48, 0x8D, 0x3D, 0x15, 0x00, 0x00, 0x00,
+        0x48, 0x31, 0xF6,
+        0x48, 0x31, 0xD2,
+        0xCD, 0x80,
+        0x48, 0xC7, 0xC0, RSE_SYS_EXIT, 0x00, 0x00, 0x00,
+        0x48, 0x31, 0xFF,
+        0xCD, 0x80,
+        0xF4,
+        '/', 'r', 'i', 'n', 'g', '3', '.', 'e', 'l', 'f', 0x00
+    };
 
     if (!entry_out || !stack_out) {
         return false;
+    }
+
+    const uint8_t* user_code = user_code_ping;
+    size_t user_code_len = sizeof(user_code_ping);
+    if (rse_os_prepare_ring3(0)) {
+        user_code = user_code_exec;
+        user_code_len = sizeof(user_code_exec);
     }
 
     uint64_t os_code_phys = 0;
@@ -738,7 +803,7 @@ static bool setup_user_pages(uint64_t *entry_out, uint64_t *stack_out) {
     }
 
     memset(g_user_code_page, 0, 4096u);
-    memcpy(g_user_code_page, user_code, sizeof(user_code));
+    memcpy(g_user_code_page, user_code, user_code_len);
     memset(g_user_stack_page, 0, 4096u);
 
     uint64_t code_phys = (uint64_t)(uintptr_t)g_user_code_page;

@@ -321,6 +321,14 @@ public:
     OSProcess* getCurrentProcess() const {
         return current_process_;
     }
+
+    void forceCurrentProcess(OSProcess* proc) {
+        current_process_ = proc;
+        if (current_process_) {
+            current_process_->setRunning();
+            current_process_->resetTimeSlice();
+        }
+    }
     
     // ========== Load Balancing Info ==========
     

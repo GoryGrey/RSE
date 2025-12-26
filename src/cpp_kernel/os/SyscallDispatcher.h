@@ -229,10 +229,8 @@ inline int64_t sys_fork(uint64_t, uint64_t, uint64_t,
     child->memory = parent->memory;
     child->priority = parent->priority;
     
-    // Copy file descriptors
-    for (int i = 0; i < OSProcess::MAX_FDS; i++) {
-        child->open_files[i] = parent->open_files[i];
-    }
+    // Copy file descriptors (per-process table)
+    child->fd_table = parent->fd_table;
     
     // Copy spatial position
     child->x = parent->x;
@@ -313,6 +311,7 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
     if (!current_torus_context || !current_torus_context->vfs || !current_torus_context->phys_alloc) {
         return -ENOSYS;
     }
+    FileDescriptorTable* fdt = &current->fd_table;
 
     static constexpr uint32_t kMaxPath = 256;
     char path_buf[kMaxPath] = {};
@@ -329,7 +328,7 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
         return -EFAULT;
     }
 
-    int32_t fd = current_torus_context->vfs->open(path_buf, O_RDONLY);
+    int32_t fd = current_torus_context->vfs->open(fdt, path_buf, O_RDONLY);
     if (fd < 0) {
         return -ENOENT;
     }
@@ -342,7 +341,7 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
 #else
     uint8_t* image_buf = new uint8_t[kMaxElfSize];
     if (!image_buf) {
-        current_torus_context->vfs->close(fd);
+        current_torus_context->vfs->close(fdt, fd);
         return -ENOMEM;
     }
 #endif
@@ -350,15 +349,15 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
     uint32_t total = 0;
     while (true) {
         if (total + kChunk > kMaxElfSize) {
-            current_torus_context->vfs->close(fd);
+            current_torus_context->vfs->close(fdt, fd);
 #ifndef RSE_KERNEL
             delete[] image_buf;
 #endif
             return -ENOMEM;
         }
-        int64_t bytes = current_torus_context->vfs->read(fd, image_buf + total, kChunk);
+        int64_t bytes = current_torus_context->vfs->read(fdt, fd, image_buf + total, kChunk);
         if (bytes < 0) {
-            current_torus_context->vfs->close(fd);
+            current_torus_context->vfs->close(fdt, fd);
 #ifndef RSE_KERNEL
             delete[] image_buf;
 #endif
@@ -369,7 +368,7 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
         }
         total += static_cast<uint32_t>(bytes);
     }
-    current_torus_context->vfs->close(fd);
+    current_torus_context->vfs->close(fdt, fd);
 
     if (total == 0) {
 #ifndef RSE_KERNEL
@@ -415,9 +414,7 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
         return -EINVAL;
     }
 
-    if (current_torus_context->vfs) {
-        current_torus_context->vfs->closeOnExec();
-    }
+    current->fd_table.closeOnExec();
     if (old_vmem) {
         delete old_vmem;
     }
@@ -440,10 +437,41 @@ inline int64_t sys_write(uint64_t fd, uint64_t buf_addr, uint64_t count,
         return -ENOSYS;
     }
     OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
     if (count != 0 && !validate_user_range(current, buf_addr, count, false)) {
         return -EFAULT;
     }
-    return current_torus_context->vfs->write(static_cast<int32_t>(fd),
+    if (enforce_user_memory(current)) {
+        static constexpr uint32_t kScratch = 256;
+        uint8_t scratch[kScratch];
+        uint64_t remaining = count;
+        uint64_t addr = buf_addr;
+        int64_t total = 0;
+        while (remaining > 0) {
+            uint32_t chunk = remaining > kScratch ? kScratch : static_cast<uint32_t>(remaining);
+            if (!read_user_bytes(current, addr, scratch, chunk)) {
+                return total != 0 ? total : -EFAULT;
+            }
+            int64_t written = current_torus_context->vfs->write(&current->fd_table,
+                                                               static_cast<int32_t>(fd),
+                                                               scratch,
+                                                               chunk);
+            if (written < 0) {
+                return total != 0 ? total : written;
+            }
+            total += written;
+            if (static_cast<uint32_t>(written) < chunk) {
+                break;
+            }
+            addr += static_cast<uint64_t>(written);
+            remaining -= static_cast<uint64_t>(written);
+        }
+        return total;
+    }
+    return current_torus_context->vfs->write(&current->fd_table,
+                                             static_cast<int32_t>(fd),
                                              (const void *)buf_addr,
                                              static_cast<uint32_t>(count));
 }
@@ -457,10 +485,44 @@ inline int64_t sys_read(uint64_t fd, uint64_t buf_addr, uint64_t count,
         return -ENOSYS;
     }
     OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
     if (count != 0 && !validate_user_range(current, buf_addr, count, true)) {
         return -EFAULT;
     }
-    return current_torus_context->vfs->read(static_cast<int32_t>(fd),
+    if (enforce_user_memory(current)) {
+        static constexpr uint32_t kScratch = 256;
+        uint8_t scratch[kScratch];
+        uint64_t remaining = count;
+        uint64_t addr = buf_addr;
+        int64_t total = 0;
+        while (remaining > 0) {
+            uint32_t chunk = remaining > kScratch ? kScratch : static_cast<uint32_t>(remaining);
+            int64_t got = current_torus_context->vfs->read(&current->fd_table,
+                                                          static_cast<int32_t>(fd),
+                                                          scratch,
+                                                          chunk);
+            if (got < 0) {
+                return total != 0 ? total : got;
+            }
+            if (got == 0) {
+                break;
+            }
+            if (!current->vmem || !current->vmem->writeUser(addr, scratch, static_cast<uint64_t>(got))) {
+                return total != 0 ? total : -EFAULT;
+            }
+            total += got;
+            addr += static_cast<uint64_t>(got);
+            remaining -= static_cast<uint64_t>(got);
+            if (static_cast<uint32_t>(got) < chunk) {
+                break;
+            }
+        }
+        return total;
+    }
+    return current_torus_context->vfs->read(&current->fd_table,
+                                            static_cast<int32_t>(fd),
                                             (void *)buf_addr,
                                             static_cast<uint32_t>(count));
 }
@@ -474,12 +536,15 @@ inline int64_t sys_open(uint64_t path_addr, uint64_t flags, uint64_t mode,
         return -ENOSYS;
     }
     OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
     static constexpr uint32_t kMaxPath = 256;
     char path_buf[kMaxPath] = {};
     if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
         return -EFAULT;
     }
-    return current_torus_context->vfs->open(path_buf,
+    return current_torus_context->vfs->open(&current->fd_table, path_buf,
                                             static_cast<uint32_t>(flags),
                                             static_cast<uint32_t>(mode));
 }
@@ -492,7 +557,12 @@ inline int64_t sys_close(uint64_t fd, uint64_t, uint64_t,
     if (!current_torus_context || !current_torus_context->vfs) {
         return -ENOSYS;
     }
-    return current_torus_context->vfs->close(static_cast<int32_t>(fd));
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    return current_torus_context->vfs->close(&current->fd_table,
+                                             static_cast<int32_t>(fd));
 }
 
 /**
@@ -503,7 +573,12 @@ inline int64_t sys_lseek(uint64_t fd, uint64_t offset, uint64_t whence,
     if (!current_torus_context || !current_torus_context->vfs) {
         return -ENOSYS;
     }
-    return current_torus_context->vfs->lseek(static_cast<int32_t>(fd),
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    return current_torus_context->vfs->lseek(&current->fd_table,
+                                             static_cast<int32_t>(fd),
                                              static_cast<int64_t>(offset),
                                              static_cast<int>(whence));
 }
@@ -517,6 +592,9 @@ inline int64_t sys_unlink(uint64_t path_addr, uint64_t, uint64_t,
         return -ENOSYS;
     }
     OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
     static constexpr uint32_t kMaxPath = 256;
     char path_buf[kMaxPath] = {};
     if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
@@ -531,6 +609,9 @@ inline int64_t sys_list(uint64_t path_addr, uint64_t buf_addr, uint64_t count,
         return -ENOSYS;
     }
     OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
     const char* path = "/";
     static constexpr uint32_t kMaxPath = 256;
     char path_buf[kMaxPath] = {};

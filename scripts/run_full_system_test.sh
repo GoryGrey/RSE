@@ -43,6 +43,7 @@ CPP_TESTS=(
   memory_telemetry_test
   killer_demo_memory_test
   c_api_test
+  elf_loader_test
 )
 for test_bin in "${CPP_TESTS[@]}"; do
   test_path="${ROOT_DIR}/build/cpp_kernel/${test_bin}"

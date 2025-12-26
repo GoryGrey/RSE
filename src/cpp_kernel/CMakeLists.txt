@@ -120,6 +120,12 @@ if(NOT MSVC)
     target_link_libraries(threadsafe_scheduler_test pthread atomic)
 endif()
 
+# ELF loader parser test
+add_executable(elf_loader_test tests/elf_loader_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(elf_loader_test atomic)
+endif()
+
 # Memory Telemetry Test
 add_executable(memory_telemetry_test tests/memory_telemetry_test.cpp)
 if(NOT MSVC)

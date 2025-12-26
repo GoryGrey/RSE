@@ -942,7 +942,7 @@ static void kfd_reset(void) {
     }
 }
 
-static int ksys_open(const char *name, uint32_t flags) {
+static int __attribute__((unused)) ksys_open(const char *name, uint32_t flags) {
     if (!name) {
         return -1;
     }
@@ -970,7 +970,7 @@ static int ksys_open(const char *name, uint32_t flags) {
     return -1;
 }
 
-static int ksys_close(int fd) {
+static int __attribute__((unused)) ksys_close(int fd) {
     if (fd < 0 || (uint32_t)fd >= KFD_MAX) {
         return -1;
     }
@@ -984,7 +984,7 @@ static int ksys_close(int fd) {
     return 0;
 }
 
-static int ksys_write(int fd, const uint8_t *buf, uint32_t len) {
+static int __attribute__((unused)) ksys_write(int fd, const uint8_t *buf, uint32_t len) {
     if (fd < 0 || (uint32_t)fd >= KFD_MAX || !kfd_table[fd].in_use) {
         return -1;
     }
@@ -997,7 +997,7 @@ static int ksys_write(int fd, const uint8_t *buf, uint32_t len) {
     return (int)written;
 }
 
-static int ksys_read(int fd, uint8_t *buf, uint32_t len) {
+static int __attribute__((unused)) ksys_read(int fd, uint8_t *buf, uint32_t len) {
     if (fd < 0 || (uint32_t)fd >= KFD_MAX || !kfd_table[fd].in_use) {
         return -1;
     }
@@ -1010,7 +1010,7 @@ static int ksys_read(int fd, uint8_t *buf, uint32_t len) {
     return (int)read;
 }
 
-static int ksys_unlink(const char *name) {
+static int __attribute__((unused)) ksys_unlink(const char *name) {
     int idx = ramfs_find(name);
     if (idx < 0) {
         return -1;
@@ -3259,7 +3259,7 @@ static void fb_draw_rect(struct limine_framebuffer *fb, size_t x, size_t y,
     fb_fill_rect(fb, x + w - 1, y, 1, h, color);
 }
 
-static void fb_draw_bar(struct limine_framebuffer *fb, uint32_t color) {
+static void __attribute__((unused)) fb_draw_bar(struct limine_framebuffer *fb, uint32_t color) {
     uint32_t *pixels = (uint32_t *)fb->address;
     size_t pitch_pixels = fb->pitch / 4;
     size_t height = fb->height > 32 ? 32 : fb->height;

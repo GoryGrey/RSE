@@ -298,7 +298,7 @@ extern "C" int strcmp(const char* lhs, const char* rhs) {
 }
 
 extern "C" char* strncpy(char* dst, const char* src, size_t n) {
-    if (!dst || n == 0) {
+    if (n == 0) {
         return dst;
     }
     size_t i = 0;
@@ -690,7 +690,7 @@ static braided::Projection os_make_projection(uint32_t torus_id, const TorusRunt
     return proj;
 }
 
-static uint64_t rse_projection_payload_hash(const braided::Projection& proj) {
+[[maybe_unused]] static uint64_t rse_projection_payload_hash(const braided::Projection& proj) {
     uint8_t buf[sizeof(braided::Projection)];
     uint32_t len = (uint32_t)proj.serialize(buf, sizeof(buf));
     uint64_t hash = 14695981039346656037ULL;
@@ -979,7 +979,7 @@ static void os_apply_constraints(TorusRuntime* runtimes, uint32_t src, uint32_t 
         os_migrate_one(runtimes, dst, src);
         return;
     }
-    if (src_pressure > dst_pressure + kPressureSkew) {
+    if (src_pressure > dst_pressure + (int32_t)kPressureSkew) {
         os_migrate_one(runtimes, src, dst);
         return;
     }

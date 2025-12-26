@@ -90,6 +90,7 @@ private:
     uint64_t total_frames_;
     uint64_t free_count_;
     uint64_t base_addr_;  // Base physical address
+    uint64_t size_bytes_;
     
 public:
     /**
@@ -102,7 +103,8 @@ public:
         : free_frames_(nullptr),
           total_frames_(size / PAGE_SIZE),
           free_count_(size / PAGE_SIZE),
-          base_addr_(base_addr) {
+          base_addr_(base_addr),
+          size_bytes_(size) {
         
         free_frames_ = new Bitmap(total_frames_);
         
@@ -191,6 +193,16 @@ public:
                   << "Free: " << free_count_ << " frames (" << (free_count_ * PAGE_SIZE / 1024 / 1024) << " MB), "
                   << "Usage: " << usage_percent << "%"
                   << std::endl;
+    }
+
+    /**
+     * Translate a physical address into a host pointer when backing memory exists.
+     */
+    void* ptrFromPhys(uint64_t phys_addr) const {
+        if (phys_addr < base_addr_ || phys_addr >= base_addr_ + size_bytes_) {
+            return nullptr;
+        }
+        return reinterpret_cast<void*>(phys_addr);
     }
 };
 

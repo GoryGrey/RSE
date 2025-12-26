@@ -126,6 +126,12 @@ if(NOT MSVC)
     target_link_libraries(elf_loader_test atomic)
 endif()
 
+# ELF process loader test
+add_executable(elf_process_test tests/elf_process_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(elf_process_test atomic)
+endif()
+
 # Memory Telemetry Test
 add_executable(memory_telemetry_test tests/memory_telemetry_test.cpp)
 if(NOT MSVC)

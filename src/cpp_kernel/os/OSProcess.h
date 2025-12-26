@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstring>
 #include "VirtualAllocator.h"
+#include "ElfLoader.h"
 #ifdef RSE_KERNEL
 #include "KernelStubs.h"
 #else
@@ -173,6 +174,82 @@ public:
         memory.heap_start = vmem->getHeapStart();
         memory.heap_end = vmem->getHeapEnd();
         memory.heap_brk = vmem->getHeapBrk();
+    }
+
+    bool loadElfImage(const uint8_t* data, size_t size, uint64_t stack_size = 64 * 1024) {
+        if (!vmem || !data || size == 0) {
+            return false;
+        }
+
+        ElfImage image = {};
+        ElfLoadError err = ElfLoadError::kOk;
+        if (!parseElf64(data, size, image, &err)) {
+            return false;
+        }
+
+        uint64_t min_vaddr = 0xFFFFFFFFFFFFFFFFull;
+        uint64_t max_vaddr = 0;
+        uint64_t data_start = 0xFFFFFFFFFFFFFFFFull;
+        uint64_t data_end = 0;
+        bool has_writable = false;
+
+        for (size_t i = 0; i < image.segments.size(); ++i) {
+            const ElfSegment& seg = image.segments[i];
+            const uint8_t* seg_data = data + seg.offset;
+            if (!vmem->mapSegment(seg_data, seg.filesz, seg.vaddr, seg.memsz, seg.flags)) {
+                return false;
+            }
+
+            uint64_t seg_start = seg.vaddr;
+            uint64_t seg_end = seg.vaddr + seg.memsz;
+            if (seg_start < min_vaddr) {
+                min_vaddr = seg_start;
+            }
+            if (seg_end > max_vaddr) {
+                max_vaddr = seg_end;
+            }
+            if (seg.flags & PF_W) {
+                has_writable = true;
+                if (seg_start < data_start) {
+                    data_start = seg_start;
+                }
+                if (seg_end > data_end) {
+                    data_end = seg_end;
+                }
+            }
+        }
+
+        if (min_vaddr == 0xFFFFFFFFFFFFFFFFull) {
+            return false;
+        }
+
+        memory.code_start = min_vaddr;
+        memory.code_end = max_vaddr;
+        if (has_writable) {
+            memory.data_start = data_start;
+            memory.data_end = data_end;
+        } else {
+            memory.data_start = 0;
+            memory.data_end = 0;
+        }
+
+        vmem->setHeapStart(align_up(max_vaddr));
+        memory.heap_start = vmem->getHeapStart();
+        memory.heap_end = vmem->getHeapEnd();
+        memory.heap_brk = vmem->getHeapBrk();
+
+        uint64_t sp = vmem->allocateStack(stack_size);
+        if (sp == 0) {
+            return false;
+        }
+        uint64_t stack_bytes = align_up(stack_size);
+        memory.stack_end = vmem->getStackEnd();
+        memory.stack_start = memory.stack_end - stack_bytes;
+        memory.stack_pointer = sp;
+
+        context.rip = image.entry;
+        context.rsp = sp;
+        return true;
     }
     
     // ========== State Management ==========

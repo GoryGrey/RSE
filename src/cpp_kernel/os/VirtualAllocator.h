@@ -240,6 +240,39 @@ public:
     void munmap(uint64_t addr, uint64_t size) {
         free(addr, size);
     }
+
+    /**
+     * Map a fixed address range (for ELF segments, stacks, etc).
+     */
+    bool mapSegment(const uint8_t* data, uint64_t file_size, uint64_t vaddr, uint64_t mem_size, uint32_t elf_flags) {
+        if (mem_size == 0) {
+            return true;
+        }
+        uint64_t pte_flags = PTE_USER;
+        if (elf_flags & 0x2) {  // PF_W
+            pte_flags |= PTE_WRITABLE;
+        }
+        return mapRange(vaddr, mem_size, pte_flags, data, file_size);
+    }
+
+    /**
+     * Allocate and map a user stack.
+     * Returns stack pointer (top of stack) or 0 on failure.
+     */
+    uint64_t allocateStack(uint64_t size) {
+        if (size == 0) {
+            return 0;
+        }
+        size = align_up(size);
+        if (stack_end_ < stack_start_ + size) {
+            return 0;
+        }
+        uint64_t stack_base = stack_end_ - size;
+        if (!mapRange(stack_base, size, PTE_USER | PTE_WRITABLE, nullptr, 0)) {
+            return 0;
+        }
+        return stack_end_;
+    }
     
     /**
      * Change memory protection (like mprotect syscall).
@@ -271,6 +304,17 @@ public:
         
         return true;
     }
+
+    /**
+     * Adjust heap start/break after loading an ELF image.
+     */
+    void setHeapStart(uint64_t start) {
+        start = align_up(start);
+        heap_start_ = start;
+        if (heap_brk_ < heap_start_) {
+            heap_brk_ = heap_start_;
+        }
+    }
     
     /**
      * Get heap bounds.
@@ -278,6 +322,8 @@ public:
     uint64_t getHeapStart() const { return heap_start_; }
     uint64_t getHeapEnd() const { return heap_end_; }
     uint64_t getHeapBrk() const { return heap_brk_; }
+    uint64_t getStackStart() const { return stack_start_; }
+    uint64_t getStackEnd() const { return stack_end_; }
     PageTable* getPageTable() const { return page_table_; }
     PhysicalAllocator* getPhysicalAllocator() const { return phys_alloc_; }
 
@@ -307,6 +353,71 @@ public:
                   << std::endl;
         
         page_table_->printStats();
+    }
+
+private:
+    bool mapRange(uint64_t addr, uint64_t size, uint64_t pte_flags,
+                  const uint8_t* init_data, uint64_t init_size) {
+        if (!page_table_ || !phys_alloc_ || size == 0) {
+            return false;
+        }
+
+        uint64_t virt_start = align_down(addr);
+        uint64_t virt_end = align_up(addr + size);
+        uint64_t data_remaining = init_size;
+        uint64_t data_offset = addr - virt_start;
+        uint64_t mapped_end = virt_start;
+        bool ok = true;
+
+        for (uint64_t virt = virt_start; virt < virt_end; virt += PAGE_SIZE) {
+            uint64_t phys = phys_alloc_->allocateFrame();
+            if (phys == 0) {
+                ok = false;
+                break;
+            }
+            uint64_t map_flags = pte_flags | PTE_PRESENT;
+            if (!page_table_->map(virt, phys, map_flags)) {
+                phys_alloc_->freeFrame(phys);
+                ok = false;
+                break;
+            }
+            mapped_end = virt + PAGE_SIZE;
+
+            void* page_ptr = phys_alloc_->ptrFromPhys(phys);
+            if (page_ptr) {
+                std::memset(page_ptr, 0, PAGE_SIZE);
+            }
+
+            if (init_data && data_remaining > 0) {
+                if (!page_ptr) {
+                    ok = false;
+                    break;
+                }
+                uint64_t copy_size = PAGE_SIZE - data_offset;
+                if (copy_size > data_remaining) {
+                    copy_size = data_remaining;
+                }
+                std::memcpy(static_cast<uint8_t*>(page_ptr) + data_offset,
+                            init_data + (init_size - data_remaining),
+                            copy_size);
+                data_remaining -= copy_size;
+            }
+
+            data_offset = 0;
+        }
+
+        if (!ok || data_remaining > 0) {
+            for (uint64_t virt = virt_start; virt < mapped_end; virt += PAGE_SIZE) {
+                uint64_t phys = page_table_->translate(virt);
+                if (phys != 0) {
+                    phys_alloc_->freeFrame(phys);
+                    page_table_->unmap(virt);
+                }
+            }
+            return false;
+        }
+
+        return true;
     }
 };
 

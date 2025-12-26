@@ -1,6 +1,7 @@
 // Minimal Limine + UEFI kernel skeleton for RSE bootstrapping.
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <efi.h>
 #include <efiprot.h>
@@ -9,10 +10,15 @@
 #include "rse_boot.h"
 #include "rse_syscalls.h"
 
+#ifndef RSE_ENABLE_USERMODE
 #define RSE_ENABLE_USERMODE 0
+#endif
 
 void *memcpy(void *dst, const void *src, size_t count);
 void *memset(void *dst, int value, size_t count);
+static void *uefi_alloc_pages(size_t bytes);
+extern int rse_os_user_map(uint64_t code_vaddr, uint64_t stack_vaddr,
+                           uint64_t *code_phys_out, uint64_t *stack_phys_out);
 
 __attribute__((used, section(".limine_reqs")))
 LIMINE_REQUESTS_START_MARKER;
@@ -190,11 +196,59 @@ struct idt_ptr {
 
 static struct tss64 g_tss;
 static uint8_t g_user_kernel_stack[16384] __attribute__((aligned(16)));
-static uint8_t g_user_stack[8192] __attribute__((aligned(16)));
+static uint8_t *g_user_code_page;
+static uint8_t *g_user_stack_page;
+static uint64_t *g_user_pml4;
+static uint64_t *g_user_pdpt;
+static uint64_t *g_user_pd_kernel;
+static uint64_t *g_user_pd_user;
+static uint64_t *g_user_pt_user;
+static uint64_t g_user_cr3;
+static uint64_t g_saved_cr3;
+static uint64_t g_saved_rbx;
+static uint64_t g_saved_rbp;
+static uint64_t g_saved_r12;
+static uint64_t g_saved_r13;
+static uint64_t g_saved_r14;
+static uint64_t g_saved_r15;
 static struct idt_entry g_idt[256];
 static struct idt_ptr g_idt_desc;
 static uint64_t g_user_mode_kernel_rsp;
 static volatile int g_user_mode_exited;
+
+static inline void read_idt(struct idt_ptr* out) {
+    __asm__ volatile("sidt %0" : "=m"(*out));
+}
+
+static inline void load_idt(const struct idt_ptr* in) {
+    __asm__ volatile("lidt %0" : : "m"(*in));
+}
+
+static inline uint64_t read_cr2(void) {
+    uint64_t cr2;
+    __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+    return cr2;
+}
+
+static inline uint64_t read_cr3(void) {
+    uint64_t cr3;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
+    return cr3;
+}
+
+static inline void write_cr3(uint64_t cr3) {
+    __asm__ volatile("mov %0, %%cr3" : : "r"(cr3) : "memory");
+}
+
+static inline uint64_t read_rflags(void) {
+    uint64_t flags = 0;
+    __asm__ volatile("pushfq; pop %0" : "=r"(flags));
+    return flags;
+}
+
+static inline void write_rflags(uint64_t flags) {
+    __asm__ volatile("push %0; popfq" : : "r"(flags) : "memory");
+}
 
 static void gdt_set_entry(int idx, uint8_t access, uint8_t flags) {
     gdt_entries[idx].limit_low = 0;
@@ -243,8 +297,44 @@ struct int80_frame {
     uint64_t rip, cs, rflags, rsp, ss;
 };
 
-static void user_mode_return(void) {
-    g_user_mode_exited = 1;
+struct exc_frame {
+    uint64_t rax, rbx, rcx, rdx;
+    uint64_t rsi, rdi, rbp;
+    uint64_t r8, r9, r10, r11, r12, r13, r14, r15;
+    uint64_t error_code;
+    uint64_t rip, cs, rflags, rsp, ss;
+};
+
+__attribute__((used)) static void user_mode_return_cont(void) {
+}
+
+__attribute__((used)) static void user_mode_fault_return_cont(void) {
+}
+
+__attribute__((naked)) static void user_mode_return(void) {
+    __asm__ volatile(
+        "movl $1, g_user_mode_exited(%rip)\n"
+        "mov g_user_mode_kernel_rsp(%rip), %rsp\n"
+        "mov g_saved_rbx(%rip), %rbx\n"
+        "mov g_saved_rbp(%rip), %rbp\n"
+        "mov g_saved_r12(%rip), %r12\n"
+        "mov g_saved_r13(%rip), %r13\n"
+        "mov g_saved_r14(%rip), %r14\n"
+        "mov g_saved_r15(%rip), %r15\n"
+        "jmp user_mode_return_cont\n");
+}
+
+__attribute__((naked)) static void user_mode_fault_return(void) {
+    __asm__ volatile(
+        "movl $-1, g_user_mode_exited(%rip)\n"
+        "mov g_user_mode_kernel_rsp(%rip), %rsp\n"
+        "mov g_saved_rbx(%rip), %rbx\n"
+        "mov g_saved_rbp(%rip), %rbp\n"
+        "mov g_saved_r12(%rip), %r12\n"
+        "mov g_saved_r13(%rip), %r13\n"
+        "mov g_saved_r14(%rip), %r14\n"
+        "mov g_saved_r15(%rip), %r15\n"
+        "jmp user_mode_fault_return_cont\n");
 }
 
 __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
@@ -261,12 +351,56 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
             frame->ss = GDT_KERNEL_DATA;
             frame->rip = (uint64_t)(uintptr_t)user_mode_return;
             frame->rsp = g_user_mode_kernel_rsp;
-            frame->rflags |= 0x200;
             break;
         default:
             frame->rax = (uint64_t)-1;
             break;
     }
+}
+
+static void exception_dump(const char *label, struct exc_frame *frame, uint64_t cr2) {
+    if (!frame) {
+        return;
+    }
+    serial_write("[RSE] ");
+    serial_write(label);
+    serial_write(" fault\n");
+    serial_write("  rip=");
+    serial_write_u64(frame->rip);
+    serial_write(" cs=");
+    serial_write_u64(frame->cs);
+    serial_write(" err=");
+    serial_write_u64(frame->error_code);
+    if (cr2) {
+        serial_write(" cr2=");
+        serial_write_u64(cr2);
+    }
+    serial_write("\n");
+}
+
+static void exception_return_to_kernel(struct exc_frame *frame) {
+    if (!frame) {
+        return;
+    }
+    if ((frame->cs & 0x3) != 0x3) {
+        hlt_loop();
+        return;
+    }
+    frame->cs = GDT_KERNEL_CODE;
+    frame->ss = GDT_KERNEL_DATA;
+    frame->rip = (uint64_t)(uintptr_t)user_mode_fault_return;
+    frame->rsp = g_user_mode_kernel_rsp;
+}
+
+__attribute__((used)) static void gp_handler(struct exc_frame *frame) {
+    exception_dump("#GP", frame, 0);
+    exception_return_to_kernel(frame);
+}
+
+__attribute__((used)) static void pf_handler(struct exc_frame *frame) {
+    uint64_t cr2 = read_cr2();
+    exception_dump("#PF", frame, cr2);
+    exception_return_to_kernel(frame);
 }
 
 __attribute__((naked, unused)) static void int80_stub(void) {
@@ -306,9 +440,185 @@ __attribute__((naked, unused)) static void int80_stub(void) {
         "iretq\n");
 }
 
+__attribute__((naked, unused)) static void gp_stub(void) {
+    __asm__ volatile(
+        "push %r15\n"
+        "push %r14\n"
+        "push %r13\n"
+        "push %r12\n"
+        "push %r11\n"
+        "push %r10\n"
+        "push %r9\n"
+        "push %r8\n"
+        "push %rbp\n"
+        "push %rdi\n"
+        "push %rsi\n"
+        "push %rdx\n"
+        "push %rcx\n"
+        "push %rbx\n"
+        "push %rax\n"
+        "mov %rsp, %rdi\n"
+        "call gp_handler\n"
+        "pop %rax\n"
+        "pop %rbx\n"
+        "pop %rcx\n"
+        "pop %rdx\n"
+        "pop %rsi\n"
+        "pop %rdi\n"
+        "pop %rbp\n"
+        "pop %r8\n"
+        "pop %r9\n"
+        "pop %r10\n"
+        "pop %r11\n"
+        "pop %r12\n"
+        "pop %r13\n"
+        "pop %r14\n"
+        "pop %r15\n"
+        "add $8, %rsp\n"
+        "iretq\n");
+}
+
+__attribute__((naked, unused)) static void pf_stub(void) {
+    __asm__ volatile(
+        "push %r15\n"
+        "push %r14\n"
+        "push %r13\n"
+        "push %r12\n"
+        "push %r11\n"
+        "push %r10\n"
+        "push %r9\n"
+        "push %r8\n"
+        "push %rbp\n"
+        "push %rdi\n"
+        "push %rsi\n"
+        "push %rdx\n"
+        "push %rcx\n"
+        "push %rbx\n"
+        "push %rax\n"
+        "mov %rsp, %rdi\n"
+        "call pf_handler\n"
+        "pop %rax\n"
+        "pop %rbx\n"
+        "pop %rcx\n"
+        "pop %rdx\n"
+        "pop %rsi\n"
+        "pop %rdi\n"
+        "pop %rbp\n"
+        "pop %r8\n"
+        "pop %r9\n"
+        "pop %r10\n"
+        "pop %r11\n"
+        "pop %r12\n"
+        "pop %r13\n"
+        "pop %r14\n"
+        "pop %r15\n"
+        "add $8, %rsp\n"
+        "iretq\n");
+}
+
+__attribute__((naked, unused)) static void ignore_stub(void) {
+    __asm__ volatile("iretq\n");
+}
+
+__attribute__((naked, unused)) static void ignore_err_stub(void) {
+    __asm__ volatile("add $8, %rsp\n"
+                     "iretq\n");
+}
+
+__attribute__((naked, unused)) static void irq_stub(void) {
+    __asm__ volatile(
+        "push %rax\n"
+        "mov $0x20, %al\n"
+        "outb %al, $0x20\n"
+        "outb %al, $0xA0\n"
+        "pop %rax\n"
+        "iretq\n");
+}
+
+#define PTE_PRESENT 0x1ull
+#define PTE_RW 0x2ull
+#define PTE_USER 0x4ull
+#define PTE_PS 0x80ull
+#define PTE_NX (1ull << 63)
+#define PTE_ADDR_MASK 0x000FFFFFFFFFF000ull
+
+#define USER_VADDR_BASE 0x40000000ull
+#define USER_STACK_VADDR (USER_VADDR_BASE + 0x1000ull)
+#define USER_STACK_TOP (USER_VADDR_BASE + 0x2000ull)
+
+static bool build_user_page_table(uint64_t code_phys, uint64_t stack_phys) {
+    if (!g_user_pml4) {
+        g_user_pml4 = (uint64_t *)uefi_alloc_pages(4096u);
+    }
+    if (!g_user_pdpt) {
+        g_user_pdpt = (uint64_t *)uefi_alloc_pages(4096u);
+    }
+    if (!g_user_pd_kernel) {
+        g_user_pd_kernel = (uint64_t *)uefi_alloc_pages(4096u);
+    }
+    if (!g_user_pd_user) {
+        g_user_pd_user = (uint64_t *)uefi_alloc_pages(4096u);
+    }
+    if (!g_user_pt_user) {
+        g_user_pt_user = (uint64_t *)uefi_alloc_pages(4096u);
+    }
+    if (!g_user_pml4 || !g_user_pdpt || !g_user_pd_kernel || !g_user_pd_user ||
+        !g_user_pt_user) {
+        return false;
+    }
+
+    memset(g_user_pml4, 0, 4096u);
+    memset(g_user_pdpt, 0, 4096u);
+    memset(g_user_pd_kernel, 0, 4096u);
+    memset(g_user_pd_user, 0, 4096u);
+    memset(g_user_pt_user, 0, 4096u);
+
+    g_user_pml4[0] = ((uint64_t)(uintptr_t)g_user_pdpt & PTE_ADDR_MASK) |
+                     PTE_PRESENT | PTE_RW | PTE_USER;
+    g_user_pdpt[0] = ((uint64_t)(uintptr_t)g_user_pd_kernel & PTE_ADDR_MASK) |
+                     PTE_PRESENT | PTE_RW;
+    g_user_pdpt[1] = ((uint64_t)(uintptr_t)g_user_pd_user & PTE_ADDR_MASK) |
+                     PTE_PRESENT | PTE_RW | PTE_USER;
+
+    for (uint64_t i = 0; i < 512; ++i) {
+        uint64_t addr = i * 0x200000ull;
+        g_user_pd_kernel[i] = (addr & PTE_ADDR_MASK) | PTE_PRESENT | PTE_RW | PTE_PS;
+    }
+
+    uint64_t user_pd_idx = (USER_VADDR_BASE >> 21) & 0x1FFu;
+    g_user_pd_user[user_pd_idx] =
+        ((uint64_t)(uintptr_t)g_user_pt_user & PTE_ADDR_MASK) |
+        PTE_PRESENT | PTE_RW | PTE_USER;
+
+    uint64_t code_idx = (USER_VADDR_BASE >> 12) & 0x1FFu;
+    uint64_t stack_idx = (USER_STACK_VADDR >> 12) & 0x1FFu;
+
+    g_user_pt_user[code_idx] = (code_phys & PTE_ADDR_MASK) |
+                               PTE_PRESENT | PTE_USER;
+    g_user_pt_user[stack_idx] = (stack_phys & PTE_ADDR_MASK) |
+                                PTE_PRESENT | PTE_RW | PTE_USER | PTE_NX;
+
+    g_user_cr3 = (uint64_t)(uintptr_t)g_user_pml4 & PTE_ADDR_MASK;
+    return true;
+}
+
 __attribute__((unused)) static void init_idt(void) {
     memset(g_idt, 0, sizeof(g_idt));
+    for (int i = 0; i < 256; ++i) {
+        set_idt_entry(i, ignore_stub, 0x8E);
+    }
+    set_idt_entry(0x08, ignore_err_stub, 0x8E);
+    set_idt_entry(0x0A, ignore_err_stub, 0x8E);
+    set_idt_entry(0x0B, ignore_err_stub, 0x8E);
+    set_idt_entry(0x0C, ignore_err_stub, 0x8E);
+    for (int vec = 0x20; vec <= 0x2F; ++vec) {
+        set_idt_entry(vec, irq_stub, 0x8E);
+    }
     set_idt_entry(0x80, int80_stub, 0xEE);
+    set_idt_entry(0x0D, gp_stub, 0x8E);
+    set_idt_entry(0x0E, pf_stub, 0x8E);
+    set_idt_entry(0x11, ignore_err_stub, 0x8E);
+    set_idt_entry(0x1E, ignore_err_stub, 0x8E);
     g_idt_desc.limit = (uint16_t)(sizeof(g_idt) - 1);
     g_idt_desc.base = (uint64_t)(uintptr_t)&g_idt[0];
     __asm__ volatile("lidt %0" : : "m"(g_idt_desc));
@@ -372,9 +682,6 @@ static void init_gdt_user_segments(void) {
         : "ax");
 
     init_tss();
-#if RSE_ENABLE_USERMODE
-    init_idt();
-#endif
     serial_write("[RSE] GDT user segments installed\n");
 }
 
@@ -398,11 +705,58 @@ __attribute__((naked, unused)) static void user_mode_entry(void) {
         "hlt\n");
 }
 
-__attribute__((unused)) static void enter_user_mode(uint64_t entry, uint64_t user_stack) {
+static bool setup_user_pages(uint64_t *entry_out, uint64_t *stack_out) {
+    static const uint8_t user_code[] = {
+        0x48, 0xC7, 0xC0, 0x00, 0x00, 0x00, 0x00,
+        0xCD, 0x80,
+        0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00,
+        0xCD, 0x80,
+        0xF4
+    };
+
+    if (!entry_out || !stack_out) {
+        return false;
+    }
+
+    uint64_t os_code_phys = 0;
+    uint64_t os_stack_phys = 0;
+    if (rse_os_user_map(USER_VADDR_BASE, USER_STACK_VADDR, &os_code_phys, &os_stack_phys)) {
+        g_user_code_page = (uint8_t *)(uintptr_t)os_code_phys;
+        g_user_stack_page = (uint8_t *)(uintptr_t)os_stack_phys;
+    }
+
+    if (!g_user_code_page) {
+        g_user_code_page = (uint8_t *)uefi_alloc_pages(4096u);
+    }
+    if (!g_user_stack_page) {
+        g_user_stack_page = (uint8_t *)uefi_alloc_pages(4096u);
+    }
+
+    if (!g_user_code_page || !g_user_stack_page) {
+        serial_write("[RSE] user pages alloc failed\n");
+        return false;
+    }
+
+    memset(g_user_code_page, 0, 4096u);
+    memcpy(g_user_code_page, user_code, sizeof(user_code));
+    memset(g_user_stack_page, 0, 4096u);
+
+    uint64_t code_phys = (uint64_t)(uintptr_t)g_user_code_page;
+    uint64_t stack_phys = (uint64_t)(uintptr_t)g_user_stack_page;
+    if (!build_user_page_table(code_phys, stack_phys)) {
+        serial_write("[RSE] user page table build failed\n");
+        return false;
+    }
+
+    *entry_out = USER_VADDR_BASE;
+    *stack_out = USER_STACK_TOP;
+    return true;
+}
+
+__attribute__((noinline, unused)) static void enter_user_mode(uint64_t entry, uint64_t user_stack) {
     uint64_t rflags = 0;
     __asm__ volatile("pushfq; pop %0" : "=r"(rflags));
-    rflags |= 0x200;
-    __asm__ volatile("mov %%rsp, %0" : "=r"(g_user_mode_kernel_rsp));
+    rflags &= ~0x200;
     uint64_t cs = GDT_USER_CODE | 0x3;
     uint64_t ss = GDT_USER_DATA | 0x3;
     __asm__ volatile(
@@ -418,17 +772,59 @@ __attribute__((unused)) static void enter_user_mode(uint64_t entry, uint64_t use
 }
 
 __attribute__((unused)) static void run_user_mode_smoke(void) {
-    uint64_t user_stack = (uint64_t)(uintptr_t)g_user_stack + sizeof(g_user_stack);
-    user_stack &= ~0xFULL;
+    uint64_t entry = 0;
+    uint64_t user_stack = 0;
+    if (!setup_user_pages(&entry, &user_stack)) {
+        serial_write("[RSE] user mode setup failed\n");
+        return;
+    }
     g_user_mode_exited = 0;
     serial_write("[RSE] user mode smoke begin\n");
-    enter_user_mode((uint64_t)(uintptr_t)user_mode_entry, user_stack);
-    if (g_user_mode_exited) {
+    {
+        uint64_t kernel_rsp = 0;
+        __asm__ volatile("mov %%rsp, %0" : "=r"(kernel_rsp));
+        g_user_mode_kernel_rsp = kernel_rsp - 8u;
+    }
+    __asm__ volatile(
+        "mov %%rbx, %0\n"
+        "mov %%rbp, %1\n"
+        "mov %%r12, %2\n"
+        "mov %%r13, %3\n"
+        "mov %%r14, %4\n"
+        "mov %%r15, %5\n"
+        : "=m"(g_saved_rbx),
+          "=m"(g_saved_rbp),
+          "=m"(g_saved_r12),
+          "=m"(g_saved_r13),
+          "=m"(g_saved_r14),
+          "=m"(g_saved_r15)
+        :
+        : "memory");
+    g_saved_cr3 = read_cr3();
+    write_cr3(g_user_cr3);
+    enter_user_mode(entry, user_stack);
+    write_cr3(g_saved_cr3);
+    if (g_user_mode_exited == 1) {
         serial_write("[RSE] user mode smoke ok\n");
+    } else if (g_user_mode_exited < 0) {
+        serial_write("[RSE] user mode smoke fault\n");
     } else {
         serial_write("[RSE] user mode smoke exit missing\n");
     }
 }
+
+#if RSE_ENABLE_USERMODE
+static void run_user_mode_smoke_guarded(void) {
+    struct idt_ptr saved = {};
+    uint64_t flags = read_rflags();
+    __asm__ volatile("cli");
+    read_idt(&saved);
+    init_idt();
+    run_user_mode_smoke();
+    load_idt(&saved);
+    write_rflags(flags);
+}
+#endif
 
 static uint64_t xorshift64(uint64_t *state) {
     uint64_t x = *state;
@@ -691,6 +1087,7 @@ static const EFI_GUID g_net_guid = EFI_SIMPLE_NETWORK_PROTOCOL_GUID;
 static EFI_SIMPLE_POINTER_PROTOCOL *g_pointer;
 static const EFI_GUID g_pointer_guid = EFI_SIMPLE_POINTER_PROTOCOL_GUID;
 static int virtio_net_init(void);
+static int net_init_uefi(void);
 static int virtio_net_send(const void *buf, uint32_t len);
 static int virtio_net_recv(void *buf, uint32_t len);
 
@@ -892,13 +1289,8 @@ int rse_block_write(uint64_t lba, const void *buf, uint32_t blocks) {
     return st == EFI_SUCCESS ? 0 : -1;
 }
 
-int rse_net_init(void) {
-    if (g_net_backend != NET_BACKEND_NONE) {
-        return 0;
-    }
-    if (virtio_net_init() == 0) {
-        g_net_backend = NET_BACKEND_VIRTIO;
-        serial_write("[RSE] virtio-net online\n");
+static int net_init_uefi(void) {
+    if (g_net_backend == NET_BACKEND_UEFI && g_net) {
         return 0;
     }
     EFI_SYSTEM_TABLE *st = get_system_table(g_boot_info);
@@ -950,6 +1342,18 @@ int rse_net_init(void) {
     serial_write("[RSE] UEFI net online\n");
     g_net_backend = NET_BACKEND_UEFI;
     return 0;
+}
+
+int rse_net_init(void) {
+    if (g_net_backend != NET_BACKEND_NONE) {
+        return 0;
+    }
+    if (virtio_net_init() == 0) {
+        g_net_backend = NET_BACKEND_VIRTIO;
+        serial_write("[RSE] virtio-net online\n");
+        return 0;
+    }
+    return net_init_uefi();
 }
 
 int rse_net_write(const void *buf, uint32_t len) {
@@ -2331,7 +2735,7 @@ static int virtio_net_send(const void *buf, uint32_t len) {
         serial_write("\n");
         tx_stall_logged = 1;
     }
-    return (int)len;
+    return -1;
 }
 
 static int virtio_net_recv(void *buf, uint32_t len) {
@@ -2538,7 +2942,16 @@ static int net_backend_write(const void *buf, uint32_t len) {
         return -1;
     }
     if (g_net_backend == NET_BACKEND_VIRTIO) {
-        return virtio_net_send(buf, len);
+        int rc = virtio_net_send(buf, len);
+        if (rc >= 0) {
+            return rc;
+        }
+        if (net_init_uefi() == 0 && g_net_backend == NET_BACKEND_UEFI && g_net) {
+            EFI_STATUS status = g_net->Transmit(g_net, 0, len, (void *)buf,
+                                                NULL, NULL, NULL);
+            return EFI_ERROR(status) ? -1 : (int)len;
+        }
+        return -1;
     }
     EFI_STATUS status = g_net->Transmit(g_net, 0, len, (void *)buf,
                                         NULL, NULL, NULL);
@@ -3483,7 +3896,7 @@ static void run_benchmarks(struct rse_boot_info *boot_info, int do_init) {
     bench_udp_http_server();
     bench_http_loopback();
 #if RSE_ENABLE_USERMODE
-    run_user_mode_smoke();
+    run_user_mode_smoke_guarded();
 #endif
     serial_write("[RSE] benchmarks end\n");
     g_metrics.metrics_valid = 1;
@@ -4165,6 +4578,9 @@ static void kmain(struct rse_boot_info *boot_info) {
     serial_init();
     serial_write("[RSE] UEFI kernel start\n");
     init_gdt_user_segments();
+#if RSE_ENABLE_USERMODE
+    run_user_mode_smoke_guarded();
+#endif
 
     if (boot_info && boot_info->magic == RSE_BOOT_MAGIC) {
         g_uefi_framebuffer.address = (void *)(uintptr_t)boot_info->fb_addr;

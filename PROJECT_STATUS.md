@@ -32,11 +32,12 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **Memory Optimization** | ⚠️ Prototype | Design-validated | O(1) bounded at 450MB |
 | **Emergent Scheduler** | ⚠️ Prototype | 4/4 internal | Fairness target met in sim |
 | **System Calls** | ⚠️ Partial | 9 implemented | 43 defined |
-| **Memory Management** | ⚠️ Partial | Basic | Page tables, no user isolation |
+| **Memory Management** | ⚠️ Partial | Basic | Page tables + ring3 smoke mapping (no full isolation) |
 | **Virtual File System** | ⚠️ Partial | Basic | MemFS + minimal BlockFS |
 | **BlockFS Persistence** | ⚠️ Prototype | Basic | `/persist` fixed-slot store |
 | **I/O System** | ⚠️ Partial | Basic | Console + block + net stubs |
 | **Userspace Runner** | ⚠️ Prototype | Cooperative | In-kernel user tasks |
+| **Ring3 Smoke (UEFI)** | ⚠️ Prototype | UEFI smoke | Per-process page table mapping |
 | **BraidShell** | ⚠️ Demo | Visual demo | Not integrated in kernel |
 | **UEFI Boot** | ✅ Working | Serial + framebuffer | Kernel + benchmarks |
 | **Framebuffer Dashboard** | ✅ Working | Visual | Panels + console + input |
@@ -50,7 +51,7 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | Component | Priority | Estimated Time | Dependencies |
 |-----------|----------|----------------|--------------|
 | More Utilities (ls, cat, ps) | High | 1-2 days | VFS, Scheduler |
-| User-Mode + ELF Loader | High | 1-2 weeks | Syscalls, scheduler |
+| User-Mode + ELF Loader | High | 1-2 weeks | Syscalls, scheduler (ring3 smoke + per-process map done) |
 | Real Hardware Drivers | Medium | 1-2 weeks | Boot process |
 | Distributed Mode | Low | 2-4 weeks | Network layer |
 | Full IP/TCP Stack | Medium | 1-2 weeks | Network RX stability |

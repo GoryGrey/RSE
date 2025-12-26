@@ -53,6 +53,57 @@ struct UserProgramState {
 static os::OSProcess* user_procs[kTorusCount][1 + kExtraProcs] = {};
 static UserProgramState user_states[kTorusCount][1 + kExtraProcs] = {};
 
+static bool map_user_page(os::OSProcess* proc, uint64_t vaddr, uint64_t flags, uint64_t* phys_out) {
+    if (!proc || !phys_out || !proc->memory.page_table || !proc->vmem) {
+        return false;
+    }
+    uint64_t page = os::align_down(vaddr);
+    uint64_t existing = proc->memory.page_table->translate(page);
+    if (existing != 0) {
+        *phys_out = existing;
+        return true;
+    }
+    os::PhysicalAllocator* phys_alloc = proc->vmem->getPhysicalAllocator();
+    if (!phys_alloc) {
+        return false;
+    }
+    uint64_t phys = phys_alloc->allocateFrame();
+    if (phys == 0) {
+        return false;
+    }
+    if (!proc->memory.page_table->map(page, phys, flags)) {
+        phys_alloc->freeFrame(phys);
+        return false;
+    }
+    *phys_out = phys;
+    return true;
+}
+
+extern "C" int rse_os_user_map(uint64_t code_vaddr, uint64_t stack_vaddr,
+                               uint64_t *code_phys_out, uint64_t *stack_phys_out) {
+    if (!code_phys_out || !stack_phys_out) {
+        return 0;
+    }
+    os::OSProcess* proc = user_procs[0][0];
+    if (!proc || !proc->vmem || !proc->memory.page_table) {
+        return 0;
+    }
+    if (!map_user_page(proc, code_vaddr, os::PTE_PRESENT | os::PTE_USER, code_phys_out)) {
+        return 0;
+    }
+    if (!map_user_page(proc, stack_vaddr,
+                       os::PTE_PRESENT | os::PTE_USER | os::PTE_WRITABLE,
+                       stack_phys_out)) {
+        return 0;
+    }
+    proc->memory.code_start = code_vaddr;
+    proc->memory.code_end = code_vaddr + os::PAGE_SIZE;
+    proc->memory.stack_start = stack_vaddr;
+    proc->memory.stack_end = stack_vaddr + os::PAGE_SIZE;
+    proc->memory.stack_pointer = stack_vaddr + os::PAGE_SIZE;
+    return 1;
+}
+
 static void user_log_prefix(os::OSProcess* proc, const rse_syscalls* sys, const char* tag) {
     if (!proc || !sys || !tag) {
         return;
@@ -400,14 +451,9 @@ static os::MemFS* create_memfs(uint32_t torus_id) {
     return new (storage[torus_id]) os::MemFS();
 }
 
-static os::FileDescriptorTable* create_fd_table(uint32_t torus_id) {
-    alignas(os::FileDescriptorTable) static uint8_t storage[kTorusCount][sizeof(os::FileDescriptorTable)];
-    return new (storage[torus_id]) os::FileDescriptorTable();
-}
-
-static os::VFS* create_vfs(uint32_t torus_id, os::MemFS* fs, os::FileDescriptorTable* fdt) {
+static os::VFS* create_vfs(uint32_t torus_id, os::MemFS* fs) {
     alignas(os::VFS) static uint8_t storage[kTorusCount][sizeof(os::VFS)];
-    return new (storage[torus_id]) os::VFS(fs, fdt);
+    return new (storage[torus_id]) os::VFS(fs);
 }
 
 static os::TorusScheduler* create_scheduler(uint32_t torus_id) {
@@ -581,10 +627,10 @@ extern "C" void rse_braid_smoke(void) {
 struct TorusRuntime {
     os::TorusContext ctx;
     os::MemFS* memfs;
-    os::FileDescriptorTable* fdt;
     os::VFS* vfs;
     os::BlockFS* blockfs;
     os::DeviceManager* dev_mgr;
+    os::Device* console;
     os::TorusScheduler* scheduler;
     os::SyscallDispatcher* dispatcher;
     os::PhysicalAllocator* phys_alloc;
@@ -1042,10 +1088,10 @@ extern "C" void rse_os_run(void) {
     for (uint32_t torus_id = 0; torus_id < kTorusCount; ++torus_id) {
         TorusRuntime& rt = runtimes[torus_id];
         rt.memfs = create_memfs(torus_id);
-        rt.fdt = create_fd_table(torus_id);
-        rt.vfs = create_vfs(torus_id, rt.memfs, rt.fdt);
+        rt.vfs = create_vfs(torus_id, rt.memfs);
         rt.blockfs = create_blockfs(torus_id);
         rt.dev_mgr = create_device_manager(torus_id);
+        rt.console = nullptr;
         rt.scheduler = create_scheduler(torus_id);
         rt.dispatcher = create_dispatcher(torus_id);
         rt.phys_alloc = create_phys_alloc(torus_id);
@@ -1080,7 +1126,7 @@ extern "C" void rse_os_run(void) {
             }
         }
         rt.vfs->setDeviceManager(rt.dev_mgr);
-        rt.fdt->bindStandardDevices(console);
+        rt.console = console;
 
         rt.ctx.scheduler = rt.scheduler;
         rt.ctx.dispatcher = rt.dispatcher;
@@ -1090,6 +1136,7 @@ extern "C" void rse_os_run(void) {
 
         os::OSProcess* init = create_process(torus_id, 0, rt.ctx.next_pid++, 0);
         init->initMemory(rt.phys_alloc);
+        init->fd_table.bindStandardDevices(rt.console);
         rt.scheduler->addProcess(init);
         user_procs[torus_id][0] = init;
     }
@@ -1098,6 +1145,7 @@ extern "C" void rse_os_run(void) {
         TorusRuntime& rt = runtimes[0];
         os::OSProcess* extra = create_process(0, 1 + i, rt.ctx.next_pid++, 0);
         extra->initMemory(rt.phys_alloc);
+        extra->fd_table.bindStandardDevices(rt.console);
         rt.scheduler->addProcess(extra);
         user_procs[0][1 + i] = extra;
     }

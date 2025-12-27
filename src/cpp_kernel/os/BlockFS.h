@@ -120,13 +120,19 @@ struct BlockFSHeader {
     uint64_t start_lba;
     uint64_t data_start_lba;
     uint64_t region_blocks;
-    uint32_t reserved[6];
+    uint32_t journal_active;
+    uint32_t journal_index;
+    uint32_t journal_crc;
+    uint32_t reserved0;
+    BlockFSEntry journal_entry;
+    uint32_t reserved[2];
 };
 
 class BlockFS {
 public:
     static constexpr uint32_t kMagic = 0x52534501u;
-    static constexpr uint32_t kVersion = 2u;
+    static constexpr uint32_t kVersion = 3u;
+    static constexpr uint32_t kMinVersion = 2u;
     static constexpr uint32_t kMaxFiles = 256u;
     static constexpr uint32_t kSlotBytes = 16384u;
     static constexpr uint32_t kNameMax = 31u;
@@ -172,6 +178,12 @@ public:
             if (!load_entries()) {
                 return false;
             }
+            apply_journal();
+            if (header_.version < kVersion) {
+                header_.version = kVersion;
+                clear_journal();
+                sync_header();
+            }
             mounted_ = true;
             return true;
         }
@@ -216,7 +228,10 @@ public:
         free_slot->size = 0;
         free_slot->checksum = 0;
         free_slot->in_use = 1;
-        sync_entries();
+        uint32_t index = (uint32_t)(free_slot - entries_);
+        if (!commit_entry(index)) {
+            return nullptr;
+        }
         return free_slot;
     }
 
@@ -272,7 +287,10 @@ public:
             if (!update_checksum(entry)) {
                 return -EIO;
             }
-            sync_entries();
+            uint32_t index = (uint32_t)(entry - entries_);
+            if (!commit_entry(index)) {
+                return -EIO;
+            }
         }
         return wrote;
     }
@@ -286,7 +304,10 @@ public:
         }
         entry->size = 0;
         entry->checksum = 0;
-        sync_entries();
+        uint32_t index = (uint32_t)(entry - entries_);
+        if (!commit_entry(index)) {
+            return -EIO;
+        }
         return 0;
     }
 
@@ -302,7 +323,10 @@ public:
         entry->size = 0;
         entry->checksum = 0;
         entry->in_use = 0;
-        sync_entries();
+        uint32_t index = (uint32_t)(entry - entries_);
+        if (!commit_entry(index)) {
+            return false;
+        }
         return true;
     }
 
@@ -366,7 +390,8 @@ private:
 
     bool is_valid_header(const BlockFSHeader& hdr) const {
         return hdr.magic == kMagic &&
-               hdr.version == kVersion &&
+               hdr.version >= kMinVersion &&
+               hdr.version <= kVersion &&
                hdr.block_size == block_size_ &&
                hdr.slot_size == slot_size_ &&
                hdr.max_files == kMaxFiles &&
@@ -390,6 +415,7 @@ private:
         header_.start_lba = start_lba_;
         header_.data_start_lba = data_start_lba_;
         header_.region_blocks = region_blocks_;
+        clear_journal();
         sync_header();
         sync_entries();
     }
@@ -484,6 +510,55 @@ private:
             }
             ++i;
         }
+        return true;
+    }
+
+    void clear_journal() {
+        header_.journal_active = 0;
+        header_.journal_index = 0;
+        header_.journal_crc = 0;
+        std::memset(&header_.journal_entry, 0, sizeof(header_.journal_entry));
+    }
+
+    uint32_t entry_crc(const BlockFSEntry& entry) const {
+        static constexpr uint32_t kOffset = 2166136261u;
+        const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&entry);
+        return fnv1a_update(kOffset, bytes, (uint32_t)sizeof(BlockFSEntry));
+    }
+
+    void apply_journal() {
+        if (header_.journal_active == 0) {
+            return;
+        }
+        if (header_.journal_index >= kMaxFiles) {
+            clear_journal();
+            sync_header();
+            return;
+        }
+        if (entry_crc(header_.journal_entry) != header_.journal_crc) {
+            clear_journal();
+            sync_header();
+            return;
+        }
+        header_.journal_entry.slot_index = header_.journal_index;
+        entries_[header_.journal_index] = header_.journal_entry;
+        sync_entries();
+        clear_journal();
+        sync_header();
+    }
+
+    bool commit_entry(uint32_t index) {
+        if (index >= kMaxFiles) {
+            return false;
+        }
+        header_.journal_active = 1;
+        header_.journal_index = index;
+        header_.journal_entry = entries_[index];
+        header_.journal_crc = entry_crc(header_.journal_entry);
+        sync_header();
+        sync_entries();
+        clear_journal();
+        sync_header();
         return true;
     }
 

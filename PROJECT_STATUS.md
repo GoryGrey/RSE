@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-**The Bible - Last Updated: December 27, 2025 (user guard tests + BlockFS checksum + net loopback + full system test pass)**
+**The Bible - Last Updated: December 27, 2025 (user guard tests + BlockFS checksum journal + net loopback + full system test pass)**
 
 ---
 
@@ -34,7 +34,7 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **System Calls** | ⚠️ Partial | 15 implemented (wait + ps + stat + pipe/dup) | 43 defined |
 | **Memory Management** | ⚠️ Partial | Basic | Page tables + ring3 map + user heap/stack window + brk/mmap remap |
 | **Virtual File System** | ⚠️ Partial | Basic | MemFS + BlockFS + per-process FD tables |
-| **BlockFS Persistence** | ⚠️ Prototype | Checksum + corruption test | `/persist` fixed-slot store + checksum |
+| **BlockFS Persistence** | ⚠️ Prototype | Checksum + journal + corruption test | `/persist` fixed-slot store + checksum journal |
 | **I/O System** | ⚠️ Partial | Console + block + net loopback test | Console + block + net baseline + fast0 + IRQ EOI |
 | **Fast-Path I/O (fast0)** | ⚠️ Prototype | fastio bench | 33 cycles/byte (2MB loopback) |
 | **FD Isolation** | ⚠️ Prototype | exec_vfs_test | Per-process file descriptor tables |
@@ -499,6 +499,6 @@ This OS is not built on traditional hierarchies. It's built on:
 
 **Status**: 45% Complete (Prototype) | **Next Milestone**: User-mode isolation + ELF loader
 
-**Last Updated**: December 27, 2025 (user guard tests + BlockFS checksum + net loopback + full system test pass)
+**Last Updated**: December 27, 2025 (user guard tests + BlockFS checksum journal + net loopback + full system test pass)
 
 **"Stay degen. Stay future. 🚀"**

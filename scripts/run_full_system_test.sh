@@ -47,6 +47,7 @@ CPP_TESTS=(
   elf_process_test
   exec_vfs_test
   blockfs_test
+  net_device_test
   sys_wait_test
   sys_kill_test
   sys_ps_test

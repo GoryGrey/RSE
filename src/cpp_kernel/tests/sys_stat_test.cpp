@@ -76,6 +76,10 @@ int main() {
     assert(ok);
     assert(st.type == os::RSE_STAT_DIR);
 
+    uint64_t bad_stat_addr = proc.vmem->getStackEnd() + 0x1000;
+    rc = os::syscall(os::SYS_STAT, root_addr, bad_stat_addr);
+    assert(rc == -EFAULT);
+
     std::cout << "  ✓ all tests passed" << std::endl;
     return 0;
 }

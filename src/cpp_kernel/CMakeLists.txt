@@ -144,6 +144,12 @@ if(NOT MSVC)
     target_link_libraries(blockfs_test atomic)
 endif()
 
+# net device test
+add_executable(net_device_test tests/net_device_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(net_device_test atomic)
+endif()
+
 # sys_wait reaping test
 add_executable(sys_wait_test tests/sys_wait_test.cpp)
 if(NOT MSVC)

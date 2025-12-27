@@ -197,7 +197,7 @@ public:
             int64_t bytes_read = blockfs_->read(desc->block_file, desc->offset,
                                                 (uint8_t*)buf, count);
             if (bytes_read < 0) {
-                return -1;
+                return bytes_read;
             }
             desc->offset += (uint64_t)bytes_read;
             return bytes_read;
@@ -328,9 +328,9 @@ public:
                 return -1;
             }
             int64_t bytes_written = blockfs_->write(desc->block_file, desc->offset,
-                                                   (const uint8_t*)buf, count);
+                                                    (const uint8_t*)buf, count);
             if (bytes_written < 0) {
-                return -1;
+                return bytes_written;
             }
             desc->offset += (uint64_t)bytes_written;
             return bytes_written;

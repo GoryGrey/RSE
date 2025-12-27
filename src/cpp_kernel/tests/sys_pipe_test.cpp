@@ -96,6 +96,20 @@ int main() {
         return 1;
     }
 
+    uint64_t bad_addr = proc.vmem->getStackEnd() + 0x1000;
+    rc = os::syscall(os::SYS_PIPE, bad_addr);
+    if (!require(rc == -EFAULT, "sys_pipe rejects bad user buffer")) {
+        return 1;
+    }
+    rc = os::syscall(os::SYS_WRITE, fds[1], bad_addr, 8);
+    if (!require(rc == -EFAULT, "sys_write rejects bad user buffer")) {
+        return 1;
+    }
+    rc = os::syscall(os::SYS_READ, fds[0], bad_addr, 8);
+    if (!require(rc == -EFAULT, "sys_read rejects bad user buffer")) {
+        return 1;
+    }
+
     std::cout << "  ✓ all tests passed" << std::endl;
     return 0;
 }

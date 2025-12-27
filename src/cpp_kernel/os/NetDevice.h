@@ -2,6 +2,7 @@
 
 #include "Device.h"
 #include <cstdint>
+#include <cstddef>
 #include <cstring>
 
 namespace os {
@@ -11,9 +12,63 @@ extern "C" int rse_net_init(void);
 extern "C" int rse_net_read(void* buf, uint32_t len);
 extern "C" int rse_net_write(const void* buf, uint32_t len);
 #else
-inline int rse_net_init(void) { return -1; }
-inline int rse_net_read(void* buf, uint32_t len) { (void)buf; (void)len; return -1; }
-inline int rse_net_write(const void* buf, uint32_t len) { (void)buf; (void)len; return -1; }
+struct NetLoopback {
+    static constexpr size_t CAPACITY = 16384;
+    uint8_t buffer[CAPACITY];
+    size_t head;
+    size_t tail;
+    size_t size;
+    bool online;
+
+    NetLoopback() : head(0), tail(0), size(0), online(false) {
+        std::memset(buffer, 0, sizeof(buffer));
+    }
+};
+
+inline NetLoopback& net_loopback() {
+    static NetLoopback state;
+    return state;
+}
+
+inline int rse_net_init(void) {
+    NetLoopback& state = net_loopback();
+    state.online = true;
+    return 0;
+}
+
+inline int rse_net_read(void* buf, uint32_t len) {
+    NetLoopback& state = net_loopback();
+    if (!state.online || !buf || len == 0) {
+        return state.online ? 0 : -1;
+    }
+    if (state.size == 0) {
+        return 0;
+    }
+    uint32_t to_read = len < state.size ? len : (uint32_t)state.size;
+    uint8_t* out = static_cast<uint8_t*>(buf);
+    for (uint32_t i = 0; i < to_read; ++i) {
+        out[i] = state.buffer[state.head];
+        state.head = (state.head + 1) % NetLoopback::CAPACITY;
+    }
+    state.size -= to_read;
+    return (int)to_read;
+}
+
+inline int rse_net_write(const void* buf, uint32_t len) {
+    NetLoopback& state = net_loopback();
+    if (!state.online || !buf || len == 0) {
+        return state.online ? 0 : -1;
+    }
+    size_t space = NetLoopback::CAPACITY - state.size;
+    uint32_t to_write = len < space ? len : (uint32_t)space;
+    const uint8_t* in = static_cast<const uint8_t*>(buf);
+    for (uint32_t i = 0; i < to_write; ++i) {
+        state.buffer[state.tail] = in[i];
+        state.tail = (state.tail + 1) % NetLoopback::CAPACITY;
+    }
+    state.size += to_write;
+    return (int)to_write;
+}
 #endif
 
 inline int net_open(Device* dev) {
@@ -68,4 +123,3 @@ inline Device* create_net_device(const char* name) {
 }
 
 } // namespace os
-

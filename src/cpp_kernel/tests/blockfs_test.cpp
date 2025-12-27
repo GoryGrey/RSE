@@ -1,4 +1,5 @@
 #include "../os/BlockFS.h"
+#include "../os/Syscall.h"
 
 #include <array>
 #include <cassert>
@@ -26,6 +27,17 @@ int main() {
     int64_t read = fs.read(entry, 0, out.data(), sizeof(out));
     assert(read == static_cast<int64_t>(sizeof(payload) - 1));
     assert(std::memcmp(out.data(), payload, sizeof(payload) - 1) == 0);
+
+    uint64_t base_lba = fs.getDataStartLba() + (uint64_t)entry->slot_index * fs.getSlotBlocks();
+    std::array<uint8_t, 512> raw{};
+    int rc = os::rse_block_read(base_lba, raw.data(), 1);
+    assert(rc == 0);
+    raw[0] ^= 0xFF;
+    rc = os::rse_block_write(base_lba, raw.data(), 1);
+    assert(rc == 0);
+
+    int64_t corrupt_read = fs.read(entry, 0, out.data(), sizeof(out));
+    assert(corrupt_read == -os::EIO);
 
     bool removed = fs.remove("alpha.txt");
     assert(removed);

@@ -53,6 +53,10 @@ int main() {
     assert(std::strstr(out, "pid=1") != nullptr);
     assert(std::strstr(out, "pid=2") != nullptr);
 
+    uint64_t bad_addr = proc1.vmem->getStackEnd() + 0x1000;
+    int64_t bad_rc = os::syscall(os::SYS_PS, bad_addr, 64);
+    assert(bad_rc == -EFAULT);
+
     std::cout << "  ✓ all tests passed" << std::endl;
     return 0;
 }

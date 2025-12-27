@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Syscall.h"
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
@@ -104,6 +105,7 @@ struct BlockFSEntry {
     char name[32];
     uint32_t size;
     uint32_t slot_index;
+    uint32_t checksum;
     uint8_t in_use;
     uint8_t reserved[3];
 };
@@ -124,7 +126,7 @@ struct BlockFSHeader {
 class BlockFS {
 public:
     static constexpr uint32_t kMagic = 0x52534501u;
-    static constexpr uint32_t kVersion = 1u;
+    static constexpr uint32_t kVersion = 2u;
     static constexpr uint32_t kMaxFiles = 256u;
     static constexpr uint32_t kSlotBytes = 16384u;
     static constexpr uint32_t kNameMax = 31u;
@@ -137,6 +139,7 @@ public:
             entries_[i].name[0] = '\0';
             entries_[i].size = 0;
             entries_[i].slot_index = i;
+            entries_[i].checksum = 0;
             entries_[i].in_use = 0;
         }
         std::memset(&header_, 0, sizeof(header_));
@@ -182,6 +185,18 @@ public:
         return mounted_;
     }
 
+    uint32_t getBlockSize() const {
+        return block_size_;
+    }
+
+    uint32_t getSlotBlocks() const {
+        return slot_blocks_;
+    }
+
+    uint64_t getDataStartLba() const {
+        return data_start_lba_;
+    }
+
     BlockFSEntry* open(const char* name, bool create) {
         if (!mounted_ || !name || name[0] == '\0') {
             return nullptr;
@@ -199,6 +214,7 @@ public:
         }
         write_name(free_slot->name, name);
         free_slot->size = 0;
+        free_slot->checksum = 0;
         free_slot->in_use = 1;
         sync_entries();
         return free_slot;
@@ -206,13 +222,16 @@ public:
 
     int64_t read(BlockFSEntry* entry, uint64_t offset, uint8_t* buf, uint32_t count) {
         if (!mounted_ || !entry || !buf) {
-            return -1;
+            return -EINVAL;
         }
         if (!entry->in_use) {
-            return -1;
+            return -EINVAL;
         }
         if (offset >= entry->size) {
             return 0;
+        }
+        if (!verify_checksum(entry)) {
+            return -EIO;
         }
         uint32_t available = entry->size - (uint32_t)offset;
         uint32_t to_read = (count < available) ? count : available;
@@ -226,10 +245,10 @@ public:
 
     int64_t write(BlockFSEntry* entry, uint64_t offset, const uint8_t* buf, uint32_t count) {
         if (!mounted_ || !entry || !buf) {
-            return -1;
+            return -EINVAL;
         }
         if (!entry->in_use) {
-            return -1;
+            return -EINVAL;
         }
         if (offset >= slot_size_) {
             return 0;
@@ -249,20 +268,24 @@ public:
             uint64_t new_size = offset + (uint64_t)wrote;
             if (new_size > entry->size) {
                 entry->size = (uint32_t)new_size;
-                sync_entries();
             }
+            if (!update_checksum(entry)) {
+                return -EIO;
+            }
+            sync_entries();
         }
         return wrote;
     }
 
     int truncate(BlockFSEntry* entry) {
         if (!mounted_ || !entry) {
-            return -1;
+            return -EINVAL;
         }
         if (!entry->in_use) {
-            return -1;
+            return -EINVAL;
         }
         entry->size = 0;
+        entry->checksum = 0;
         sync_entries();
         return 0;
     }
@@ -277,6 +300,7 @@ public:
         }
         entry->name[0] = '\0';
         entry->size = 0;
+        entry->checksum = 0;
         entry->in_use = 0;
         sync_entries();
         return true;
@@ -354,6 +378,7 @@ private:
             entries_[i].name[0] = '\0';
             entries_[i].size = 0;
             entries_[i].slot_index = i;
+            entries_[i].checksum = 0;
             entries_[i].in_use = 0;
         }
         header_.magic = kMagic;
@@ -436,6 +461,7 @@ private:
         for (uint32_t i = 0; i < kMaxFiles; ++i) {
             if (!entries_[i].in_use) {
                 entries_[i].slot_index = i;
+                entries_[i].checksum = 0;
                 return &entries_[i];
             }
         }
@@ -471,14 +497,14 @@ private:
         if (block_off != 0 || (remaining % block_size_) != 0) {
             scratch = new uint8_t[block_size_];
             if (!scratch) {
-                return -1;
+                return -ENOMEM;
             }
         }
 
         if (block_off != 0) {
             if (rse_block_read(lba, scratch, 1) != 0) {
                 delete[] scratch;
-                return -1;
+                return -EIO;
             }
             uint32_t take = block_size_ - block_off;
             if (take > remaining) {
@@ -495,7 +521,7 @@ private:
             uint32_t blocks = full_bytes / block_size_;
             if (rse_block_read(lba, out, blocks) != 0) {
                 delete[] scratch;
-                return -1;
+                return -EIO;
             }
             out += full_bytes;
             remaining -= full_bytes;
@@ -505,7 +531,7 @@ private:
         if (remaining > 0) {
             if (rse_block_read(lba, scratch, 1) != 0) {
                 delete[] scratch;
-                return -1;
+                return -EIO;
             }
             std::memcpy(out, scratch, remaining);
             remaining = 0;
@@ -525,14 +551,14 @@ private:
         if (block_off != 0 || (remaining % block_size_) != 0) {
             scratch = new uint8_t[block_size_];
             if (!scratch) {
-                return -1;
+                return -ENOMEM;
             }
         }
 
         if (block_off != 0) {
             if (rse_block_read(lba, scratch, 1) != 0) {
                 delete[] scratch;
-                return -1;
+                return -EIO;
             }
             uint32_t take = block_size_ - block_off;
             if (take > remaining) {
@@ -541,7 +567,7 @@ private:
             std::memcpy(scratch + block_off, in, take);
             if (rse_block_write(lba, scratch, 1) != 0) {
                 delete[] scratch;
-                return -1;
+                return -EIO;
             }
             in += take;
             remaining -= take;
@@ -553,7 +579,7 @@ private:
             uint32_t blocks = full_bytes / block_size_;
             if (rse_block_write(lba, in, blocks) != 0) {
                 delete[] scratch;
-                return -1;
+                return -EIO;
             }
             in += full_bytes;
             remaining -= full_bytes;
@@ -563,18 +589,81 @@ private:
         if (remaining > 0) {
             if (rse_block_read(lba, scratch, 1) != 0) {
                 delete[] scratch;
-                return -1;
+                return -EIO;
             }
             std::memcpy(scratch, in, remaining);
             if (rse_block_write(lba, scratch, 1) != 0) {
                 delete[] scratch;
-                return -1;
+                return -EIO;
             }
             remaining = 0;
         }
 
         delete[] scratch;
         return count;
+    }
+
+    static uint32_t fnv1a_update(uint32_t hash, const uint8_t* data, uint32_t len) {
+        static constexpr uint32_t kPrime = 16777619u;
+        for (uint32_t i = 0; i < len; ++i) {
+            hash ^= data[i];
+            hash *= kPrime;
+        }
+        return hash;
+    }
+
+    bool compute_checksum(const BlockFSEntry* entry, uint32_t* out) const {
+        if (!entry || !out) {
+            return false;
+        }
+        if (entry->size == 0) {
+            *out = 0;
+            return true;
+        }
+        uint8_t* scratch = new uint8_t[block_size_];
+        if (!scratch) {
+            return false;
+        }
+        static constexpr uint32_t kOffset = 2166136261u;
+        uint32_t hash = kOffset;
+        uint64_t remaining = entry->size;
+        uint64_t offset = 0;
+        uint64_t lba_base = data_start_lba_ + (uint64_t)entry->slot_index * slot_blocks_;
+        while (remaining > 0) {
+            uint64_t lba = lba_base + (offset / block_size_);
+            if (rse_block_read(lba, scratch, 1) != 0) {
+                delete[] scratch;
+                return false;
+            }
+            uint32_t block_off = (uint32_t)(offset % block_size_);
+            uint32_t take = block_size_ - block_off;
+            if (take > remaining) {
+                take = (uint32_t)remaining;
+            }
+            hash = fnv1a_update(hash, scratch + block_off, take);
+            remaining -= take;
+            offset += take;
+        }
+        delete[] scratch;
+        *out = hash;
+        return true;
+    }
+
+    bool update_checksum(BlockFSEntry* entry) {
+        uint32_t hash = 0;
+        if (!compute_checksum(entry, &hash)) {
+            return false;
+        }
+        entry->checksum = hash;
+        return true;
+    }
+
+    bool verify_checksum(const BlockFSEntry* entry) const {
+        uint32_t hash = 0;
+        if (!compute_checksum(entry, &hash)) {
+            return false;
+        }
+        return hash == entry->checksum;
     }
 };
 

@@ -1,6 +1,6 @@
 # RSE (Resilient Spatial Execution)
 
-**Last Updated**: December 27, 2025 (sys_kill + BlockFS tests + block device IO + full system test pass)  
+**Last Updated**: December 27, 2025 (user guard tests + BlockFS checksum + net loopback + full system test pass)  
 **Status**: Research prototype. Bootable UEFI kernel with an interactive dashboard (keyboard/mouse) and in-kernel workloads; braided projection exchange works in multi-VM via shared memory. Native fast-path I/O is now in-kernel (`/dev/fast0`), while UEFI/virtio remain compatibility paths; ring3 exec smoke now passes with the user-mode window remap.
 
 **Quick Links**: [Project Status](PROJECT_STATUS.md) | [Documentation](#documentation)

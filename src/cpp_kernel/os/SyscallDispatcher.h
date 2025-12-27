@@ -975,6 +975,10 @@ inline int64_t sys_mmap(uint64_t addr, uint64_t size, uint64_t prot,
     if (!current || !current->vmem) {
         return -ESRCH;
     }
+    if (enforce_user_memory(current) && addr != 0 &&
+        !current->vmem->isUserRange(addr, size)) {
+        return -EFAULT;
+    }
     uint64_t mapped = current->vmem->mmap(addr, size, prot);
     if (mapped == 0) {
         return -ENOMEM;
@@ -988,6 +992,10 @@ inline int64_t sys_munmap(uint64_t addr, uint64_t size, uint64_t,
     if (!current || !current->vmem) {
         return -ESRCH;
     }
+    if (enforce_user_memory(current) &&
+        !current->vmem->isUserRange(addr, size)) {
+        return -EFAULT;
+    }
     current->vmem->munmap(addr, size);
     return 0;
 }
@@ -997,6 +1005,10 @@ inline int64_t sys_mprotect(uint64_t addr, uint64_t size, uint64_t prot,
     OSProcess* current = get_current_process();
     if (!current || !current->vmem) {
         return -ESRCH;
+    }
+    if (enforce_user_memory(current) &&
+        !current->vmem->isUserRange(addr, size)) {
+        return -EFAULT;
     }
     if (!current->vmem->mprotect(addr, size, prot)) {
         return -EACCES;

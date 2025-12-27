@@ -54,6 +54,7 @@ CPP_TESTS=(
   sys_stat_test
   sys_pipe_test
   sys_dup_test
+  sys_mmap_test
 )
 for test_bin in "${CPP_TESTS[@]}"; do
   test_path="${ROOT_DIR}/build/cpp_kernel/${test_bin}"

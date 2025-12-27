@@ -186,6 +186,12 @@ if(NOT MSVC)
     target_link_libraries(sys_dup_test atomic)
 endif()
 
+# sys_mmap/mprotect test
+add_executable(sys_mmap_test tests/sys_mmap_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(sys_mmap_test atomic)
+endif()
+
 # Memory Telemetry Test
 add_executable(memory_telemetry_test tests/memory_telemetry_test.cpp)
 if(NOT MSVC)

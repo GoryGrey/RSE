@@ -21,6 +21,7 @@ constexpr int SYS_WAIT      = 4;
 constexpr int SYS_GETPID    = 5;
 constexpr int SYS_GETPPID   = 6;
 constexpr int SYS_KILL      = 7;
+constexpr int SYS_PS        = 8;
 
 // File I/O
 constexpr int SYS_OPEN      = 10;
@@ -177,6 +178,10 @@ inline int64_t getppid() {
 
 inline int64_t kill(int pid, int sig) {
     return syscall(SYS_KILL, pid, sig);
+}
+
+inline int64_t ps(void* buf, size_t count) {
+    return syscall(SYS_PS, (uint64_t)buf, count);
 }
 
 /**

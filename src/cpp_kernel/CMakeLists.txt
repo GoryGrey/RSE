@@ -144,6 +144,12 @@ if(NOT MSVC)
     target_link_libraries(sys_wait_test atomic)
 endif()
 
+# sys_ps snapshot test
+add_executable(sys_ps_test tests/sys_ps_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(sys_ps_test atomic)
+endif()
+
 # Memory Telemetry Test
 add_executable(memory_telemetry_test tests/memory_telemetry_test.cpp)
 if(NOT MSVC)

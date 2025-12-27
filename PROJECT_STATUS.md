@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-**The Bible - Last Updated: December 26, 2025 (sys_wait reaping + test)**
+**The Bible - Last Updated: December 26, 2025 (sys_wait + sys_ps)**
 
 ---
 
@@ -31,7 +31,7 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **Parallel Execution** | ⚠️ Prototype | Architecture | 3 worker threads |
 | **Memory Optimization** | ⚠️ Prototype | Design-validated | O(1) bounded at 450MB |
 | **Emergent Scheduler** | ⚠️ Prototype | 4/4 internal | Fairness target met in sim |
-| **System Calls** | ⚠️ Partial | 10 implemented (wait reaps) | 43 defined |
+| **System Calls** | ⚠️ Partial | 11 implemented (wait + ps) | 43 defined |
 | **Memory Management** | ⚠️ Partial | Basic | Page tables + ring3 map + user heap/stack window + brk/mmap remap |
 | **Virtual File System** | ⚠️ Partial | Basic | MemFS + BlockFS + per-process FD tables |
 | **BlockFS Persistence** | ⚠️ Prototype | Basic | `/persist` fixed-slot store |
@@ -46,7 +46,7 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **UI Input (Keyboard/Mouse)** | ✅ Working | Interactive | Dashboard selection + actions |
 | **Projection Exchange (IVSHMEM)** | ⚠️ Lab-only | 3-torus Multi-VM | Shared-memory transport |
 
-**Test Coverage**: Full system test + UEFI bench + fastio bench + ring3 smoke/exec (UEFI run-iso; exec passes) + Linux baseline + IVSHMEM exchange + sys_wait reaping test; external UDP/HTTP proof captured in `build/boot/proof.log`.
+**Test Coverage**: Full system test + UEFI bench + fastio bench + ring3 smoke/exec (UEFI run-iso; exec passes) + Linux baseline + IVSHMEM exchange + sys_wait + sys_ps tests; external UDP/HTTP proof captured in `build/boot/proof.log`.
 
 ### **What's Left** 🚧
 
@@ -240,10 +240,10 @@ current implementation status. Use the tables above for reality.
 
 ### **Legacy Phase 6.1: System Calls**
 - **Status**: ✅ Core Complete
-- **Tests**: 3/7 passing (exec/vfs + sys_wait)
+- **Tests**: 4/7 passing (exec/vfs + sys_wait + sys_ps)
 - **Key Features**:
   - 43 syscalls defined (POSIX-compatible)
-  - 10 syscalls implemented (wait reaping, non-blocking)
+  - 11 syscalls implemented (wait reaping + ps snapshot)
   - Per-torus dispatch (no global handler)
   - 100× faster than traditional OS
 
@@ -499,6 +499,6 @@ This OS is not built on traditional hierarchies. It's built on:
 
 **Status**: 45% Complete (Prototype) | **Next Milestone**: User-mode isolation + ELF loader
 
-**Last Updated**: December 26, 2025 (sys_wait reaping + test)
+**Last Updated**: December 26, 2025 (sys_wait + sys_ps)
 
 **"Stay degen. Stay future. 🚀"**

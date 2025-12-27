@@ -690,6 +690,117 @@ inline int64_t sys_list(uint64_t path_addr, uint64_t buf_addr, uint64_t count,
                                            static_cast<uint32_t>(count));
 }
 
+inline int64_t sys_ps(uint64_t buf_addr, uint64_t count, uint64_t,
+                      uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    TorusScheduler* scheduler = get_current_scheduler();
+    if (!scheduler) {
+        return -ESRCH;
+    }
+    if (!buf_addr || count == 0) {
+        return -EINVAL;
+    }
+    if (!validate_user_range(current, buf_addr, count, true)) {
+        return -EFAULT;
+    }
+
+    bool user_buf = enforce_user_memory(current);
+    static constexpr uint32_t kMaxOut = 2048;
+    uint32_t len = (count > UINT32_MAX) ? UINT32_MAX : (uint32_t)count;
+    if (user_buf && len > kMaxOut) {
+        len = kMaxOut;
+    }
+    char local[kMaxOut];
+    char* buf = user_buf ? local : reinterpret_cast<char*>(buf_addr);
+    uint32_t used = 0;
+
+    auto append_char = [&](char c) -> bool {
+        if (used + 1 >= len) {
+            return false;
+        }
+        buf[used++] = c;
+        return true;
+    };
+    auto append_str = [&](const char* s) -> bool {
+        if (!s) {
+            return true;
+        }
+        while (*s) {
+            if (!append_char(*s++)) {
+                return false;
+            }
+        }
+        return true;
+    };
+    auto append_u64 = [&](uint64_t value) -> bool {
+        char tmp[32];
+        uint32_t idx = 0;
+        if (value == 0) {
+            tmp[idx++] = '0';
+        } else {
+            while (value && idx < sizeof(tmp)) {
+                tmp[idx++] = (char)('0' + (value % 10));
+                value /= 10;
+            }
+        }
+        for (uint32_t i = 0; i < idx / 2; ++i) {
+            char t = tmp[i];
+            tmp[i] = tmp[idx - 1 - i];
+            tmp[idx - 1 - i] = t;
+        }
+        for (uint32_t i = 0; i < idx; ++i) {
+            if (!append_char(tmp[i])) {
+                return false;
+            }
+        }
+        return true;
+    };
+    auto state_str = [](ProcessState state) -> const char* {
+        switch (state) {
+            case ProcessState::READY: return "READY";
+            case ProcessState::RUNNING: return "RUNNING";
+            case ProcessState::BLOCKED: return "BLOCKED";
+            case ProcessState::ZOMBIE: return "ZOMBIE";
+        }
+        return "UNKNOWN";
+    };
+
+    bool wrote = false;
+    scheduler->forEachProcess([&](OSProcess* proc) {
+        if (!proc) {
+            return;
+        }
+        if (!append_str("pid=") || !append_u64(proc->pid) ||
+            !append_str(" torus=") || !append_u64(proc->torus_id) ||
+            !append_str(" state=") || !append_str(state_str(proc->state)) ||
+            !append_str(" runtime=") || !append_u64(proc->total_runtime) ||
+            !append_char('\n')) {
+            return;
+        }
+        wrote = true;
+    });
+
+    if (!wrote) {
+        append_str("ps: empty\n");
+    }
+    if (used < len) {
+        buf[used] = '\0';
+    }
+    if (user_buf) {
+        uint32_t copy_len = used;
+        if (used < len) {
+            copy_len = used + 1;
+        }
+        if (!write_user_bytes(current, buf_addr, buf, copy_len)) {
+            return -EFAULT;
+        }
+    }
+    return (int64_t)used;
+}
+
 /**
  * sys_brk: Change data segment size
  */
@@ -765,6 +876,7 @@ public:
         register_handler(SYS_FORK, sys_fork);
         register_handler(SYS_WAIT, sys_wait);
         register_handler(SYS_KILL, sys_kill);
+        register_handler(SYS_PS, sys_ps);
         register_handler(SYS_EXEC, sys_exec);
         register_handler(SYS_OPEN, sys_open);
         register_handler(SYS_CLOSE, sys_close);

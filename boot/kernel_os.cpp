@@ -842,6 +842,26 @@ extern "C" int rse_os_ring3_entry(uint64_t* entry_out) {
     return 1;
 }
 
+extern "C" int rse_os_ring3_context(uint64_t* entry_out, uint64_t* stack_out) {
+    if (!g_ring3_proc || (!entry_out && !stack_out)) {
+        return 0;
+    }
+    if (g_ring3_proc->context.rip == 0) {
+        return 0;
+    }
+    if (entry_out) {
+        *entry_out = g_ring3_proc->context.rip;
+    }
+    if (stack_out) {
+        uint64_t sp = g_ring3_proc->context.rsp;
+        if (sp == 0) {
+            sp = g_ring3_proc->memory.stack_pointer;
+        }
+        *stack_out = sp;
+    }
+    return 1;
+}
+
 static void braid_log_loads(TorusRuntime* runtimes) {
     serial_write("[RSE] torus load a=");
     serial_write_u64(runtimes[0].scheduler->getProcessCount());

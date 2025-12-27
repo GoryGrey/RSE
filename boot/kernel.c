@@ -33,6 +33,7 @@ extern int64_t rse_os_syscall_dispatch(int64_t num,
                                        uint64_t arg3, uint64_t arg4,
                                        uint64_t arg5, uint64_t arg6);
 extern int rse_os_ring3_entry(uint64_t *entry_out);
+extern int rse_os_ring3_context(uint64_t *entry_out, uint64_t *stack_out);
 
 #define RSE_SYS_EXEC 2u
 #define RSE_SYS_EXIT 3u
@@ -399,14 +400,15 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
     }
     if (call == RSE_SYS_EXEC && rc == 0) {
         uint64_t entry = 0;
-        if (rse_os_ring3_entry(&entry)) {
+        uint64_t stack = 0;
+        if (rse_os_ring3_context(&entry, &stack)) {
             uint64_t code_phys = 0;
             uint64_t stack_phys = 0;
             if (rse_os_user_map(entry, USER_STACK_VADDR, &code_phys, &stack_phys)) {
                 build_user_page_table(code_phys, stack_phys);
             }
             frame->rip = entry;
-            frame->rsp = USER_STACK_TOP;
+            frame->rsp = stack ? stack : USER_STACK_TOP;
         }
     }
 }

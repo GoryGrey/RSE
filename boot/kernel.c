@@ -1144,13 +1144,14 @@ static uint16_t net_rx_used_idx;
 static uint16_t net_tx_used_idx;
 static uint16_t net_rx_qsz;
 static uint16_t net_tx_qsz;
+static uint16_t net_tx_slots;
 static uint32_t virtio_net_io_base;
 static uint8_t net_rx_bufs_static[VIRTIO_NET_MAX_Q][VIRTIO_NET_BUF_SIZE] __attribute__((aligned(16)));
-static uint8_t net_tx_buf_static[VIRTIO_NET_BUF_SIZE] __attribute__((aligned(16)));
+static uint8_t net_tx_bufs_static[VIRTIO_NET_MAX_Q][VIRTIO_NET_BUF_SIZE] __attribute__((aligned(16)));
 static uint8_t *net_rx_bufs = (uint8_t *)net_rx_bufs_static;
-static uint8_t *net_tx_buf = net_tx_buf_static;
-static struct virtio_net_hdr_mrg net_tx_hdr_static;
-static uint8_t *net_tx_hdr = (uint8_t *)&net_tx_hdr_static;
+static uint8_t *net_tx_bufs = (uint8_t *)net_tx_bufs_static;
+static struct virtio_net_hdr_mrg net_tx_hdrs_static[VIRTIO_NET_MAX_Q] __attribute__((aligned(16)));
+static struct virtio_net_hdr_mrg *net_tx_hdrs = net_tx_hdrs_static;
 static uint16_t virtio_net_hdr_len = VIRTIO_NET_HDR_BASE_SIZE;
 static uint8_t virtio_net_mrg_rxbuf;
 static uint8_t virtio_net_mac[6];
@@ -2627,16 +2628,16 @@ static int virtio_net_init_modern(void) {
             net_rx_bufs = (uint8_t *)rx_bufs;
         }
     }
-    if (net_tx_buf == net_tx_buf_static) {
-        void *tx_buf = uefi_alloc_pages(VIRTIO_NET_BUF_SIZE);
-        if (tx_buf) {
-            net_tx_buf = (uint8_t *)tx_buf;
+    if (net_tx_bufs == (uint8_t *)net_tx_bufs_static) {
+        void *tx_bufs = uefi_alloc_pages(VIRTIO_NET_MAX_Q * VIRTIO_NET_BUF_SIZE);
+        if (tx_bufs) {
+            net_tx_bufs = (uint8_t *)tx_bufs;
         }
     }
-    if (net_tx_hdr == (uint8_t *)&net_tx_hdr_static) {
-        void *tx_hdr = uefi_alloc_pages(4096u);
-        if (tx_hdr) {
-            net_tx_hdr = (uint8_t *)tx_hdr;
+    if (net_tx_hdrs == net_tx_hdrs_static) {
+        void *tx_hdrs = uefi_alloc_pages(4096u);
+        if (tx_hdrs) {
+            net_tx_hdrs = (struct virtio_net_hdr_mrg *)tx_hdrs;
         }
     }
 
@@ -2669,8 +2670,12 @@ static int virtio_net_init_modern(void) {
         (uint32_t)virtio_net_notify_off_rx * virtio_net_notify_mult);
     *notify = VIRTIO_NET_QUEUE_RX;
 
-    memset(net_tx_hdr, 0, virtio_net_hdr_len);
-    memset(net_tx_buf, 0, VIRTIO_NET_BUF_SIZE);
+    net_tx_slots = (uint16_t)(net_tx_qsz / 2);
+    if (net_tx_slots == 0) {
+        return -1;
+    }
+    memset(net_tx_hdrs, 0, sizeof(*net_tx_hdrs) * (size_t)net_tx_slots);
+    memset(net_tx_bufs, 0, VIRTIO_NET_BUF_SIZE * (size_t)net_tx_slots);
 
     virtio_net_common->device_status |= VIRTIO_STATUS_DRIVER_OK;
     return (virtio_net_common->device_status & VIRTIO_STATUS_DRIVER_OK) ? 0 : -1;
@@ -2737,16 +2742,16 @@ static int virtio_net_init_legacy(void) {
             net_rx_bufs = (uint8_t *)rx_bufs;
         }
     }
-    if (net_tx_buf == net_tx_buf_static) {
-        void *tx_buf = uefi_alloc_pages(VIRTIO_NET_BUF_SIZE);
-        if (tx_buf) {
-            net_tx_buf = (uint8_t *)tx_buf;
+    if (net_tx_bufs == (uint8_t *)net_tx_bufs_static) {
+        void *tx_bufs = uefi_alloc_pages(VIRTIO_NET_MAX_Q * VIRTIO_NET_BUF_SIZE);
+        if (tx_bufs) {
+            net_tx_bufs = (uint8_t *)tx_bufs;
         }
     }
-    if (net_tx_hdr == (uint8_t *)&net_tx_hdr_static) {
-        void *tx_hdr = uefi_alloc_pages(4096u);
-        if (tx_hdr) {
-            net_tx_hdr = (uint8_t *)tx_hdr;
+    if (net_tx_hdrs == net_tx_hdrs_static) {
+        void *tx_hdrs = uefi_alloc_pages(4096u);
+        if (tx_hdrs) {
+            net_tx_hdrs = (struct virtio_net_hdr_mrg *)tx_hdrs;
         }
     }
 
@@ -2779,8 +2784,12 @@ static int virtio_net_init_legacy(void) {
     net_rx_avail->idx = net_rx_qsz;
     outw((uint16_t)(virtio_net_io_base + VIRTIO_PCI_QUEUE_NOTIFY), VIRTIO_NET_QUEUE_RX);
 
-    memset(net_tx_hdr, 0, virtio_net_hdr_len);
-    memset(net_tx_buf, 0, VIRTIO_NET_BUF_SIZE);
+    net_tx_slots = (uint16_t)(net_tx_qsz / 2);
+    if (net_tx_slots == 0) {
+        return -1;
+    }
+    memset(net_tx_hdrs, 0, sizeof(*net_tx_hdrs) * (size_t)net_tx_slots);
+    memset(net_tx_bufs, 0, VIRTIO_NET_BUF_SIZE * (size_t)net_tx_slots);
 
     outb((uint16_t)(virtio_net_io_base + VIRTIO_PCI_STATUS),
          VIRTIO_STATUS_ACK | VIRTIO_STATUS_DRIVER | VIRTIO_STATUS_FEATURES_OK |
@@ -2828,45 +2837,51 @@ static int virtio_net_send(const void *buf, uint32_t len) {
     if (len > VIRTIO_NET_BUF_SIZE) {
         return -1;
     }
-
-    memcpy(net_tx_buf, buf, len);
-
-    net_tx_desc[0].addr = (uint64_t)(uintptr_t)net_tx_hdr;
-    net_tx_desc[0].len = virtio_net_hdr_len;
-    net_tx_desc[0].flags = VIRTQ_DESC_F_NEXT;
-    net_tx_desc[0].next = 1;
-    net_tx_desc[1].addr = (uint64_t)(uintptr_t)net_tx_buf;
-    net_tx_desc[1].len = len;
-    net_tx_desc[1].flags = 0;
-    net_tx_desc[1].next = 0;
-
-    net_tx_used_idx = net_tx_used->idx;
-    uint16_t idx = net_tx_avail->idx;
-    if ((uint16_t)(idx - net_tx_used_idx) >= net_tx_qsz) {
+    if (net_tx_slots == 0) {
         return -1;
     }
+
+    uint16_t avail_idx = net_tx_avail->idx;
+    uint16_t used_idx = net_tx_used->idx;
+    for (uint32_t i = 0; i < 100000; ++i) {
+        if ((uint16_t)(avail_idx - used_idx) < net_tx_slots) {
+            break;
+        }
+        used_idx = net_tx_used->idx;
+    }
+    net_tx_used_idx = used_idx;
+    if ((uint16_t)(avail_idx - used_idx) >= net_tx_slots) {
+        if (!tx_stall_logged) {
+            serial_write("[RSE] virtio-net tx queue full idx=");
+            serial_write_u64(net_tx_used->idx);
+            serial_write("\n");
+            tx_stall_logged = 1;
+        }
+        return -1;
+    }
+
+    uint16_t slot = (uint16_t)(avail_idx % net_tx_slots);
+    uint16_t desc_idx = (uint16_t)(slot * 2);
+    uint8_t *tx_buf = net_tx_bufs + (size_t)slot * VIRTIO_NET_BUF_SIZE;
+    uint8_t *tx_hdr = (uint8_t *)&net_tx_hdrs[slot];
+    memcpy(tx_buf, buf, len);
+    memset(tx_hdr, 0, virtio_net_hdr_len);
+
+    net_tx_desc[desc_idx].addr = (uint64_t)(uintptr_t)tx_hdr;
+    net_tx_desc[desc_idx].len = virtio_net_hdr_len;
+    net_tx_desc[desc_idx].flags = VIRTQ_DESC_F_NEXT;
+    net_tx_desc[desc_idx].next = (uint16_t)(desc_idx + 1);
+    net_tx_desc[desc_idx + 1].addr = (uint64_t)(uintptr_t)tx_buf;
+    net_tx_desc[desc_idx + 1].len = len;
+    net_tx_desc[desc_idx + 1].flags = 0;
+    net_tx_desc[desc_idx + 1].next = 0;
+
     __asm__ volatile("mfence" ::: "memory");
-    net_tx_avail->ring[idx % net_tx_qsz] = 0;
-    net_tx_avail->idx = idx + 1;
+    net_tx_avail->ring[avail_idx % net_tx_qsz] = desc_idx;
+    net_tx_avail->idx = avail_idx + 1;
     __asm__ volatile("mfence" ::: "memory");
     virtio_net_notify_tx();
-
-    for (uint32_t attempt = 0; attempt < 3; ++attempt) {
-        for (uint32_t i = 0; i < 100000; ++i) {
-            if (net_tx_used->idx != net_tx_used_idx) {
-                net_tx_used_idx = net_tx_used->idx;
-                return (int)len;
-            }
-        }
-        virtio_net_notify_tx();
-    }
-    if (!tx_stall_logged) {
-        serial_write("[RSE] virtio-net tx stalled idx=");
-        serial_write_u64(net_tx_used->idx);
-        serial_write("\n");
-        tx_stall_logged = 1;
-    }
-    return -1;
+    return (int)len;
 }
 
 static int virtio_net_recv(void *buf, uint32_t len) {

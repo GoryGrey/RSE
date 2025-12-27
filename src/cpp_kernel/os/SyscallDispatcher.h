@@ -683,11 +683,68 @@ inline int64_t sys_list(uint64_t path_addr, uint64_t buf_addr, uint64_t count,
     if (!buf || count == 0) {
         return -EINVAL;
     }
-    if (!validate_user_range(current, buf_addr, count, true)) {
+    bool user_buf = enforce_user_memory(current);
+    static constexpr uint32_t kMaxOut = 2048;
+    uint32_t len = (count > UINT32_MAX) ? UINT32_MAX : (uint32_t)count;
+    if (user_buf && len > kMaxOut) {
+        len = kMaxOut;
+    }
+    if (!validate_user_range(current, buf_addr, len, true)) {
         return -EFAULT;
     }
-    return current_torus_context->vfs->list(path ? path : "/", buf,
-                                           static_cast<uint32_t>(count));
+
+    char local[kMaxOut];
+    char* out = user_buf ? local : buf;
+    int32_t got = current_torus_context->vfs->list(path ? path : "/", out, len);
+    if (got < 0) {
+        return got;
+    }
+    if (user_buf) {
+        uint32_t copy_len = (uint32_t)got;
+        if (copy_len < len) {
+            copy_len += 1;
+        }
+        if (!write_user_bytes(current, buf_addr, out, copy_len)) {
+            return -EFAULT;
+        }
+    }
+    return got;
+}
+
+inline int64_t sys_stat(uint64_t path_addr, uint64_t stat_addr, uint64_t,
+                        uint64_t, uint64_t, uint64_t) {
+    if (!current_torus_context || !current_torus_context->vfs) {
+        return -ENOSYS;
+    }
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    if (stat_addr == 0) {
+        return -EINVAL;
+    }
+    static constexpr uint32_t kMaxPath = 256;
+    char path_buf[kMaxPath] = {};
+    if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
+        return -EFAULT;
+    }
+    if (!validate_user_range(current, stat_addr, sizeof(rse_stat), true)) {
+        return -EFAULT;
+    }
+
+    rse_stat info = {};
+    int32_t rc = current_torus_context->vfs->stat(path_buf, &info);
+    if (rc < 0) {
+        return rc;
+    }
+    if (enforce_user_memory(current)) {
+        if (!write_user_bytes(current, stat_addr, &info, sizeof(info))) {
+            return -EFAULT;
+        }
+    } else {
+        *reinterpret_cast<rse_stat*>(stat_addr) = info;
+    }
+    return 0;
 }
 
 inline int64_t sys_ps(uint64_t buf_addr, uint64_t count, uint64_t,
@@ -883,6 +940,7 @@ public:
         register_handler(SYS_WRITE, sys_write);
         register_handler(SYS_READ, sys_read);
         register_handler(SYS_LSEEK, sys_lseek);
+        register_handler(SYS_STAT, sys_stat);
         register_handler(SYS_UNLINK, sys_unlink);
         register_handler(SYS_LIST, sys_list);
         register_handler(SYS_BRK, sys_brk);

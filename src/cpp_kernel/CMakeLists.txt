@@ -150,6 +150,12 @@ if(NOT MSVC)
     target_link_libraries(sys_ps_test atomic)
 endif()
 
+# sys_stat test
+add_executable(sys_stat_test tests/sys_stat_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(sys_stat_test atomic)
+endif()
+
 # Memory Telemetry Test
 add_executable(memory_telemetry_test tests/memory_telemetry_test.cpp)
 if(NOT MSVC)

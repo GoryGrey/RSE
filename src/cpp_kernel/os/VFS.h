@@ -627,6 +627,68 @@ public:
         }
         return (int32_t)fs_->list(buf, max);
     }
+
+    int32_t stat(const char* path, rse_stat* out) const {
+        if (!path || !out) {
+            return -EINVAL;
+        }
+        if (strcmp(path, "/") == 0 || strcmp(path, "") == 0) {
+            out->size = 0;
+            out->mode = 0555;
+            out->type = RSE_STAT_DIR;
+            return 0;
+        }
+        if (strcmp(path, "/dev") == 0 || strcmp(path, "/dev/") == 0) {
+            if (!device_mgr_) {
+                return -ENOENT;
+            }
+            out->size = 0;
+            out->mode = 0555;
+            out->type = RSE_STAT_DIR;
+            return 0;
+        }
+        if (strcmp(path, "/persist") == 0 || strcmp(path, "/persist/") == 0) {
+            if (!blockfs_ || !blockfs_->isMounted()) {
+                return -ENOENT;
+            }
+            out->size = 0;
+            out->mode = 0555;
+            out->type = RSE_STAT_DIR;
+            return 0;
+        }
+
+        Device* dev = lookupDevice(path);
+        if (dev) {
+            out->size = 0;
+            out->mode = 0666;
+            out->type = RSE_STAT_DEVICE;
+            return 0;
+        }
+
+        const char* persist = persistName(path);
+        if (persist) {
+            if (!blockfs_ || !blockfs_->isMounted()) {
+                return -ENOENT;
+            }
+            BlockFSEntry* entry = blockfs_->open(persist, false);
+            if (!entry) {
+                return -ENOENT;
+            }
+            out->size = entry->size;
+            out->mode = 0644;
+            out->type = RSE_STAT_FILE;
+            return 0;
+        }
+
+        MemFSFile* file = fs_->lookup(path);
+        if (!file) {
+            return -ENOENT;
+        }
+        out->size = file->size;
+        out->mode = file->mode;
+        out->type = RSE_STAT_FILE;
+        return 0;
+    }
     
     /**
      * Print VFS statistics.

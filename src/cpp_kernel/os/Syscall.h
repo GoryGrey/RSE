@@ -102,6 +102,21 @@ constexpr int O_TRUNC   = 0x0200;  // Truncate file to zero length
 constexpr int O_APPEND  = 0x0400;  // Append to file
 constexpr int O_CLOEXEC = 0x80000; // Close on exec
 
+// ========== File Metadata ==========
+
+enum RSEStatType : uint32_t {
+    RSE_STAT_UNKNOWN = 0,
+    RSE_STAT_FILE = 1,
+    RSE_STAT_DIR = 2,
+    RSE_STAT_DEVICE = 3
+};
+
+struct rse_stat {
+    uint64_t size;
+    uint32_t mode;
+    uint32_t type;
+};
+
 // ========== Memory Protection Flags ==========
 
 constexpr int PROT_NONE  = 0x00;
@@ -213,6 +228,10 @@ inline int64_t unlink(const char* path) {
 
 inline int64_t list(const char* path, void* buf, size_t count) {
     return syscall(SYS_LIST, (uint64_t)path, (uint64_t)buf, count);
+}
+
+inline int64_t stat(const char* path, rse_stat* out) {
+    return syscall(SYS_STAT, (uint64_t)path, (uint64_t)out);
 }
 
 /**

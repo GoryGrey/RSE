@@ -23,6 +23,10 @@ static void *uefi_alloc_pages(size_t bytes);
 void serial_write(const char *s);
 extern int rse_os_user_map(uint64_t code_vaddr, uint64_t stack_vaddr,
                            uint64_t *code_phys_out, uint64_t *stack_phys_out);
+extern int rse_os_user_ranges(uint64_t *code_start, uint64_t *code_end,
+                              uint64_t *data_start, uint64_t *data_end,
+                              uint64_t *stack_start, uint64_t *stack_end);
+extern uint64_t rse_os_user_translate(uint64_t vaddr);
 extern int rse_os_prepare_ring3(uint32_t torus_id);
 extern int64_t rse_os_syscall_dispatch(int64_t num,
                                        uint64_t arg1, uint64_t arg2,
@@ -591,6 +595,30 @@ __attribute__((naked, unused)) static void irq_stub(void) {
 #define PTE_NX (1ull << 63)
 #define PTE_ADDR_MASK 0x000FFFFFFFFFF000ull
 
+static void map_user_pt_entry(uint64_t vaddr, uint64_t phys, uint64_t flags) {
+    uint64_t idx = (vaddr >> 12) & 0x1FFu;
+    g_user_pt_user[idx] = (phys & PTE_ADDR_MASK) | flags;
+}
+
+static void map_user_range(uint64_t start, uint64_t end, uint64_t flags) {
+    if (start >= end) {
+        return;
+    }
+    uint64_t v = start & ~(0xFFFULL);
+    uint64_t v_end = (end + 0xFFFULL) & ~(0xFFFULL);
+    const uint64_t user_max = USER_VADDR_BASE + 0x200000ull;
+    for (; v < v_end; v += 0x1000ULL) {
+        if (v < USER_VADDR_BASE || v >= user_max) {
+            continue;
+        }
+        uint64_t phys = rse_os_user_translate(v);
+        if (!phys) {
+            continue;
+        }
+        map_user_pt_entry(v, phys, flags);
+    }
+}
+
 static bool build_user_page_table(uint64_t code_phys, uint64_t stack_phys) {
     if (!g_user_pml4) {
         g_user_pml4 = (uint64_t *)uefi_alloc_pages(4096u);
@@ -634,6 +662,19 @@ static bool build_user_page_table(uint64_t code_phys, uint64_t stack_phys) {
     g_user_pd_user[user_pd_idx] =
         ((uint64_t)(uintptr_t)g_user_pt_user & PTE_ADDR_MASK) |
         PTE_PRESENT | PTE_RW | PTE_USER;
+
+    uint64_t code_start = 0;
+    uint64_t code_end = 0;
+    uint64_t data_start = 0;
+    uint64_t data_end = 0;
+    uint64_t stack_start = 0;
+    uint64_t stack_end = 0;
+    if (rse_os_user_ranges(&code_start, &code_end, &data_start, &data_end,
+                           &stack_start, &stack_end)) {
+        map_user_range(code_start, code_end, PTE_PRESENT | PTE_USER);
+        map_user_range(data_start, data_end, PTE_PRESENT | PTE_USER | PTE_RW | PTE_NX);
+        map_user_range(stack_start, stack_end, PTE_PRESENT | PTE_USER | PTE_RW | PTE_NX);
+    }
 
     uint64_t code_idx = (USER_VADDR_BASE >> 12) & 0x1FFu;
     uint64_t stack_idx = (USER_STACK_VADDR >> 12) & 0x1FFu;

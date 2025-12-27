@@ -113,6 +113,43 @@ extern "C" int rse_os_user_map(uint64_t code_vaddr, uint64_t stack_vaddr,
     return 1;
 }
 
+extern "C" int rse_os_user_ranges(uint64_t *code_start, uint64_t *code_end,
+                                  uint64_t *data_start, uint64_t *data_end,
+                                  uint64_t *stack_start, uint64_t *stack_end) {
+    os::OSProcess* proc = g_ring3_proc ? g_ring3_proc : user_procs[0][0];
+    if (!proc || !proc->memory.page_table) {
+        return 0;
+    }
+    if (code_start) {
+        *code_start = proc->memory.code_start;
+    }
+    if (code_end) {
+        *code_end = proc->memory.code_end;
+    }
+    if (data_start) {
+        *data_start = proc->memory.data_start;
+    }
+    if (data_end) {
+        *data_end = proc->memory.data_end;
+    }
+    if (stack_start) {
+        *stack_start = proc->memory.stack_start;
+    }
+    if (stack_end) {
+        *stack_end = proc->memory.stack_end;
+    }
+    return 1;
+}
+
+extern "C" uint64_t rse_os_user_translate(uint64_t vaddr) {
+    os::OSProcess* proc = g_ring3_proc ? g_ring3_proc : user_procs[0][0];
+    if (!proc || !proc->memory.page_table) {
+        return 0;
+    }
+    uint64_t page = os::align_down(vaddr);
+    return proc->memory.page_table->translate(page);
+}
+
 
 static void user_log_prefix(os::OSProcess* proc, const rse_syscalls* sys, const char* tag) {
     if (!proc || !sys || !tag) {

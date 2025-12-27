@@ -3174,14 +3174,14 @@ static void net_send_arp_reply(const struct net_eth_hdr *rx_eth, const struct ne
     net_backend_write(frame, offset);
 }
 
-static void net_send_udp(const uint8_t dst_mac[6], const uint8_t dst_ip[4],
-                         uint16_t dst_port, uint16_t src_port,
-                         const uint8_t *payload, uint32_t len) {
+static int net_send_udp(const uint8_t dst_mac[6], const uint8_t dst_ip[4],
+                        uint16_t dst_port, uint16_t src_port,
+                        const uint8_t *payload, uint32_t len) {
     if (!dst_mac || !dst_ip || !payload || len == 0) {
-        return;
+        return -1;
     }
     if (net_ensure_mac() != 0) {
-        return;
+        return -1;
     }
     uint8_t frame[64 + NET_PAYLOAD_MAX];
     uint32_t offset = 0;
@@ -3228,7 +3228,7 @@ static void net_send_udp(const uint8_t dst_mac[6], const uint8_t dst_ip[4],
         memset(frame + offset, 0, 60 - offset);
         offset = 60;
     }
-    net_backend_write(frame, offset);
+    return net_backend_write(frame, offset);
 }
 
 static int net_payload_starts_with(const uint8_t *payload, uint32_t len, const char *prefix) {
@@ -3426,8 +3426,8 @@ static int net_udp_send(const uint8_t *payload, uint32_t len) {
         return -1;
     }
     net_queue_push(payload, len);
-    net_send_udp(net_mac_addr, net_ip_addr, net_udp_port, net_udp_port, payload, len);
-    return (int)len;
+    int rc = net_send_udp(net_mac_addr, net_ip_addr, net_udp_port, net_udp_port, payload, len);
+    return rc < 0 ? -1 : (int)len;
 }
 
 static int bench_net_arp(void) {

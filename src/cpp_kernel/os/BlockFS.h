@@ -3,8 +3,11 @@
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
+#include <new>
 #ifdef RSE_KERNEL
 #include "KernelStubs.h"
+#else
+#include <iostream>
 #endif
 
 namespace os {
@@ -14,9 +17,87 @@ extern "C" int rse_block_read(uint64_t lba, void* buf, uint32_t blocks);
 extern "C" int rse_block_write(uint64_t lba, const void* buf, uint32_t blocks);
 extern "C" uint64_t rse_block_total_blocks(void);
 #else
-inline int rse_block_read(uint64_t, void*, uint32_t) { return -1; }
-inline int rse_block_write(uint64_t, const void*, uint32_t) { return -1; }
-inline uint64_t rse_block_total_blocks(void) { return 0; }
+struct BlockMemoryStore {
+    uint32_t block_size;
+    uint64_t total_blocks;
+    uint8_t* data;
+
+    BlockMemoryStore() : block_size(512u), total_blocks(8192u), data(nullptr) {}
+};
+
+inline BlockMemoryStore& block_store() {
+    static BlockMemoryStore store;
+    return store;
+}
+
+inline bool ensure_block_store() {
+    BlockMemoryStore& store = block_store();
+    if (store.data) {
+        return true;
+    }
+    uint64_t bytes = store.total_blocks * store.block_size;
+    store.data = new (std::nothrow) uint8_t[bytes];
+    if (!store.data) {
+        return false;
+    }
+    std::memset(store.data, 0, bytes);
+    return true;
+}
+
+inline void rse_block_configure(uint32_t block_size, uint64_t total_blocks) {
+    if (block_size == 0 || total_blocks == 0) {
+        return;
+    }
+    BlockMemoryStore& store = block_store();
+    if (store.data) {
+        delete[] store.data;
+        store.data = nullptr;
+    }
+    store.block_size = block_size;
+    store.total_blocks = total_blocks;
+    (void)ensure_block_store();
+}
+
+inline int rse_block_read(uint64_t lba, void* buf, uint32_t blocks) {
+    if (!buf || blocks == 0) {
+        return -1;
+    }
+    if (!ensure_block_store()) {
+        return -1;
+    }
+    BlockMemoryStore& store = block_store();
+    if (lba + blocks > store.total_blocks) {
+        return -1;
+    }
+    uint64_t offset = lba * store.block_size;
+    uint64_t bytes = (uint64_t)blocks * store.block_size;
+    std::memcpy(buf, store.data + offset, bytes);
+    return 0;
+}
+
+inline int rse_block_write(uint64_t lba, const void* buf, uint32_t blocks) {
+    if (!buf || blocks == 0) {
+        return -1;
+    }
+    if (!ensure_block_store()) {
+        return -1;
+    }
+    BlockMemoryStore& store = block_store();
+    if (lba + blocks > store.total_blocks) {
+        return -1;
+    }
+    uint64_t offset = lba * store.block_size;
+    uint64_t bytes = (uint64_t)blocks * store.block_size;
+    std::memcpy(store.data + offset, buf, bytes);
+    return 0;
+}
+
+inline uint64_t rse_block_total_blocks(void) {
+    if (!ensure_block_store()) {
+        return 0;
+    }
+    return block_store().total_blocks;
+}
 #endif
 
 struct BlockFSEntry {

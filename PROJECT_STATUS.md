@@ -35,7 +35,7 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **Memory Management** | ⚠️ Partial | Basic | Page tables + ring3 map + user heap/stack window + brk/mmap remap |
 | **Virtual File System** | ⚠️ Partial | Basic | MemFS + BlockFS + per-process FD tables |
 | **BlockFS Persistence** | ⚠️ Prototype | Basic | `/persist` fixed-slot store |
-| **I/O System** | ⚠️ Partial | Basic | Console + block + net stubs + fast0 + IRQ EOI |
+| **I/O System** | ⚠️ Partial | Basic | Console + block + net baseline + fast0 + IRQ EOI |
 | **Fast-Path I/O (fast0)** | ⚠️ Prototype | fastio bench | 33 cycles/byte (2MB loopback) |
 | **FD Isolation** | ⚠️ Prototype | exec_vfs_test | Per-process file descriptor tables |
 | **Userspace Runner** | ⚠️ Prototype | Cooperative | In-kernel user tasks |

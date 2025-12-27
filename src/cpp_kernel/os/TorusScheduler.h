@@ -188,6 +188,44 @@ public:
         
         return false;
     }
+
+    /**
+     * Mark a process as zombie and move it to the zombie queue.
+     * Returns false if the PID is not found in any active queue.
+     */
+    bool killProcess(uint32_t pid, int exit_code) {
+        if (pid == 0) {
+            return false;
+        }
+        if (current_process_ && current_process_->pid == pid) {
+            current_process_->setZombie(exit_code);
+            return true;
+        }
+        for (size_t i = 0; i < ready_queue_.size(); ++i) {
+            if (ready_queue_[i]->pid == pid) {
+                OSProcess* proc = ready_queue_[i];
+                ready_queue_.erase_at(i);
+                proc->setZombie(exit_code);
+                (void)pushZombie(proc);
+                return true;
+            }
+        }
+        for (size_t i = 0; i < blocked_queue_.size(); ++i) {
+            if (blocked_queue_[i]->pid == pid) {
+                OSProcess* proc = blocked_queue_[i];
+                blocked_queue_.erase_at(i);
+                proc->setZombie(exit_code);
+                (void)pushZombie(proc);
+                return true;
+            }
+        }
+        for (size_t i = 0; i < zombie_queue_.size(); ++i) {
+            if (zombie_queue_[i]->pid == pid) {
+                return true;
+            }
+        }
+        return false;
+    }
     
     // ========== Scheduling Algorithms ==========
     

@@ -37,10 +37,10 @@ Applications can now:
 - ✅ `getppid()` - Get parent process ID
 - ✅ `exit()` - Terminate process
 - ✅ `fork()` - Create child process
-- ✅ `wait()` - Wait for child (stub)
-- ✅ `kill()` - Send signal (stub)
+- ✅ `wait()` - Wait for child
+- ✅ `kill()` - Send signal
 - ✅ `write()` - Write to file descriptor
-- ✅ `read()` - Read from file descriptor (stub)
+- ✅ `read()` - Read from file descriptor
 - ✅ `brk()` - Adjust heap size
 
 ### **4. Test Suite** (`test_syscalls.cpp`)

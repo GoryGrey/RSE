@@ -62,6 +62,21 @@ impl BettiRdlBackend {
     pub fn new_with_defaults() -> Self {
         Self::new(BettiConfig::default())
     }
+
+    fn estimate_execution_time_ns(&self, program: &IrProgram, runtime_process_count: usize) -> u64 {
+        let event_count = program.events.len() as u64;
+        let max_events = if self.config.max_events > 0 {
+            self.config.max_events as u64
+        } else {
+            event_count
+        };
+        let bounded_events = if max_events == 0 { event_count } else { event_count.min(max_events) };
+        let per_event_ns = 1000u64;
+        let per_process_ns = 500u64;
+        bounded_events
+            .saturating_mul(per_event_ns)
+            .saturating_add((runtime_process_count as u64).saturating_mul(per_process_ns))
+    }
 }
 
 impl CodeGenerator for BettiRdlBackend {
@@ -150,7 +165,7 @@ impl CodeGenerator for BettiRdlBackend {
             process_count: program.processes.len(),
             runtime_process_count,
             event_count: program.events.len(),
-            expected_execution_time: None, // TODO: estimate based on complexity
+            expected_execution_time: Some(self.estimate_execution_time_ns(program, runtime_process_count)),
         };
         
         debug!("Generated {} files for Betti RDL backend", files.len());

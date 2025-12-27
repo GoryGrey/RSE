@@ -138,10 +138,22 @@ if(NOT MSVC)
     target_link_libraries(exec_vfs_test atomic)
 endif()
 
+# BlockFS test
+add_executable(blockfs_test tests/blockfs_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(blockfs_test atomic)
+endif()
+
 # sys_wait reaping test
 add_executable(sys_wait_test tests/sys_wait_test.cpp)
 if(NOT MSVC)
     target_link_libraries(sys_wait_test atomic)
+endif()
+
+# sys_kill test
+add_executable(sys_kill_test tests/sys_kill_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(sys_kill_test atomic)
 endif()
 
 # sys_ps snapshot test

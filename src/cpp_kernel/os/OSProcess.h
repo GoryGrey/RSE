@@ -114,6 +114,8 @@ public:
     
     // ========== CPU Context ==========
     CPUContext context;
+    CPUContext saved_context;
+    bool context_saved;
     
     // ========== Memory ==========
     MemoryLayout memory;
@@ -146,10 +148,15 @@ public:
           state(ProcessState::READY),
           exit_code(0),
           kernel_owned(false),
+          context(),
+          saved_context(),
+          context_saved(false),
+          memory(),
           priority(100),          // Default priority
           time_slice(100),        // Default time slice
           total_runtime(0),
           last_scheduled(0),
+          fd_table(),
           vmem(nullptr),
           user_step(nullptr),
           user_ctx(nullptr),
@@ -320,47 +327,39 @@ public:
     
     /**
      * Save CPU context (called when preempting).
-     * In a real OS, this would save actual CPU registers.
-     * For now, it's a placeholder.
+     * For the simulation, capture the tracked register state and stack pointer.
      */
     void saveContext() {
-        // In real implementation:
-        // - Save all CPU registers to context
-        // - Save FPU/SSE state
-        // - Save stack pointer
-        
-        // For now: no-op (we're not running real code yet)
+        saved_context = context;
+        context_saved = true;
     }
     
     /**
      * Restore CPU context (called when resuming).
-     * In a real OS, this would restore actual CPU registers.
-     * For now, it's a placeholder.
+     * For the simulation, restore the tracked register state.
      */
     void restoreContext() {
-        // In real implementation:
-        // - Restore all CPU registers from context
-        // - Restore FPU/SSE state
-        // - Switch to process's page table
-        // - Jump to saved instruction pointer
-        
-        // For now: no-op (we're not running real code yet)
+        if (context_saved) {
+            context = saved_context;
+        }
+        if (context.rsp == 0 && memory.stack_pointer != 0) {
+            context.rsp = memory.stack_pointer;
+        }
+        if (context.rip == 0 && memory.code_start != 0) {
+            context.rip = memory.code_start;
+        }
     }
     
     /**
      * Execute one tick of this process.
-     * In a real OS, this would run the process's code.
-     * For now, it's a placeholder.
+     * In the simulation, advance a synthetic instruction pointer and invoke
+     * the cooperative userspace hook when present.
      */
     void execute() {
-        // In real implementation:
-        // - Run process code for one time slice
-        // - Handle system calls
-        // - Handle interrupts
         if (user_step && syscalls) {
             user_step(this, user_ctx, syscalls);
         }
-        // For now: just consume time
+        context.rip += 1;
         tick();
     }
 

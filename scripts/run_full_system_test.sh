@@ -46,6 +46,13 @@ CPP_TESTS=(
   elf_loader_test
   elf_process_test
   exec_vfs_test
+  blockfs_test
+  sys_wait_test
+  sys_kill_test
+  sys_ps_test
+  sys_stat_test
+  sys_pipe_test
+  sys_dup_test
 )
 for test_bin in "${CPP_TESTS[@]}"; do
   test_path="${ROOT_DIR}/build/cpp_kernel/${test_bin}"

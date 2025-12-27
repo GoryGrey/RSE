@@ -20,6 +20,9 @@ class BraidedKernel {
 private:
     BettiRDLKernel kernel_;
     uint32_t torus_id_ = 0;
+    std::array<uint32_t, Projection::BOUNDARY_SIZE> last_boundary_{};
+    std::array<int32_t, Projection::CONSTRAINT_DIM> last_constraints_{};
+    uint32_t last_boundary_mismatches_ = 0;
     
 public:
     BraidedKernel() = default;
@@ -125,13 +128,26 @@ public:
                       << proj.torus_id << std::endl;
         }
         
-        // 3. Apply boundary constraints (Phase 2 feature)
-        // Not implemented yet
+        // 3. Apply boundary constraints (track divergence for now)
+        std::array<uint32_t, Projection::BOUNDARY_SIZE> local_boundary{};
+        kernel_.fillBoundaryStates(local_boundary.data(), local_boundary.size());
+        uint32_t mismatches = 0;
+        for (size_t i = 0; i < local_boundary.size(); ++i) {
+            if (local_boundary[i] != proj.boundary_states[i]) {
+                mismatches++;
+            }
+        }
+        last_boundary_mismatches_ = mismatches;
+        last_boundary_ = proj.boundary_states;
         
-        // 4. Propagate constraint vector (Phase 2 feature)
-        // Not implemented yet
+        // 4. Propagate constraint vector (store latest received constraints)
+        last_constraints_ = proj.constraint_vector;
         
         return consistent;
+    }
+
+    uint32_t getLastBoundaryMismatches() const {
+        return last_boundary_mismatches_;
     }
     
 private:

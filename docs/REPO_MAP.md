@@ -10,7 +10,7 @@ Use it to navigate without chasing scattered files.
   - `boot/Makefile.uefi` - UEFI ISO build + QEMU run
 
 ## OS Layer (core design + implementation)
-- `src/cpp_kernel/os/` - OS concepts + implementation stubs
+- `src/cpp_kernel/os/` - OS concepts + implementation
   - `README.md` - OS vision/roadmap
   - `*_DESIGN.md` - syscall, memory, IO, VFS, scheduler designs
   - `Syscall*.h`, `VFS.h`, `MemFS.h`, `BlockFS.h`, `OSProcess.h`, `TorusScheduler.h` - working code

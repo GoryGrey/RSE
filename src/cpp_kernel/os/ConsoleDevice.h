@@ -13,7 +13,7 @@ extern "C" void serial_write(const char *s);
  * Console Device Driver for Braided OS
  * 
  * Provides stdin, stdout, stderr through a character device.
- * Simulated with std::cin/cout for now (no real hardware access).
+ * Host builds use std::cin/cout; kernel builds route through serial output.
  */
 
 namespace os {
@@ -116,13 +116,48 @@ ssize_t console_write(Device* dev, const void* buf, size_t count) {
 #endif
 }
 
-// ioctl (not implemented)
+constexpr unsigned long CONSOLE_IOCTL_GET_PENDING = 0x52534510ul;
+constexpr unsigned long CONSOLE_IOCTL_CLEAR_INPUT = 0x52534511ul;
+
+// ioctl
 int console_ioctl(Device* dev, unsigned long request, void* arg) {
-    (void)dev;
-    (void)request;
+    if (!dev) {
+        return -1;
+    }
+#ifdef RSE_KERNEL
     (void)arg;
-    std::cerr << "[Console] ioctl not implemented" << std::endl;
+    if (request == CONSOLE_IOCTL_GET_PENDING) {
+        return 0;
+    }
+    if (request == CONSOLE_IOCTL_CLEAR_INPUT) {
+        return 0;
+    }
     return -1;
+#else
+    ConsoleData* data = (ConsoleData*)dev->private_data;
+    if (!data) {
+        return -1;
+    }
+    if (request == CONSOLE_IOCTL_GET_PENDING) {
+        if (!arg) {
+            return -1;
+        }
+        uint32_t available = 0;
+        if (data->has_input && data->input_size >= data->input_pos) {
+            available = data->input_size - data->input_pos;
+        }
+        *static_cast<uint32_t*>(arg) = available;
+        return 0;
+    }
+    if (request == CONSOLE_IOCTL_CLEAR_INPUT) {
+        data->input_size = 0;
+        data->input_pos = 0;
+        data->has_input = false;
+        data->input_buffer[0] = '\0';
+        return 0;
+    }
+    return -1;
+#endif
 }
 
 /**

@@ -335,11 +335,25 @@ inline int64_t sys_wait(uint64_t status_ptr, uint64_t, uint64_t,
  */
 inline int64_t sys_kill(uint64_t pid, uint64_t sig, uint64_t,
                         uint64_t, uint64_t, uint64_t) {
-    std::cout << "[sys_kill] Sending signal " << sig 
-              << " to process " << pid << " (not implemented)" << std::endl;
-    
-    // Not implemented yet
-    return -ENOSYS;
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    TorusScheduler* scheduler = get_current_scheduler();
+    if (!scheduler) {
+        return -ESRCH;
+    }
+    if (pid == 0) {
+        return -EINVAL;
+    }
+    if (current->pid == pid && sig == 0) {
+        return 0;
+    }
+    int exit_code = 128 + static_cast<int>(sig & 0x7F);
+    if (!scheduler->killProcess(static_cast<uint32_t>(pid), exit_code)) {
+        return -ESRCH;
+    }
+    return 0;
 }
 
 inline int64_t sys_pipe(uint64_t fds_addr, uint64_t, uint64_t,

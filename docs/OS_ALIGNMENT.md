@@ -94,7 +94,7 @@ Status
    - Ensure kernel prints to serial and framebuffer, with a clear early init banner.
    - Keep UEFI boot path stable (ISO + FAT ESP).
 2) Process + syscall completeness
-   - exec/wait/kill, basic ELF loader, errno coverage, user/kernel boundary stubs.
+   - exec/wait/kill, basic ELF loader, errno coverage, user/kernel boundary enforcement.
 3) Memory correctness
    - Page fault handler, protection flags, basic CoW, torus-local allocators.
 4) Storage + filesystem

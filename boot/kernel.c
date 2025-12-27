@@ -2804,6 +2804,16 @@ static int virtio_net_init(void) {
     return -1;
 }
 
+static void virtio_net_notify_tx(void) {
+    if (virtio_net_use_modern) {
+        volatile uint16_t *notify = (volatile uint16_t *)(virtio_net_notify +
+            (uint32_t)virtio_net_notify_off_tx * virtio_net_notify_mult);
+        *notify = VIRTIO_NET_QUEUE_TX;
+    } else {
+        outw((uint16_t)(virtio_net_io_base + VIRTIO_PCI_QUEUE_NOTIFY), VIRTIO_NET_QUEUE_TX);
+    }
+}
+
 static int virtio_net_send(const void *buf, uint32_t len) {
     static int tx_stall_logged = 0;
     if (!buf || len == 0) {
@@ -2839,19 +2849,16 @@ static int virtio_net_send(const void *buf, uint32_t len) {
     net_tx_avail->ring[idx % net_tx_qsz] = 0;
     net_tx_avail->idx = idx + 1;
     __asm__ volatile("mfence" ::: "memory");
-    if (virtio_net_use_modern) {
-        volatile uint16_t *notify = (volatile uint16_t *)(virtio_net_notify +
-            (uint32_t)virtio_net_notify_off_tx * virtio_net_notify_mult);
-        *notify = VIRTIO_NET_QUEUE_TX;
-    } else {
-        outw((uint16_t)(virtio_net_io_base + VIRTIO_PCI_QUEUE_NOTIFY), VIRTIO_NET_QUEUE_TX);
-    }
+    virtio_net_notify_tx();
 
-    for (uint32_t i = 0; i < 100000; ++i) {
-        if (net_tx_used->idx != net_tx_used_idx) {
-            net_tx_used_idx = net_tx_used->idx;
-            return (int)len;
+    for (uint32_t attempt = 0; attempt < 3; ++attempt) {
+        for (uint32_t i = 0; i < 100000; ++i) {
+            if (net_tx_used->idx != net_tx_used_idx) {
+                net_tx_used_idx = net_tx_used->idx;
+                return (int)len;
+            }
         }
+        virtio_net_notify_tx();
     }
     if (!tx_stall_logged) {
         serial_write("[RSE] virtio-net tx stalled idx=");

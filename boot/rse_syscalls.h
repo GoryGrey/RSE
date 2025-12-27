@@ -19,6 +19,7 @@ struct rse_syscalls {
     int (*unlink)(const char *name);
     int (*lseek)(int fd, int64_t offset, int whence);
     int (*list)(const char *path, char *buf, uint32_t len);
+    int (*ps)(char *buf, uint32_t len);
 };
 
 #endif

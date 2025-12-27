@@ -804,6 +804,91 @@ static bool install_ring3_elf(TorusRuntime& rt, os::OSProcess* proc) {
 static TorusRuntime g_runtimes[kTorusCount] = {};
 static int g_runtimes_ready = 0;
 
+static int os_ps_dump(char *buf, uint32_t len) {
+    if (!buf || len == 0) {
+        return -1;
+    }
+    uint32_t used = 0;
+    auto append_char = [&](char c) -> bool {
+        if (used + 1 >= len) {
+            return false;
+        }
+        buf[used++] = c;
+        return true;
+    };
+    auto append_str = [&](const char *s) -> bool {
+        if (!s) {
+            return true;
+        }
+        while (*s) {
+            if (!append_char(*s++)) {
+                return false;
+            }
+        }
+        return true;
+    };
+    auto append_u64 = [&](uint64_t value) -> bool {
+        char tmp[32];
+        uint32_t idx = 0;
+        if (value == 0) {
+            tmp[idx++] = '0';
+        } else {
+            while (value && idx < sizeof(tmp)) {
+                tmp[idx++] = (char)('0' + (value % 10));
+                value /= 10;
+            }
+        }
+        for (uint32_t i = 0; i < idx / 2; ++i) {
+            char t = tmp[i];
+            tmp[i] = tmp[idx - 1 - i];
+            tmp[idx - 1 - i] = t;
+        }
+        for (uint32_t i = 0; i < idx; ++i) {
+            if (!append_char(tmp[i])) {
+                return false;
+            }
+        }
+        return true;
+    };
+    auto state_str = [](os::ProcessState state) -> const char * {
+        switch (state) {
+            case os::ProcessState::READY: return "READY";
+            case os::ProcessState::RUNNING: return "RUNNING";
+            case os::ProcessState::BLOCKED: return "BLOCKED";
+            case os::ProcessState::ZOMBIE: return "ZOMBIE";
+        }
+        return "UNKNOWN";
+    };
+
+    bool wrote = false;
+    for (uint32_t torus_id = 0; torus_id < kTorusCount; ++torus_id) {
+        TorusRuntime &rt = g_runtimes[torus_id];
+        if (!rt.scheduler) {
+            continue;
+        }
+        rt.scheduler->forEachProcess([&](os::OSProcess *proc) {
+            if (!proc) {
+                return;
+            }
+            if (!append_str("pid=") || !append_u64(proc->pid) ||
+                !append_str(" torus=") || !append_u64(proc->torus_id) ||
+                !append_str(" state=") || !append_str(state_str(proc->state)) ||
+                !append_str(" runtime=") || !append_u64(proc->total_runtime) ||
+                !append_char('\n')) {
+                return;
+            }
+            wrote = true;
+        });
+    }
+    if (!wrote) {
+        append_str("ps: empty\n");
+    }
+    if (used < len) {
+        buf[used] = '\0';
+    }
+    return (int)used;
+}
+
 extern "C" int rse_os_prepare_ring3(uint32_t torus_id) {
     if (!g_runtimes_ready || !g_ring3_proc) {
         return 0;
@@ -1406,7 +1491,8 @@ extern "C" void rse_os_run(void) {
         .read = os_read_shim,
         .unlink = os_unlink_shim,
         .lseek = os_lseek_shim,
-        .list = os_list_shim
+        .list = os_list_shim,
+        .ps = os_ps_dump
     };
 
     for (uint32_t torus_id = 0; torus_id < kTorusCount; ++torus_id) {

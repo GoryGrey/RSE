@@ -322,6 +322,19 @@ public:
         return current_process_;
     }
 
+    template <typename Fn>
+    void forEachProcess(Fn&& fn) const {
+        if (current_process_) {
+            fn(current_process_);
+        }
+        for (size_t i = 0; i < ready_queue_.size(); ++i) {
+            fn(ready_queue_[i]);
+        }
+        for (size_t i = 0; i < blocked_queue_.size(); ++i) {
+            fn(blocked_queue_[i]);
+        }
+    }
+
     void forceCurrentProcess(OSProcess* proc) {
         current_process_ = proc;
         if (current_process_) {

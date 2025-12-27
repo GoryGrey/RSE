@@ -54,26 +54,6 @@ static void shell_emit(const struct rse_syscalls *sys, const char *msg) {
     sys->write(1, (const uint8_t *)msg, cstr_len(msg));
 }
 
-static void shell_u64(const struct rse_syscalls *sys, uint64_t value) {
-    char buf[32];
-    int pos = 0;
-    if (value == 0) {
-        buf[pos++] = '0';
-    } else {
-        char tmp[32];
-        int tpos = 0;
-        while (value > 0 && tpos < (int)sizeof(tmp)) {
-            tmp[tpos++] = (char)('0' + (value % 10));
-            value /= 10;
-        }
-        while (tpos > 0) {
-            buf[pos++] = tmp[--tpos];
-        }
-    }
-    buf[pos] = '\0';
-    shell_emit(sys, buf);
-}
-
 static void shell_cat(const struct rse_syscalls *sys, const char *path) {
     if (!sys || !sys->open || !sys->read || !sys->close || !path) {
         return;
@@ -108,6 +88,20 @@ static void shell_ls(const struct rse_syscalls *sys, const char *path) {
     sys->write(1, (const uint8_t *)buf, (uint32_t)got);
 }
 
+static void shell_ps(const struct rse_syscalls *sys) {
+    if (!sys || !sys->ps || !sys->write) {
+        shell_emit(sys, "ps: unsupported\n");
+        return;
+    }
+    char buf[512];
+    int got = sys->ps(buf, sizeof(buf));
+    if (got <= 0) {
+        shell_emit(sys, "ps: empty\n");
+        return;
+    }
+    sys->write(1, (const uint8_t *)buf, (uint32_t)got);
+}
+
 static void shell_probe_dev(const struct rse_syscalls *sys, const char *dev) {
     if (!sys || !sys->open || !sys->close || !dev) {
         return;
@@ -127,13 +121,7 @@ static void shell_demo(const struct rse_syscalls *sys, int persist) {
     shell_emit(sys, "help: echo, cat, ls, probe, ps\n");
 
     shell_emit(sys, "rse> ps\n");
-    shell_emit(sys, "ps: torus=");
-    if (sys && sys->get_torus_id) {
-        shell_u64(sys, sys->get_torus_id());
-    } else {
-        shell_emit(sys, "0");
-    }
-    shell_emit(sys, " pid=1\n");
+    shell_ps(sys);
 
     shell_emit(sys, "rse> echo shell-online\n");
     shell_emit(sys, "shell-online\n");

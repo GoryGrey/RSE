@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-**The Bible - Last Updated: December 26, 2025 (sys_wait reaping + cpp_kernel build)**
+**The Bible - Last Updated: December 26, 2025 (sys_wait reaping + test)**
 
 ---
 
@@ -46,7 +46,7 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **UI Input (Keyboard/Mouse)** | ✅ Working | Interactive | Dashboard selection + actions |
 | **Projection Exchange (IVSHMEM)** | ⚠️ Lab-only | 3-torus Multi-VM | Shared-memory transport |
 
-**Test Coverage**: Full system test + UEFI bench + fastio bench + ring3 smoke/exec (UEFI run-iso; exec passes) + Linux baseline + IVSHMEM exchange; external UDP/HTTP proof captured in `build/boot/proof.log`.
+**Test Coverage**: Full system test + UEFI bench + fastio bench + ring3 smoke/exec (UEFI run-iso; exec passes) + Linux baseline + IVSHMEM exchange + sys_wait reaping test; external UDP/HTTP proof captured in `build/boot/proof.log`.
 
 ### **What's Left** 🚧
 
@@ -240,7 +240,7 @@ current implementation status. Use the tables above for reality.
 
 ### **Legacy Phase 6.1: System Calls**
 - **Status**: ✅ Core Complete
-- **Tests**: 2/7 passing
+- **Tests**: 3/7 passing (exec/vfs + sys_wait)
 - **Key Features**:
   - 43 syscalls defined (POSIX-compatible)
   - 10 syscalls implemented (wait reaping, non-blocking)
@@ -499,6 +499,6 @@ This OS is not built on traditional hierarchies. It's built on:
 
 **Status**: 45% Complete (Prototype) | **Next Milestone**: User-mode isolation + ELF loader
 
-**Last Updated**: December 26, 2025 (sys_wait reaping + cpp_kernel build)
+**Last Updated**: December 26, 2025 (sys_wait reaping + test)
 
 **"Stay degen. Stay future. 🚀"**

@@ -138,6 +138,12 @@ if(NOT MSVC)
     target_link_libraries(exec_vfs_test atomic)
 endif()
 
+# sys_wait reaping test
+add_executable(sys_wait_test tests/sys_wait_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(sys_wait_test atomic)
+endif()
+
 # Memory Telemetry Test
 add_executable(memory_telemetry_test tests/memory_telemetry_test.cpp)
 if(NOT MSVC)

@@ -396,13 +396,23 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
 #endif
         return -ENOMEM;
     }
+#ifdef RSE_KERNEL
+    static constexpr uint64_t kKernelUserStackBase = 0x40001000ull;
+    static constexpr uint64_t kKernelUserStackTop = 0x40002000ull;
+    new_va->setStackBounds(kKernelUserStackBase, kKernelUserStackTop);
+#endif
 
     current->vmem = new_va;
     current->memory = MemoryLayout();
     current->memory.page_table = new_pt;
     current->context = CPUContext();
 
-    if (!current->loadElfImageWithArgs(image_buf, total, argv.ptrs, envp.ptrs)) {
+#ifdef RSE_KERNEL
+    const uint64_t stack_size = PAGE_SIZE;
+#else
+    const uint64_t stack_size = 64 * 1024;
+#endif
+    if (!current->loadElfImageWithArgs(image_buf, total, argv.ptrs, envp.ptrs, stack_size)) {
         delete new_va;
         delete new_pt;
         current->vmem = old_vmem;

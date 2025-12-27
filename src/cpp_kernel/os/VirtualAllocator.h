@@ -333,6 +333,16 @@ public:
     PageTable* getPageTable() const { return page_table_; }
     PhysicalAllocator* getPhysicalAllocator() const { return phys_alloc_; }
 
+    void setStackBounds(uint64_t start, uint64_t end) {
+        start = align_down(start);
+        end = align_up(end);
+        if (end <= start) {
+            return;
+        }
+        stack_start_ = start;
+        stack_end_ = end;
+    }
+
     bool isUserRange(uint64_t addr, uint64_t size) const {
         if (size == 0) {
             return true;

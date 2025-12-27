@@ -21,6 +21,8 @@ void *memcpy(void *dst, const void *src, size_t count);
 void *memset(void *dst, int value, size_t count);
 static void *uefi_alloc_pages(size_t bytes);
 void serial_write(const char *s);
+static int virtio_init(void);
+static int virtio_blk_rw(uint64_t sector, void *buf, uint32_t bytes, uint32_t type);
 extern int rse_os_user_map(uint64_t code_vaddr, uint64_t stack_vaddr,
                            uint64_t *code_phys_out, uint64_t *stack_phys_out);
 extern int rse_os_user_ranges(uint64_t *code_start, uint64_t *code_end,
@@ -1250,6 +1252,18 @@ static struct limine_framebuffer *g_framebuffer;
 static struct limine_framebuffer g_uefi_framebuffer;
 static EFI_BLOCK_IO_PROTOCOL *g_block_io;
 static UINTN g_block_size;
+enum block_backend {
+    BLOCK_BACKEND_NONE = 0,
+    BLOCK_BACKEND_UEFI = 1,
+    BLOCK_BACKEND_VIRTIO = 2
+};
+static enum block_backend g_block_backend;
+static uint64_t g_virtio_blk_capacity;
+static uint32_t g_virtio_blk_block_size = 512;
+static uint64_t g_block_cache_lba[8];
+static uint8_t g_block_cache_valid[8];
+static uint32_t g_block_cache_next;
+static uint8_t g_block_cache_data[8][4096];
 static EFI_SIMPLE_NETWORK_PROTOCOL *g_net;
 static const EFI_GUID g_net_guid = EFI_SIMPLE_NETWORK_PROTOCOL_GUID;
 static EFI_SIMPLE_POINTER_PROTOCOL *g_pointer;
@@ -1258,6 +1272,29 @@ static int virtio_net_init(void);
 static int net_init_uefi(void);
 static int virtio_net_send(const void *buf, uint32_t len);
 static int virtio_net_recv(void *buf, uint32_t len);
+
+static int block_cache_fetch(uint64_t lba, void *buf, uint32_t block_size) {
+    if (!buf || block_size == 0 || block_size > sizeof(g_block_cache_data[0])) {
+        return 0;
+    }
+    for (uint32_t i = 0; i < 8; ++i) {
+        if (g_block_cache_valid[i] && g_block_cache_lba[i] == lba) {
+            memcpy(buf, g_block_cache_data[i], block_size);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static void block_cache_store(uint64_t lba, const void *buf, uint32_t block_size) {
+    if (!buf || block_size == 0 || block_size > sizeof(g_block_cache_data[0])) {
+        return;
+    }
+    uint32_t slot = g_block_cache_next++ % 8;
+    memcpy(g_block_cache_data[slot], buf, block_size);
+    g_block_cache_lba[slot] = lba;
+    g_block_cache_valid[slot] = 1;
+}
 
 struct rse_bench_metrics {
     uint64_t compute_ops;
@@ -1393,7 +1430,12 @@ static int net_udp_send(const uint8_t *payload, uint32_t len);
 static uint32_t net_queue_pop(uint8_t *buf, uint32_t max_len);
 
 int rse_block_init(void) {
-    if (g_block_io) {
+    if (g_block_backend != BLOCK_BACKEND_NONE) {
+        return 0;
+    }
+    if (virtio_init() == 0) {
+        g_block_backend = BLOCK_BACKEND_VIRTIO;
+        g_block_size = g_virtio_blk_block_size;
         return 0;
     }
     EFI_SYSTEM_TABLE *st = get_system_table(g_boot_info);
@@ -1408,10 +1450,19 @@ int rse_block_init(void) {
     }
     g_block_io = blk;
     g_block_size = blk->Media->BlockSize;
+    g_block_backend = BLOCK_BACKEND_UEFI;
     return 0;
 }
 
 uint32_t rse_block_size(void) {
+    if (g_block_backend == BLOCK_BACKEND_NONE) {
+        if (rse_block_init() != 0) {
+            return 0;
+        }
+    }
+    if (g_block_backend == BLOCK_BACKEND_VIRTIO) {
+        return g_virtio_blk_block_size;
+    }
     if (!g_block_io) {
         return 0;
     }
@@ -1419,10 +1470,13 @@ uint32_t rse_block_size(void) {
 }
 
 uint64_t rse_block_total_blocks(void) {
-    if (!g_block_io) {
+    if (g_block_backend == BLOCK_BACKEND_NONE) {
         if (rse_block_init() != 0) {
             return 0;
         }
+    }
+    if (g_block_backend == BLOCK_BACKEND_VIRTIO) {
+        return g_virtio_blk_capacity;
     }
     if (!g_block_io || !g_block_io->Media) {
         return 0;
@@ -1431,22 +1485,36 @@ uint64_t rse_block_total_blocks(void) {
 }
 
 int rse_block_read(uint64_t lba, void *buf, uint32_t blocks) {
-    if (!g_block_io) {
+    if (g_block_backend == BLOCK_BACKEND_NONE) {
         if (rse_block_init() != 0) {
             return -1;
         }
     }
     if (!buf || blocks == 0) {
         return -1;
+    }
+    if (blocks == 1 && block_cache_fetch(lba, buf, rse_block_size())) {
+        return 0;
+    }
+    if (g_block_backend == BLOCK_BACKEND_VIRTIO) {
+        uint32_t bytes = blocks * g_virtio_blk_block_size;
+        int rc = virtio_blk_rw(lba, buf, bytes, VIRTIO_BLK_T_IN);
+        if (rc == 0 && blocks == 1) {
+            block_cache_store(lba, buf, rse_block_size());
+        }
+        return rc;
     }
     UINTN bytes = (UINTN)blocks * g_block_size;
     EFI_STATUS st = g_block_io->ReadBlocks(g_block_io, g_block_io->Media->MediaId,
                                            (EFI_LBA)lba, bytes, buf);
+    if (st == EFI_SUCCESS && blocks == 1) {
+        block_cache_store(lba, buf, rse_block_size());
+    }
     return st == EFI_SUCCESS ? 0 : -1;
 }
 
 int rse_block_write(uint64_t lba, const void *buf, uint32_t blocks) {
-    if (!g_block_io) {
+    if (g_block_backend == BLOCK_BACKEND_NONE) {
         if (rse_block_init() != 0) {
             return -1;
         }
@@ -1454,9 +1522,20 @@ int rse_block_write(uint64_t lba, const void *buf, uint32_t blocks) {
     if (!buf || blocks == 0) {
         return -1;
     }
+    if (g_block_backend == BLOCK_BACKEND_VIRTIO) {
+        uint32_t bytes = blocks * g_virtio_blk_block_size;
+        int rc = virtio_blk_rw(lba, (void *)buf, bytes, VIRTIO_BLK_T_OUT);
+        if (rc == 0 && blocks == 1) {
+            block_cache_store(lba, buf, rse_block_size());
+        }
+        return rc;
+    }
     UINTN bytes = (UINTN)blocks * g_block_size;
     EFI_STATUS st = g_block_io->WriteBlocks(g_block_io, g_block_io->Media->MediaId,
                                             (EFI_LBA)lba, bytes, (void *)buf);
+    if (st == EFI_SUCCESS && blocks == 1) {
+        block_cache_store(lba, buf, rse_block_size());
+    }
     return st == EFI_SUCCESS ? 0 : -1;
 }
 
@@ -2218,8 +2297,9 @@ static int virtio_init_legacy(void) {
     serial_write("\n");
     uint32_t capacity_lo = inl((uint16_t)(virtio_io_base + VIRTIO_PCI_CONFIG));
     uint32_t capacity_hi = inl((uint16_t)(virtio_io_base + VIRTIO_PCI_CONFIG + 4));
+    g_virtio_blk_capacity = ((uint64_t)capacity_hi << 32) | capacity_lo;
     serial_write("[RSE] virtio-blk capacity=");
-    serial_write_u64(((uint64_t)capacity_hi << 32) | capacity_lo);
+    serial_write_u64(g_virtio_blk_capacity);
     serial_write("\n");
     return 0;
 }
@@ -2318,6 +2398,7 @@ static int virtio_init_modern(void) {
         for (uint32_t i = 0; i < 8; ++i) {
             cap |= ((uint64_t)virtio_blk_device[i]) << (i * 8);
         }
+        g_virtio_blk_capacity = cap;
         serial_write("[RSE] virtio-blk capacity=");
         serial_write_u64(cap);
         serial_write("\n");
@@ -2869,6 +2950,12 @@ static void virtio_net_notify_tx(void) {
     }
 }
 
+static void virtio_net_reclaim_tx(void) {
+    while (net_tx_used_idx != net_tx_used->idx) {
+        net_tx_used_idx++;
+    }
+}
+
 static int virtio_net_send(const void *buf, uint32_t len) {
     static int tx_stall_logged = 0;
     if (!buf || len == 0) {
@@ -2887,15 +2974,16 @@ static int virtio_net_send(const void *buf, uint32_t len) {
         return -1;
     }
 
+    virtio_net_reclaim_tx();
     uint16_t avail_idx = net_tx_avail->idx;
-    uint16_t used_idx = net_tx_used->idx;
+    uint16_t used_idx = net_tx_used_idx;
     for (uint32_t i = 0; i < 100000; ++i) {
         if ((uint16_t)(avail_idx - used_idx) < net_tx_slots) {
             break;
         }
-        used_idx = net_tx_used->idx;
+        virtio_net_reclaim_tx();
+        used_idx = net_tx_used_idx;
     }
-    net_tx_used_idx = used_idx;
     if ((uint16_t)(avail_idx - used_idx) >= net_tx_slots) {
         if (!tx_stall_logged) {
             serial_write("[RSE] virtio-net tx queue full idx=");
@@ -2904,6 +2992,9 @@ static int virtio_net_send(const void *buf, uint32_t len) {
             tx_stall_logged = 1;
         }
         return -1;
+    }
+    if (tx_stall_logged) {
+        tx_stall_logged = 0;
     }
 
     uint16_t slot = (uint16_t)(avail_idx % net_tx_slots);
@@ -4831,6 +4922,8 @@ static void kmain(struct rse_boot_info *boot_info) {
         memset(&g_metrics, 0, sizeof(g_metrics));
         g_metrics.metrics_valid = 0;
         fb_draw_dashboard(g_framebuffer);
+        uefi_pointer_init(boot_info);
+        uefi_keyboard_init(boot_info);
     }
     run_benchmarks(boot_info, 1);
     if (g_framebuffer) {
@@ -4841,8 +4934,6 @@ static void kmain(struct rse_boot_info *boot_info) {
     rse_poweroff();
 #endif
     if (g_framebuffer) {
-        uefi_pointer_init(boot_info);
-        uefi_keyboard_init(boot_info);
         ui_event_loop(boot_info);
     }
     hlt_loop();

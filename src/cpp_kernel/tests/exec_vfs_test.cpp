@@ -108,7 +108,7 @@ int main() {
   os::TorusScheduler scheduler(0);
   os::SyscallDispatcher dispatcher;
 
-  std::array<uint8_t, 1 << 20> phys{};
+  alignas(os::PAGE_SIZE) std::array<uint8_t, 1 << 20> phys{};
   os::PhysicalAllocator phys_alloc(reinterpret_cast<uint64_t>(phys.data()), phys.size());
 
   os::TorusContext ctx;

@@ -1,9 +1,9 @@
 mkdir -p /home/gorygrey/Apps/RSE/build/net_exchange/torus1
-gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -c boot/kernel.c -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel.o
-gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -c boot/init.c -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/init.o
-g++ -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -c boot/kernel_os.cpp -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel_os.o
-g++ -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -c boot/net_projection.cpp -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/net_projection.o
-gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -T boot/linker.ld -nostdlib -Wl,-z,max-page-size=0x1000 -no-pie -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel.elf /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel.o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel_os.o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/net_projection.o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/init.o
+gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=0 -DRSE_AUTO_EXIT=1 -c boot/kernel.c -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel.o
+gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=0 -DRSE_AUTO_EXIT=1 -c boot/init.c -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/init.o
+g++ -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=0 -DRSE_AUTO_EXIT=1 -c boot/kernel_os.cpp -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel_os.o
+g++ -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=0 -DRSE_AUTO_EXIT=1 -c boot/net_projection.cpp -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/net_projection.o
+gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=0 -DRSE_AUTO_EXIT=1 -T boot/linker.ld -nostdlib -Wl,-z,max-page-size=0x1000 -no-pie -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel.elf /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel.o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel_os.o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/net_projection.o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/init.o
 gcc -I/usr/include/efi -I/usr/include/efi/x86_64 -fPIC -fshort-wchar -mno-red-zone -ffreestanding -fno-stack-protector -fcf-protection=none -DHAVE_USE_MS_ABI -O2 -Wall -Wextra -c boot/uefi_loader.c -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/uefi_loader.o
 objcopy -j .text -j .sdata -j .data -j .dynamic -j .dynsym \
 	-j .rel* -j .rela* -j .reloc --target=efi-app-x86_64 /home/gorygrey/Apps/RSE/build/net_exchange/torus1/uefi_loader.so /home/gorygrey/Apps/RSE/build/net_exchange/torus1/BOOTX64.EFI
@@ -29,14 +29,15 @@ xorriso 1.5.6 : RockRidge filesystem manipulator, libburnia project.
 Drive current: -outdev 'stdio:/home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_efi.iso'
 Media current: stdio file, overwriteable
 Media status : is blank
-Media summary: 0 sessions, 0 data blocks, 0 data,  173g free
+Media summary: 0 sessions, 0 data blocks, 0 data,  172g free
 Added to ISO image: directory '/'='/home/gorygrey/Apps/RSE/build/net_exchange/torus1/efi_iso'
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : WARNING : Boot image load size exceeds 65535 blocks of 512 bytes. Will record 0 in El Torito to extend ESP to end-of-medium.
-xorriso : UPDATE :  25.96% done
-ISO image produced: 66240 sectors
-Written to medium : 66240 sectors at LBA 0
+xorriso : UPDATE :  12.07% done
+xorriso : UPDATE : Thank you for being patient. Working since 1 seconds.
+ISO image produced: 66254 sectors
+Written to medium : 66254 sectors at LBA 0
 Writing to 'stdio:/home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_efi.iso' completed successfully.
 
 rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_data.img
@@ -46,12 +47,12 @@ rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_raw.img
 dd if=/dev/zero of=/home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_raw.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.0830913 s, 808 MB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.117801 s, 570 MB/s
 rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_virtio.img
 dd if=/dev/zero of=/home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_virtio.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.0868075 s, 773 MB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.141117 s, 476 MB/s
 cp /usr/share/OVMF/OVMF_VARS_4M.fd /home/gorygrey/Apps/RSE/build/net_exchange/torus1/OVMF_VARS.fd
 qemu-system-x86_64 -machine q35 -m 512M \
 	-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
@@ -83,8 +84,8 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] load_file alloc ok
 [RSE] load_file read ok
 [RSE] Kernel read ok
-[RSE] seg paddr=0x0000000010000000 memsz=0x000000000001b120 pages=0x000000000000001c
-[RSE] seg paddr=0x000000001001c000 memsz=0x00000000028e6b78 pages=0x00000000000028e7
+[RSE] seg paddr=0x0000000010000000 memsz=0x0000000000021120 pages=0x0000000000000022
+[RSE] seg paddr=0x0000000010022000 memsz=0x000000000322d698 pages=0x000000000000322e
 [RSE] Kernel load ok
 [RSE] GOP framebuffer ok
 [RSE] Jumping to kernel
@@ -92,6 +93,8 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] UEFI kernel start
 [RSE] GDT user segments installed
 [RSE] UEFI framebuffer online
+[RSE] UEFI pointer online
+[RSE] UEFI keyboard online
 [RSE] benchmarks begin
 [RSE] init workloads start
 [RSE] braided smoke start
@@ -100,34 +103,961 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] braid B events=300 active=4 edges=1 pending=1
 [RSE] braid C events=300 active=4 edges=1 pending=1
 [RSE] braided smoke done
+[RSE] virtio-blk capacity=131072
+[RSE] virtio-blk modern online
 [RSE] UEFI net online
+[RSE] virtio-blk notify idx=0 used=0
+[RSE] virtio-blk notify idx=1 used=1
+[RSE] virtio-blk notify idx=2 used=2
+[RSE] virtio-blk notify idx=3 used=3
+[RSE] virtio-blk notify idx=4 used=4
+[RSE] virtio-blk notify idx=5 used=5
+[RSE] virtio-blk notify idx=6 used=6
 [RSE] torus init 0
 [user] fs start pid=1 torus=0
+[RSE] virtio-blk notify idx=7 used=7
+[RSE] virtio-blk notify idx=8 used=8
 [init] start
 [init] torus=0
-[init] compute ops=2000000 cycles=43137848 checksum=9791868472914447520
-[init] pipe stage0 q0=8064 q1=8064 cycles=2551359
+[init] compute ops=2000000 cycles=43064750 checksum=9791868472914447520
+[init] pipe stage0 q0=8064 q1=8064 cycles=2993957
+[RSE] virtio-blk notify idx=9 used=9
+[RSE] virtio-blk notify idx=10 used=10
 [init] using /persist
-[init] memfs ops=640 bytes=524288 cycles=920975249
+[RSE] virtio-blk notify idx=11 used=11
+[RSE] virtio-blk notify idx=12 used=12
+[RSE] virtio-blk notify idx=13 used=13
+[RSE] virtio-blk notify idx=14 used=14
+[RSE] virtio-blk notify idx=15 used=15
+[RSE] virtio-blk notify idx=16 used=16
+[RSE] virtio-blk notify idx=17 used=17
+[RSE] virtio-blk notify idx=18 used=18
+[RSE] virtio-blk notify idx=19 used=19
+[RSE] virtio-blk notify idx=20 used=20
+[RSE] virtio-blk notify idx=21 used=21
+[RSE] virtio-blk notify idx=22 used=22
+[RSE] virtio-blk notify idx=23 used=23
+[RSE] virtio-blk notify idx=24 used=24
+[RSE] virtio-blk notify idx=25 used=25
+[RSE] virtio-blk notify idx=26 used=26
+[RSE] virtio-blk notify idx=27 used=27
+[RSE] virtio-blk notify idx=28 used=28
+[RSE] virtio-blk notify idx=29 used=29
+[RSE] virtio-blk notify idx=30 used=30
+[RSE] virtio-blk notify idx=31 used=31
+[RSE] virtio-blk notify idx=32 used=32
+[RSE] virtio-blk notify idx=33 used=33
+[RSE] virtio-blk notify idx=34 used=34
+[RSE] virtio-blk notify idx=35 used=35
+[RSE] virtio-blk notify idx=36 used=36
+[RSE] virtio-blk notify idx=37 used=37
+[RSE] virtio-blk notify idx=38 used=38
+[RSE] virtio-blk notify idx=39 used=39
+[RSE] virtio-blk notify idx=40 used=40
+[RSE] virtio-blk notify idx=41 used=41
+[RSE] virtio-blk notify idx=42 used=42
+[RSE] virtio-blk notify idx=43 used=43
+[RSE] virtio-blk notify idx=44 used=44
+[RSE] virtio-blk notify idx=45 used=45
+[RSE] virtio-blk notify idx=46 used=46
+[RSE] virtio-blk notify idx=47 used=47
+[RSE] virtio-blk notify idx=48 used=48
+[RSE] virtio-blk notify idx=49 used=49
+[RSE] virtio-blk notify idx=50 used=50
+[RSE] virtio-blk notify idx=51 used=51
+[RSE] virtio-blk notify idx=52 used=52
+[RSE] virtio-blk notify idx=53 used=53
+[RSE] virtio-blk notify idx=54 used=54
+[RSE] virtio-blk notify idx=55 used=55
+[RSE] virtio-blk notify idx=56 used=56
+[RSE] virtio-blk notify idx=57 used=57
+[RSE] virtio-blk notify idx=58 used=58
+[RSE] virtio-blk notify idx=59 used=59
+[RSE] virtio-blk notify idx=60 used=60
+[RSE] virtio-blk notify idx=61 used=61
+[RSE] virtio-blk notify idx=62 used=62
+[RSE] virtio-blk notify idx=63 used=63
+[RSE] virtio-blk notify idx=64 used=64
+[RSE] virtio-blk notify idx=65 used=65
+[RSE] virtio-blk notify idx=66 used=66
+[RSE] virtio-blk notify idx=67 used=67
+[RSE] virtio-blk notify idx=68 used=68
+[RSE] virtio-blk notify idx=69 used=69
+[RSE] virtio-blk notify idx=70 used=70
+[RSE] virtio-blk notify idx=71 used=71
+[RSE] virtio-blk notify idx=72 used=72
+[RSE] virtio-blk notify idx=73 used=73
+[RSE] virtio-blk notify idx=74 used=74
+[RSE] virtio-blk notify idx=75 used=75
+[RSE] virtio-blk notify idx=76 used=76
+[RSE] virtio-blk notify idx=77 used=77
+[RSE] virtio-blk notify idx=78 used=78
+[RSE] virtio-blk notify idx=79 used=79
+[RSE] virtio-blk notify idx=80 used=80
+[RSE] virtio-blk notify idx=81 used=81
+[RSE] virtio-blk notify idx=82 used=82
+[RSE] virtio-blk notify idx=83 used=83
+[RSE] virtio-blk notify idx=84 used=84
+[RSE] virtio-blk notify idx=85 used=85
+[RSE] virtio-blk notify idx=86 used=86
+[RSE] virtio-blk notify idx=87 used=87
+[RSE] virtio-blk notify idx=88 used=88
+[RSE] virtio-blk notify idx=89 used=89
+[RSE] virtio-blk notify idx=90 used=90
+[RSE] virtio-blk notify idx=91 used=91
+[RSE] virtio-blk notify idx=92 used=92
+[RSE] virtio-blk notify idx=93 used=93
+[RSE] virtio-blk notify idx=94 used=94
+[RSE] virtio-blk notify idx=95 used=95
+[RSE] virtio-blk notify idx=96 used=96
+[RSE] virtio-blk notify idx=97 used=97
+[RSE] virtio-blk notify idx=98 used=98
+[RSE] virtio-blk notify idx=99 used=99
+[RSE] virtio-blk notify idx=100 used=100
+[RSE] virtio-blk notify idx=101 used=101
+[RSE] virtio-blk notify idx=102 used=102
+[RSE] virtio-blk notify idx=103 used=103
+[RSE] virtio-blk notify idx=104 used=104
+[RSE] virtio-blk notify idx=105 used=105
+[RSE] virtio-blk notify idx=106 used=106
+[RSE] virtio-blk notify idx=107 used=107
+[RSE] virtio-blk notify idx=108 used=108
+[RSE] virtio-blk notify idx=109 used=109
+[RSE] virtio-blk notify idx=110 used=110
+[RSE] virtio-blk notify idx=111 used=111
+[RSE] virtio-blk notify idx=112 used=112
+[RSE] virtio-blk notify idx=113 used=113
+[RSE] virtio-blk notify idx=114 used=114
+[RSE] virtio-blk notify idx=115 used=115
+[RSE] virtio-blk notify idx=116 used=116
+[RSE] virtio-blk notify idx=117 used=117
+[RSE] virtio-blk notify idx=118 used=118
+[RSE] virtio-blk notify idx=119 used=119
+[RSE] virtio-blk notify idx=120 used=120
+[RSE] virtio-blk notify idx=121 used=121
+[RSE] virtio-blk notify idx=122 used=122
+[RSE] virtio-blk notify idx=123 used=123
+[RSE] virtio-blk notify idx=124 used=124
+[RSE] virtio-blk notify idx=125 used=125
+[RSE] virtio-blk notify idx=126 used=126
+[RSE] virtio-blk notify idx=127 used=127
+[RSE] virtio-blk notify idx=128 used=128
+[RSE] virtio-blk notify idx=129 used=129
+[RSE] virtio-blk notify idx=130 used=130
+[RSE] virtio-blk notify idx=131 used=131
+[RSE] virtio-blk notify idx=132 used=132
+[RSE] virtio-blk notify idx=133 used=133
+[RSE] virtio-blk notify idx=134 used=134
+[RSE] virtio-blk notify idx=135 used=135
+[RSE] virtio-blk notify idx=136 used=136
+[RSE] virtio-blk notify idx=137 used=137
+[RSE] virtio-blk notify idx=138 used=138
+[RSE] virtio-blk notify idx=139 used=139
+[RSE] virtio-blk notify idx=140 used=140
+[RSE] virtio-blk notify idx=141 used=141
+[RSE] virtio-blk notify idx=142 used=142
+[RSE] virtio-blk notify idx=143 used=143
+[RSE] virtio-blk notify idx=144 used=144
+[RSE] virtio-blk notify idx=145 used=145
+[RSE] virtio-blk notify idx=146 used=146
+[RSE] virtio-blk notify idx=147 used=147
+[RSE] virtio-blk notify idx=148 used=148
+[RSE] virtio-blk notify idx=149 used=149
+[RSE] virtio-blk notify idx=150 used=150
+[RSE] virtio-blk notify idx=151 used=151
+[RSE] virtio-blk notify idx=152 used=152
+[RSE] virtio-blk notify idx=153 used=153
+[RSE] virtio-blk notify idx=154 used=154
+[RSE] virtio-blk notify idx=155 used=155
+[RSE] virtio-blk notify idx=156 used=156
+[RSE] virtio-blk notify idx=157 used=157
+[RSE] virtio-blk notify idx=158 used=158
+[RSE] virtio-blk notify idx=159 used=159
+[RSE] virtio-blk notify idx=160 used=160
+[RSE] virtio-blk notify idx=161 used=161
+[RSE] virtio-blk notify idx=162 used=162
+[RSE] virtio-blk notify idx=163 used=163
+[RSE] virtio-blk notify idx=164 used=164
+[RSE] virtio-blk notify idx=165 used=165
+[RSE] virtio-blk notify idx=166 used=166
+[RSE] virtio-blk notify idx=167 used=167
+[RSE] virtio-blk notify idx=168 used=168
+[RSE] virtio-blk notify idx=169 used=169
+[RSE] virtio-blk notify idx=170 used=170
+[RSE] virtio-blk notify idx=171 used=171
+[RSE] virtio-blk notify idx=172 used=172
+[RSE] virtio-blk notify idx=173 used=173
+[RSE] virtio-blk notify idx=174 used=174
+[RSE] virtio-blk notify idx=175 used=175
+[RSE] virtio-blk notify idx=176 used=176
+[RSE] virtio-blk notify idx=177 used=177
+[RSE] virtio-blk notify idx=178 used=178
+[RSE] virtio-blk notify idx=179 used=179
+[RSE] virtio-blk notify idx=180 used=180
+[RSE] virtio-blk notify idx=181 used=181
+[RSE] virtio-blk notify idx=182 used=182
+[RSE] virtio-blk notify idx=183 used=183
+[RSE] virtio-blk notify idx=184 used=184
+[RSE] virtio-blk notify idx=185 used=185
+[RSE] virtio-blk notify idx=186 used=186
+[RSE] virtio-blk notify idx=187 used=187
+[RSE] virtio-blk notify idx=188 used=188
+[RSE] virtio-blk notify idx=189 used=189
+[RSE] virtio-blk notify idx=190 used=190
+[RSE] virtio-blk notify idx=191 used=191
+[RSE] virtio-blk notify idx=192 used=192
+[RSE] virtio-blk notify idx=193 used=193
+[RSE] virtio-blk notify idx=194 used=194
+[RSE] virtio-blk notify idx=195 used=195
+[RSE] virtio-blk notify idx=196 used=196
+[RSE] virtio-blk notify idx=197 used=197
+[RSE] virtio-blk notify idx=198 used=198
+[RSE] virtio-blk notify idx=199 used=199
+[RSE] virtio-blk notify idx=200 used=200
+[RSE] virtio-blk notify idx=201 used=201
+[RSE] virtio-blk notify idx=202 used=202
+[RSE] virtio-blk notify idx=203 used=203
+[RSE] virtio-blk notify idx=204 used=204
+[RSE] virtio-blk notify idx=205 used=205
+[RSE] virtio-blk notify idx=206 used=206
+[RSE] virtio-blk notify idx=207 used=207
+[RSE] virtio-blk notify idx=208 used=208
+[RSE] virtio-blk notify idx=209 used=209
+[RSE] virtio-blk notify idx=210 used=210
+[RSE] virtio-blk notify idx=211 used=211
+[RSE] virtio-blk notify idx=212 used=212
+[RSE] virtio-blk notify idx=213 used=213
+[RSE] virtio-blk notify idx=214 used=214
+[RSE] virtio-blk notify idx=215 used=215
+[RSE] virtio-blk notify idx=216 used=216
+[RSE] virtio-blk notify idx=217 used=217
+[RSE] virtio-blk notify idx=218 used=218
+[RSE] virtio-blk notify idx=219 used=219
+[RSE] virtio-blk notify idx=220 used=220
+[RSE] virtio-blk notify idx=221 used=221
+[RSE] virtio-blk notify idx=222 used=222
+[RSE] virtio-blk notify idx=223 used=223
+[RSE] virtio-blk notify idx=224 used=224
+[RSE] virtio-blk notify idx=225 used=225
+[RSE] virtio-blk notify idx=226 used=226
+[RSE] virtio-blk notify idx=227 used=227
+[RSE] virtio-blk notify idx=228 used=228
+[RSE] virtio-blk notify idx=229 used=229
+[RSE] virtio-blk notify idx=230 used=230
+[RSE] virtio-blk notify idx=231 used=231
+[RSE] virtio-blk notify idx=232 used=232
+[RSE] virtio-blk notify idx=233 used=233
+[RSE] virtio-blk notify idx=234 used=234
+[RSE] virtio-blk notify idx=235 used=235
+[RSE] virtio-blk notify idx=236 used=236
+[RSE] virtio-blk notify idx=237 used=237
+[RSE] virtio-blk notify idx=238 used=238
+[RSE] virtio-blk notify idx=239 used=239
+[RSE] virtio-blk notify idx=240 used=240
+[RSE] virtio-blk notify idx=241 used=241
+[RSE] virtio-blk notify idx=242 used=242
+[RSE] virtio-blk notify idx=243 used=243
+[RSE] virtio-blk notify idx=244 used=244
+[RSE] virtio-blk notify idx=245 used=245
+[RSE] virtio-blk notify idx=246 used=246
+[RSE] virtio-blk notify idx=247 used=247
+[RSE] virtio-blk notify idx=248 used=248
+[RSE] virtio-blk notify idx=249 used=249
+[RSE] virtio-blk notify idx=250 used=250
+[RSE] virtio-blk notify idx=251 used=251
+[RSE] virtio-blk notify idx=252 used=252
+[RSE] virtio-blk notify idx=253 used=253
+[RSE] virtio-blk notify idx=254 used=254
+[RSE] virtio-blk notify idx=255 used=255
+[RSE] virtio-blk notify idx=256 used=256
+[RSE] virtio-blk notify idx=257 used=257
+[RSE] virtio-blk notify idx=258 used=258
+[RSE] virtio-blk notify idx=259 used=259
+[RSE] virtio-blk notify idx=260 used=260
+[RSE] virtio-blk notify idx=261 used=261
+[RSE] virtio-blk notify idx=262 used=262
+[RSE] virtio-blk notify idx=263 used=263
+[RSE] virtio-blk notify idx=264 used=264
+[RSE] virtio-blk notify idx=265 used=265
+[RSE] virtio-blk notify idx=266 used=266
+[RSE] virtio-blk notify idx=267 used=267
+[RSE] virtio-blk notify idx=268 used=268
+[RSE] virtio-blk notify idx=269 used=269
+[RSE] virtio-blk notify idx=270 used=270
+[RSE] virtio-blk notify idx=271 used=271
+[RSE] virtio-blk notify idx=272 used=272
+[RSE] virtio-blk notify idx=273 used=273
+[RSE] virtio-blk notify idx=274 used=274
+[RSE] virtio-blk notify idx=275 used=275
+[RSE] virtio-blk notify idx=276 used=276
+[RSE] virtio-blk notify idx=277 used=277
+[RSE] virtio-blk notify idx=278 used=278
+[RSE] virtio-blk notify idx=279 used=279
+[RSE] virtio-blk notify idx=280 used=280
+[RSE] virtio-blk notify idx=281 used=281
+[RSE] virtio-blk notify idx=282 used=282
+[RSE] virtio-blk notify idx=283 used=283
+[RSE] virtio-blk notify idx=284 used=284
+[RSE] virtio-blk notify idx=285 used=285
+[RSE] virtio-blk notify idx=286 used=286
+[RSE] virtio-blk notify idx=287 used=287
+[RSE] virtio-blk notify idx=288 used=288
+[RSE] virtio-blk notify idx=289 used=289
+[RSE] virtio-blk notify idx=290 used=290
+[RSE] virtio-blk notify idx=291 used=291
+[RSE] virtio-blk notify idx=292 used=292
+[RSE] virtio-blk notify idx=293 used=293
+[RSE] virtio-blk notify idx=294 used=294
+[RSE] virtio-blk notify idx=295 used=295
+[RSE] virtio-blk notify idx=296 used=296
+[RSE] virtio-blk notify idx=297 used=297
+[RSE] virtio-blk notify idx=298 used=298
+[RSE] virtio-blk notify idx=299 used=299
+[RSE] virtio-blk notify idx=300 used=300
+[RSE] virtio-blk notify idx=301 used=301
+[RSE] virtio-blk notify idx=302 used=302
+[RSE] virtio-blk notify idx=303 used=303
+[RSE] virtio-blk notify idx=304 used=304
+[RSE] virtio-blk notify idx=305 used=305
+[RSE] virtio-blk notify idx=306 used=306
+[RSE] virtio-blk notify idx=307 used=307
+[RSE] virtio-blk notify idx=308 used=308
+[RSE] virtio-blk notify idx=309 used=309
+[RSE] virtio-blk notify idx=310 used=310
+[RSE] virtio-blk notify idx=311 used=311
+[RSE] virtio-blk notify idx=312 used=312
+[RSE] virtio-blk notify idx=313 used=313
+[RSE] virtio-blk notify idx=314 used=314
+[RSE] virtio-blk notify idx=315 used=315
+[RSE] virtio-blk notify idx=316 used=316
+[RSE] virtio-blk notify idx=317 used=317
+[RSE] virtio-blk notify idx=318 used=318
+[RSE] virtio-blk notify idx=319 used=319
+[RSE] virtio-blk notify idx=320 used=320
+[RSE] virtio-blk notify idx=321 used=321
+[RSE] virtio-blk notify idx=322 used=322
+[RSE] virtio-blk notify idx=323 used=323
+[RSE] virtio-blk notify idx=324 used=324
+[RSE] virtio-blk notify idx=325 used=325
+[RSE] virtio-blk notify idx=326 used=326
+[RSE] virtio-blk notify idx=327 used=327
+[RSE] virtio-blk notify idx=328 used=328
+[RSE] virtio-blk notify idx=329 used=329
+[RSE] virtio-blk notify idx=330 used=330
+[RSE] virtio-blk notify idx=331 used=331
+[RSE] virtio-blk notify idx=332 used=332
+[RSE] virtio-blk notify idx=333 used=333
+[RSE] virtio-blk notify idx=334 used=334
+[RSE] virtio-blk notify idx=335 used=335
+[RSE] virtio-blk notify idx=336 used=336
+[RSE] virtio-blk notify idx=337 used=337
+[RSE] virtio-blk notify idx=338 used=338
+[RSE] virtio-blk notify idx=339 used=339
+[RSE] virtio-blk notify idx=340 used=340
+[RSE] virtio-blk notify idx=341 used=341
+[RSE] virtio-blk notify idx=342 used=342
+[RSE] virtio-blk notify idx=343 used=343
+[RSE] virtio-blk notify idx=344 used=344
+[RSE] virtio-blk notify idx=345 used=345
+[RSE] virtio-blk notify idx=346 used=346
+[RSE] virtio-blk notify idx=347 used=347
+[RSE] virtio-blk notify idx=348 used=348
+[RSE] virtio-blk notify idx=349 used=349
+[RSE] virtio-blk notify idx=350 used=350
+[RSE] virtio-blk notify idx=351 used=351
+[RSE] virtio-blk notify idx=352 used=352
+[RSE] virtio-blk notify idx=353 used=353
+[RSE] virtio-blk notify idx=354 used=354
+[RSE] virtio-blk notify idx=355 used=355
+[RSE] virtio-blk notify idx=356 used=356
+[RSE] virtio-blk notify idx=357 used=357
+[RSE] virtio-blk notify idx=358 used=358
+[RSE] virtio-blk notify idx=359 used=359
+[RSE] virtio-blk notify idx=360 used=360
+[RSE] virtio-blk notify idx=361 used=361
+[RSE] virtio-blk notify idx=362 used=362
+[RSE] virtio-blk notify idx=363 used=363
+[RSE] virtio-blk notify idx=364 used=364
+[RSE] virtio-blk notify idx=365 used=365
+[RSE] virtio-blk notify idx=366 used=366
+[RSE] virtio-blk notify idx=367 used=367
+[RSE] virtio-blk notify idx=368 used=368
+[RSE] virtio-blk notify idx=369 used=369
+[RSE] virtio-blk notify idx=370 used=370
+[RSE] virtio-blk notify idx=371 used=371
+[RSE] virtio-blk notify idx=372 used=372
+[RSE] virtio-blk notify idx=373 used=373
+[RSE] virtio-blk notify idx=374 used=374
+[RSE] virtio-blk notify idx=375 used=375
+[RSE] virtio-blk notify idx=376 used=376
+[RSE] virtio-blk notify idx=377 used=377
+[RSE] virtio-blk notify idx=378 used=378
+[RSE] virtio-blk notify idx=379 used=379
+[RSE] virtio-blk notify idx=380 used=380
+[RSE] virtio-blk notify idx=381 used=381
+[RSE] virtio-blk notify idx=382 used=382
+[RSE] virtio-blk notify idx=383 used=383
+[RSE] virtio-blk notify idx=384 used=384
+[RSE] virtio-blk notify idx=385 used=385
+[RSE] virtio-blk notify idx=386 used=386
+[RSE] virtio-blk notify idx=387 used=387
+[RSE] virtio-blk notify idx=388 used=388
+[RSE] virtio-blk notify idx=389 used=389
+[RSE] virtio-blk notify idx=390 used=390
+[RSE] virtio-blk notify idx=391 used=391
+[RSE] virtio-blk notify idx=392 used=392
+[RSE] virtio-blk notify idx=393 used=393
+[RSE] virtio-blk notify idx=394 used=394
+[RSE] virtio-blk notify idx=395 used=395
+[RSE] virtio-blk notify idx=396 used=396
+[RSE] virtio-blk notify idx=397 used=397
+[RSE] virtio-blk notify idx=398 used=398
+[RSE] virtio-blk notify idx=399 used=399
+[RSE] virtio-blk notify idx=400 used=400
+[RSE] virtio-blk notify idx=401 used=401
+[RSE] virtio-blk notify idx=402 used=402
+[RSE] virtio-blk notify idx=403 used=403
+[RSE] virtio-blk notify idx=404 used=404
+[RSE] virtio-blk notify idx=405 used=405
+[RSE] virtio-blk notify idx=406 used=406
+[RSE] virtio-blk notify idx=407 used=407
+[RSE] virtio-blk notify idx=408 used=408
+[RSE] virtio-blk notify idx=409 used=409
+[RSE] virtio-blk notify idx=410 used=410
+[RSE] virtio-blk notify idx=411 used=411
+[RSE] virtio-blk notify idx=412 used=412
+[RSE] virtio-blk notify idx=413 used=413
+[RSE] virtio-blk notify idx=414 used=414
+[RSE] virtio-blk notify idx=415 used=415
+[RSE] virtio-blk notify idx=416 used=416
+[RSE] virtio-blk notify idx=417 used=417
+[RSE] virtio-blk notify idx=418 used=418
+[RSE] virtio-blk notify idx=419 used=419
+[RSE] virtio-blk notify idx=420 used=420
+[RSE] virtio-blk notify idx=421 used=421
+[RSE] virtio-blk notify idx=422 used=422
+[RSE] virtio-blk notify idx=423 used=423
+[RSE] virtio-blk notify idx=424 used=424
+[RSE] virtio-blk notify idx=425 used=425
+[RSE] virtio-blk notify idx=426 used=426
+[RSE] virtio-blk notify idx=427 used=427
+[RSE] virtio-blk notify idx=428 used=428
+[RSE] virtio-blk notify idx=429 used=429
+[RSE] virtio-blk notify idx=430 used=430
+[RSE] virtio-blk notify idx=431 used=431
+[RSE] virtio-blk notify idx=432 used=432
+[RSE] virtio-blk notify idx=433 used=433
+[RSE] virtio-blk notify idx=434 used=434
+[RSE] virtio-blk notify idx=435 used=435
+[RSE] virtio-blk notify idx=436 used=436
+[RSE] virtio-blk notify idx=437 used=437
+[RSE] virtio-blk notify idx=438 used=438
+[RSE] virtio-blk notify idx=439 used=439
+[RSE] virtio-blk notify idx=440 used=440
+[RSE] virtio-blk notify idx=441 used=441
+[RSE] virtio-blk notify idx=442 used=442
+[RSE] virtio-blk notify idx=443 used=443
+[RSE] virtio-blk notify idx=444 used=444
+[RSE] virtio-blk notify idx=445 used=445
+[RSE] virtio-blk notify idx=446 used=446
+[RSE] virtio-blk notify idx=447 used=447
+[RSE] virtio-blk notify idx=448 used=448
+[RSE] virtio-blk notify idx=449 used=449
+[RSE] virtio-blk notify idx=450 used=450
+[RSE] virtio-blk notify idx=451 used=451
+[RSE] virtio-blk notify idx=452 used=452
+[RSE] virtio-blk notify idx=453 used=453
+[RSE] virtio-blk notify idx=454 used=454
+[RSE] virtio-blk notify idx=455 used=455
+[RSE] virtio-blk notify idx=456 used=456
+[RSE] virtio-blk notify idx=457 used=457
+[RSE] virtio-blk notify idx=458 used=458
+[RSE] virtio-blk notify idx=459 used=459
+[RSE] virtio-blk notify idx=460 used=460
+[RSE] virtio-blk notify idx=461 used=461
+[RSE] virtio-blk notify idx=462 used=462
+[RSE] virtio-blk notify idx=463 used=463
+[RSE] virtio-blk notify idx=464 used=464
+[RSE] virtio-blk notify idx=465 used=465
+[RSE] virtio-blk notify idx=466 used=466
+[RSE] virtio-blk notify idx=467 used=467
+[RSE] virtio-blk notify idx=468 used=468
+[RSE] virtio-blk notify idx=469 used=469
+[RSE] virtio-blk notify idx=470 used=470
+[RSE] virtio-blk notify idx=471 used=471
+[RSE] virtio-blk notify idx=472 used=472
+[RSE] virtio-blk notify idx=473 used=473
+[RSE] virtio-blk notify idx=474 used=474
+[RSE] virtio-blk notify idx=475 used=475
+[RSE] virtio-blk notify idx=476 used=476
+[RSE] virtio-blk notify idx=477 used=477
+[RSE] virtio-blk notify idx=478 used=478
+[RSE] virtio-blk notify idx=479 used=479
+[RSE] virtio-blk notify idx=480 used=480
+[RSE] virtio-blk notify idx=481 used=481
+[RSE] virtio-blk notify idx=482 used=482
+[RSE] virtio-blk notify idx=483 used=483
+[RSE] virtio-blk notify idx=484 used=484
+[RSE] virtio-blk notify idx=485 used=485
+[RSE] virtio-blk notify idx=486 used=486
+[RSE] virtio-blk notify idx=487 used=487
+[RSE] virtio-blk notify idx=488 used=488
+[RSE] virtio-blk notify idx=489 used=489
+[RSE] virtio-blk notify idx=490 used=490
+[RSE] virtio-blk notify idx=491 used=491
+[RSE] virtio-blk notify idx=492 used=492
+[RSE] virtio-blk notify idx=493 used=493
+[RSE] virtio-blk notify idx=494 used=494
+[RSE] virtio-blk notify idx=495 used=495
+[RSE] virtio-blk notify idx=496 used=496
+[RSE] virtio-blk notify idx=497 used=497
+[RSE] virtio-blk notify idx=498 used=498
+[RSE] virtio-blk notify idx=499 used=499
+[RSE] virtio-blk notify idx=500 used=500
+[RSE] virtio-blk notify idx=501 used=501
+[RSE] virtio-blk notify idx=502 used=502
+[RSE] virtio-blk notify idx=503 used=503
+[RSE] virtio-blk notify idx=504 used=504
+[RSE] virtio-blk notify idx=505 used=505
+[RSE] virtio-blk notify idx=506 used=506
+[RSE] virtio-blk notify idx=507 used=507
+[RSE] virtio-blk notify idx=508 used=508
+[RSE] virtio-blk notify idx=509 used=509
+[RSE] virtio-blk notify idx=510 used=510
+[RSE] virtio-blk notify idx=511 used=511
+[RSE] virtio-blk notify idx=512 used=512
+[RSE] virtio-blk notify idx=513 used=513
+[RSE] virtio-blk notify idx=514 used=514
+[RSE] virtio-blk notify idx=515 used=515
+[RSE] virtio-blk notify idx=516 used=516
+[RSE] virtio-blk notify idx=517 used=517
+[RSE] virtio-blk notify idx=518 used=518
+[RSE] virtio-blk notify idx=519 used=519
+[RSE] virtio-blk notify idx=520 used=520
+[RSE] virtio-blk notify idx=521 used=521
+[RSE] virtio-blk notify idx=522 used=522
+[RSE] virtio-blk notify idx=523 used=523
+[RSE] virtio-blk notify idx=524 used=524
+[RSE] virtio-blk notify idx=525 used=525
+[RSE] virtio-blk notify idx=526 used=526
+[RSE] virtio-blk notify idx=527 used=527
+[RSE] virtio-blk notify idx=528 used=528
+[RSE] virtio-blk notify idx=529 used=529
+[RSE] virtio-blk notify idx=530 used=530
+[RSE] virtio-blk notify idx=531 used=531
+[RSE] virtio-blk notify idx=532 used=532
+[RSE] virtio-blk notify idx=533 used=533
+[RSE] virtio-blk notify idx=534 used=534
+[RSE] virtio-blk notify idx=535 used=535
+[RSE] virtio-blk notify idx=536 used=536
+[RSE] virtio-blk notify idx=537 used=537
+[RSE] virtio-blk notify idx=538 used=538
+[RSE] virtio-blk notify idx=539 used=539
+[RSE] virtio-blk notify idx=540 used=540
+[RSE] virtio-blk notify idx=541 used=541
+[RSE] virtio-blk notify idx=542 used=542
+[RSE] virtio-blk notify idx=543 used=543
+[RSE] virtio-blk notify idx=544 used=544
+[RSE] virtio-blk notify idx=545 used=545
+[RSE] virtio-blk notify idx=546 used=546
+[RSE] virtio-blk notify idx=547 used=547
+[RSE] virtio-blk notify idx=548 used=548
+[RSE] virtio-blk notify idx=549 used=549
+[RSE] virtio-blk notify idx=550 used=550
+[RSE] virtio-blk notify idx=551 used=551
+[RSE] virtio-blk notify idx=552 used=552
+[RSE] virtio-blk notify idx=553 used=553
+[RSE] virtio-blk notify idx=554 used=554
+[RSE] virtio-blk notify idx=555 used=555
+[RSE] virtio-blk notify idx=556 used=556
+[RSE] virtio-blk notify idx=557 used=557
+[RSE] virtio-blk notify idx=558 used=558
+[RSE] virtio-blk notify idx=559 used=559
+[RSE] virtio-blk notify idx=560 used=560
+[RSE] virtio-blk notify idx=561 used=561
+[RSE] virtio-blk notify idx=562 used=562
+[RSE] virtio-blk notify idx=563 used=563
+[RSE] virtio-blk notify idx=564 used=564
+[RSE] virtio-blk notify idx=565 used=565
+[RSE] virtio-blk notify idx=566 used=566
+[RSE] virtio-blk notify idx=567 used=567
+[RSE] virtio-blk notify idx=568 used=568
+[RSE] virtio-blk notify idx=569 used=569
+[RSE] virtio-blk notify idx=570 used=570
+[RSE] virtio-blk notify idx=571 used=571
+[RSE] virtio-blk notify idx=572 used=572
+[RSE] virtio-blk notify idx=573 used=573
+[RSE] virtio-blk notify idx=574 used=574
+[RSE] virtio-blk notify idx=575 used=575
+[RSE] virtio-blk notify idx=576 used=576
+[RSE] virtio-blk notify idx=577 used=577
+[RSE] virtio-blk notify idx=578 used=578
+[RSE] virtio-blk notify idx=579 used=579
+[RSE] virtio-blk notify idx=580 used=580
+[RSE] virtio-blk notify idx=581 used=581
+[RSE] virtio-blk notify idx=582 used=582
+[RSE] virtio-blk notify idx=583 used=583
+[RSE] virtio-blk notify idx=584 used=584
+[RSE] virtio-blk notify idx=585 used=585
+[RSE] virtio-blk notify idx=586 used=586
+[RSE] virtio-blk notify idx=587 used=587
+[RSE] virtio-blk notify idx=588 used=588
+[RSE] virtio-blk notify idx=589 used=589
+[RSE] virtio-blk notify idx=590 used=590
+[RSE] virtio-blk notify idx=591 used=591
+[RSE] virtio-blk notify idx=592 used=592
+[RSE] virtio-blk notify idx=593 used=593
+[RSE] virtio-blk notify idx=594 used=594
+[RSE] virtio-blk notify idx=595 used=595
+[RSE] virtio-blk notify idx=596 used=596
+[RSE] virtio-blk notify idx=597 used=597
+[RSE] virtio-blk notify idx=598 used=598
+[RSE] virtio-blk notify idx=599 used=599
+[RSE] virtio-blk notify idx=600 used=600
+[RSE] virtio-blk notify idx=601 used=601
+[RSE] virtio-blk notify idx=602 used=602
+[RSE] virtio-blk notify idx=603 used=603
+[RSE] virtio-blk notify idx=604 used=604
+[RSE] virtio-blk notify idx=605 used=605
+[RSE] virtio-blk notify idx=606 used=606
+[RSE] virtio-blk notify idx=607 used=607
+[RSE] virtio-blk notify idx=608 used=608
+[RSE] virtio-blk notify idx=609 used=609
+[RSE] virtio-blk notify idx=610 used=610
+[RSE] virtio-blk notify idx=611 used=611
+[RSE] virtio-blk notify idx=612 used=612
+[RSE] virtio-blk notify idx=613 used=613
+[RSE] virtio-blk notify idx=614 used=614
+[RSE] virtio-blk notify idx=615 used=615
+[RSE] virtio-blk notify idx=616 used=616
+[RSE] virtio-blk notify idx=617 used=617
+[RSE] virtio-blk notify idx=618 used=618
+[RSE] virtio-blk notify idx=619 used=619
+[RSE] virtio-blk notify idx=620 used=620
+[RSE] virtio-blk notify idx=621 used=621
+[RSE] virtio-blk notify idx=622 used=622
+[RSE] virtio-blk notify idx=623 used=623
+[RSE] virtio-blk notify idx=624 used=624
+[RSE] virtio-blk notify idx=625 used=625
+[RSE] virtio-blk notify idx=626 used=626
+[RSE] virtio-blk notify idx=627 used=627
+[RSE] virtio-blk notify idx=628 used=628
+[RSE] virtio-blk notify idx=629 used=629
+[RSE] virtio-blk notify idx=630 used=630
+[RSE] virtio-blk notify idx=631 used=631
+[RSE] virtio-blk notify idx=632 used=632
+[RSE] virtio-blk notify idx=633 used=633
+[RSE] virtio-blk notify idx=634 used=634
+[RSE] virtio-blk notify idx=635 used=635
+[RSE] virtio-blk notify idx=636 used=636
+[RSE] virtio-blk notify idx=637 used=637
+[RSE] virtio-blk notify idx=638 used=638
+[RSE] virtio-blk notify idx=639 used=639
+[RSE] virtio-blk notify idx=640 used=640
+[RSE] virtio-blk notify idx=641 used=641
+[RSE] virtio-blk notify idx=642 used=642
+[RSE] virtio-blk notify idx=643 used=643
+[RSE] virtio-blk notify idx=644 used=644
+[RSE] virtio-blk notify idx=645 used=645
+[RSE] virtio-blk notify idx=646 used=646
+[RSE] virtio-blk notify idx=647 used=647
+[RSE] virtio-blk notify idx=648 used=648
+[RSE] virtio-blk notify idx=649 used=649
+[RSE] virtio-blk notify idx=650 used=650
+[init] memfs ops=640 bytes=524288 cycles=14089015737
 [init] block device test
-[init] /dev/blk0 size=512 ops=256 bytes=131072 mismatches=0 cycles=613288317
+[RSE] virtio-blk notify idx=651 used=651
+[RSE] virtio-blk notify idx=652 used=652
+[RSE] virtio-blk notify idx=653 used=653
+[RSE] virtio-blk notify idx=654 used=654
+[RSE] virtio-blk notify idx=655 used=655
+[RSE] virtio-blk notify idx=656 used=656
+[RSE] virtio-blk notify idx=657 used=657
+[RSE] virtio-blk notify idx=658 used=658
+[RSE] virtio-blk notify idx=659 used=659
+[RSE] virtio-blk notify idx=660 used=660
+[RSE] virtio-blk notify idx=661 used=661
+[RSE] virtio-blk notify idx=662 used=662
+[RSE] virtio-blk notify idx=663 used=663
+[RSE] virtio-blk notify idx=664 used=664
+[RSE] virtio-blk notify idx=665 used=665
+[RSE] virtio-blk notify idx=666 used=666
+[RSE] virtio-blk notify idx=667 used=667
+[RSE] virtio-blk notify idx=668 used=668
+[RSE] virtio-blk notify idx=669 used=669
+[RSE] virtio-blk notify idx=670 used=670
+[RSE] virtio-blk notify idx=671 used=671
+[RSE] virtio-blk notify idx=672 used=672
+[RSE] virtio-blk notify idx=673 used=673
+[RSE] virtio-blk notify idx=674 used=674
+[RSE] virtio-blk notify idx=675 used=675
+[RSE] virtio-blk notify idx=676 used=676
+[RSE] virtio-blk notify idx=677 used=677
+[RSE] virtio-blk notify idx=678 used=678
+[RSE] virtio-blk notify idx=679 used=679
+[RSE] virtio-blk notify idx=680 used=680
+[RSE] virtio-blk notify idx=681 used=681
+[RSE] virtio-blk notify idx=682 used=682
+[RSE] virtio-blk notify idx=683 used=683
+[RSE] virtio-blk notify idx=684 used=684
+[RSE] virtio-blk notify idx=685 used=685
+[RSE] virtio-blk notify idx=686 used=686
+[RSE] virtio-blk notify idx=687 used=687
+[RSE] virtio-blk notify idx=688 used=688
+[RSE] virtio-blk notify idx=689 used=689
+[RSE] virtio-blk notify idx=690 used=690
+[RSE] virtio-blk notify idx=691 used=691
+[RSE] virtio-blk notify idx=692 used=692
+[RSE] virtio-blk notify idx=693 used=693
+[RSE] virtio-blk notify idx=694 used=694
+[RSE] virtio-blk notify idx=695 used=695
+[RSE] virtio-blk notify idx=696 used=696
+[RSE] virtio-blk notify idx=697 used=697
+[RSE] virtio-blk notify idx=698 used=698
+[RSE] virtio-blk notify idx=699 used=699
+[RSE] virtio-blk notify idx=700 used=700
+[RSE] virtio-blk notify idx=701 used=701
+[RSE] virtio-blk notify idx=702 used=702
+[RSE] virtio-blk notify idx=703 used=703
+[RSE] virtio-blk notify idx=704 used=704
+[RSE] virtio-blk notify idx=705 used=705
+[RSE] virtio-blk notify idx=706 used=706
+[RSE] virtio-blk notify idx=707 used=707
+[RSE] virtio-blk notify idx=708 used=708
+[RSE] virtio-blk notify idx=709 used=709
+[RSE] virtio-blk notify idx=710 used=710
+[RSE] virtio-blk notify idx=711 used=711
+[RSE] virtio-blk notify idx=712 used=712
+[RSE] virtio-blk notify idx=713 used=713
+[RSE] virtio-blk notify idx=714 used=714
+[RSE] virtio-blk notify idx=715 used=715
+[RSE] virtio-blk notify idx=716 used=716
+[RSE] virtio-blk notify idx=717 used=717
+[RSE] virtio-blk notify idx=718 used=718
+[RSE] virtio-blk notify idx=719 used=719
+[RSE] virtio-blk notify idx=720 used=720
+[RSE] virtio-blk notify idx=721 used=721
+[RSE] virtio-blk notify idx=722 used=722
+[RSE] virtio-blk notify idx=723 used=723
+[RSE] virtio-blk notify idx=724 used=724
+[RSE] virtio-blk notify idx=725 used=725
+[RSE] virtio-blk notify idx=726 used=726
+[RSE] virtio-blk notify idx=727 used=727
+[RSE] virtio-blk notify idx=728 used=728
+[RSE] virtio-blk notify idx=729 used=729
+[RSE] virtio-blk notify idx=730 used=730
+[RSE] virtio-blk notify idx=731 used=731
+[RSE] virtio-blk notify idx=732 used=732
+[RSE] virtio-blk notify idx=733 used=733
+[RSE] virtio-blk notify idx=734 used=734
+[RSE] virtio-blk notify idx=735 used=735
+[RSE] virtio-blk notify idx=736 used=736
+[RSE] virtio-blk notify idx=737 used=737
+[RSE] virtio-blk notify idx=738 used=738
+[RSE] virtio-blk notify idx=739 used=739
+[RSE] virtio-blk notify idx=740 used=740
+[RSE] virtio-blk notify idx=741 used=741
+[RSE] virtio-blk notify idx=742 used=742
+[RSE] virtio-blk notify idx=743 used=743
+[RSE] virtio-blk notify idx=744 used=744
+[RSE] virtio-blk notify idx=745 used=745
+[RSE] virtio-blk notify idx=746 used=746
+[RSE] virtio-blk notify idx=747 used=747
+[RSE] virtio-blk notify idx=748 used=748
+[RSE] virtio-blk notify idx=749 used=749
+[RSE] virtio-blk notify idx=750 used=750
+[RSE] virtio-blk notify idx=751 used=751
+[RSE] virtio-blk notify idx=752 used=752
+[RSE] virtio-blk notify idx=753 used=753
+[RSE] virtio-blk notify idx=754 used=754
+[RSE] virtio-blk notify idx=755 used=755
+[RSE] virtio-blk notify idx=756 used=756
+[RSE] virtio-blk notify idx=757 used=757
+[RSE] virtio-blk notify idx=758 used=758
+[RSE] virtio-blk notify idx=759 used=759
+[RSE] virtio-blk notify idx=760 used=760
+[RSE] virtio-blk notify idx=761 used=761
+[RSE] virtio-blk notify idx=762 used=762
+[RSE] virtio-blk notify idx=763 used=763
+[RSE] virtio-blk notify idx=764 used=764
+[RSE] virtio-blk notify idx=765 used=765
+[RSE] virtio-blk notify idx=766 used=766
+[RSE] virtio-blk notify idx=767 used=767
+[RSE] virtio-blk notify idx=768 used=768
+[RSE] virtio-blk notify idx=769 used=769
+[RSE] virtio-blk notify idx=770 used=770
+[RSE] virtio-blk notify idx=771 used=771
+[RSE] virtio-blk notify idx=772 used=772
+[RSE] virtio-blk notify idx=773 used=773
+[RSE] virtio-blk notify idx=774 used=774
+[RSE] virtio-blk notify idx=775 used=775
+[RSE] virtio-blk notify idx=776 used=776
+[RSE] virtio-blk notify idx=777 used=777
+[RSE] virtio-blk notify idx=778 used=778
+[RSE] virtio-blk notify idx=779 used=779
+[RSE] virtio-blk notify idx=780 used=780
+[RSE] virtio-blk notify idx=781 used=781
+[RSE] virtio-blk notify idx=782 used=782
+[RSE] virtio-blk notify idx=783 used=783
+[RSE] virtio-blk notify idx=784 used=784
+[RSE] virtio-blk notify idx=785 used=785
+[RSE] virtio-blk notify idx=786 used=786
+[RSE] virtio-blk notify idx=787 used=787
+[RSE] virtio-blk notify idx=788 used=788
+[RSE] virtio-blk notify idx=789 used=789
+[RSE] virtio-blk notify idx=790 used=790
+[RSE] virtio-blk notify idx=791 used=791
+[RSE] virtio-blk notify idx=792 used=792
+[RSE] virtio-blk notify idx=793 used=793
+[RSE] virtio-blk notify idx=794 used=794
+[RSE] virtio-blk notify idx=795 used=795
+[RSE] virtio-blk notify idx=796 used=796
+[RSE] virtio-blk notify idx=797 used=797
+[RSE] virtio-blk notify idx=798 used=798
+[RSE] virtio-blk notify idx=799 used=799
+[RSE] virtio-blk notify idx=800 used=800
+[RSE] virtio-blk notify idx=801 used=801
+[RSE] virtio-blk notify idx=802 used=802
+[RSE] virtio-blk notify idx=803 used=803
+[RSE] virtio-blk notify idx=804 used=804
+[RSE] virtio-blk notify idx=805 used=805
+[RSE] virtio-blk notify idx=806 used=806
+[RSE] virtio-blk notify idx=807 used=807
+[RSE] virtio-blk notify idx=808 used=808
+[RSE] virtio-blk notify idx=809 used=809
+[RSE] virtio-blk notify idx=810 used=810
+[RSE] virtio-blk notify idx=811 used=811
+[RSE] virtio-blk notify idx=812 used=812
+[RSE] virtio-blk notify idx=813 used=813
+[RSE] virtio-blk notify idx=814 used=814
+[RSE] virtio-blk notify idx=815 used=815
+[RSE] virtio-blk notify idx=816 used=816
+[RSE] virtio-blk notify idx=817 used=817
+[RSE] virtio-blk notify idx=818 used=818
+[RSE] virtio-blk notify idx=819 used=819
+[RSE] virtio-blk notify idx=820 used=820
+[RSE] virtio-blk notify idx=821 used=821
+[RSE] virtio-blk notify idx=822 used=822
+[RSE] virtio-blk notify idx=823 used=823
+[RSE] virtio-blk notify idx=824 used=824
+[RSE] virtio-blk notify idx=825 used=825
+[RSE] virtio-blk notify idx=826 used=826
+[RSE] virtio-blk notify idx=827 used=827
+[RSE] virtio-blk notify idx=828 used=828
+[RSE] virtio-blk notify idx=829 used=829
+[RSE] virtio-blk notify idx=830 used=830
+[RSE] virtio-blk notify idx=831 used=831
+[RSE] virtio-blk notify idx=832 used=832
+[RSE] virtio-blk notify idx=833 used=833
+[RSE] virtio-blk notify idx=834 used=834
+[RSE] virtio-blk notify idx=835 used=835
+[RSE] virtio-blk notify idx=836 used=836
+[RSE] virtio-blk notify idx=837 used=837
+[RSE] virtio-blk notify idx=838 used=838
+[RSE] virtio-blk notify idx=839 used=839
+[RSE] virtio-blk notify idx=840 used=840
+[RSE] virtio-blk notify idx=841 used=841
+[RSE] virtio-blk notify idx=842 used=842
+[RSE] virtio-blk notify idx=843 used=843
+[RSE] virtio-blk notify idx=844 used=844
+[RSE] virtio-blk notify idx=845 used=845
+[RSE] virtio-blk notify idx=846 used=846
+[RSE] virtio-blk notify idx=847 used=847
+[RSE] virtio-blk notify idx=848 used=848
+[RSE] virtio-blk notify idx=849 used=849
+[RSE] virtio-blk notify idx=850 used=850
+[RSE] virtio-blk notify idx=851 used=851
+[RSE] virtio-blk notify idx=852 used=852
+[RSE] virtio-blk notify idx=853 used=853
+[RSE] virtio-blk notify idx=854 used=854
+[RSE] virtio-blk notify idx=855 used=855
+[RSE] virtio-blk notify idx=856 used=856
+[RSE] virtio-blk notify idx=857 used=857
+[RSE] virtio-blk notify idx=858 used=858
+[RSE] virtio-blk notify idx=859 used=859
+[RSE] virtio-blk notify idx=860 used=860
+[RSE] virtio-blk notify idx=861 used=861
+[RSE] virtio-blk notify idx=862 used=862
+[RSE] virtio-blk notify idx=863 used=863
+[RSE] virtio-blk notify idx=864 used=864
+[RSE] virtio-blk notify idx=865 used=865
+[RSE] virtio-blk notify idx=866 used=866
+[RSE] virtio-blk notify idx=867 used=867
+[RSE] virtio-blk notify idx=868 used=868
+[RSE] virtio-blk notify idx=869 used=869
+[RSE] virtio-blk notify idx=870 used=870
+[RSE] virtio-blk notify idx=871 used=871
+[RSE] virtio-blk notify idx=872 used=872
+[RSE] virtio-blk notify idx=873 used=873
+[RSE] virtio-blk notify idx=874 used=874
+[RSE] virtio-blk notify idx=875 used=875
+[RSE] virtio-blk notify idx=876 used=876
+[RSE] virtio-blk notify idx=877 used=877
+[RSE] virtio-blk notify idx=878 used=878
+[RSE] virtio-blk notify idx=879 used=879
+[RSE] virtio-blk notify idx=880 used=880
+[RSE] virtio-blk notify idx=881 used=881
+[RSE] virtio-blk notify idx=882 used=882
+[RSE] virtio-blk notify idx=883 used=883
+[RSE] virtio-blk notify idx=884 used=884
+[RSE] virtio-blk notify idx=885 used=885
+[RSE] virtio-blk notify idx=886 used=886
+[RSE] virtio-blk notify idx=887 used=887
+[RSE] virtio-blk notify idx=888 used=888
+[RSE] virtio-blk notify idx=889 used=889
+[RSE] virtio-blk notify idx=890 used=890
+[RSE] virtio-blk notify idx=891 used=891
+[RSE] virtio-blk notify idx=892 used=892
+[RSE] virtio-blk notify idx=893 used=893
+[RSE] virtio-blk notify idx=894 used=894
+[RSE] virtio-blk notify idx=895 used=895
+[RSE] virtio-blk notify idx=896 used=896
+[RSE] virtio-blk notify idx=897 used=897
+[RSE] virtio-blk notify idx=898 used=898
+[RSE] virtio-blk notify idx=899 used=899
+[RSE] virtio-blk notify idx=900 used=900
+[RSE] virtio-blk notify idx=901 used=901
+[RSE] virtio-blk notify idx=902 used=902
+[RSE] virtio-blk notify idx=903 used=903
+[RSE] virtio-blk notify idx=904 used=904
+[RSE] virtio-blk notify idx=905 used=905
+[RSE] virtio-blk notify idx=906 used=906
+[init] /dev/blk0 size=512 ops=256 bytes=131072 mismatches=0 cycles=2184733474
 [init] loopback test
 [init] loopback wrote=13 read=13
 rse> help
-help: echo, cat, ls, probe, ps
+help: echo, cat, ls, stat, probe, ps
 rse> ps
-ps: torus=0 pid=1
+pid=1 torus=0 state=RUNNING runtime=1
+pid=2 torus=0 state=READY runtime=0
+pid=3 torus=0 state=READY runtime=0
+pid=4 torus=0 state=READY runtime=0
+pid=5 torus=0 state=READY runtime=0
+pid=6 torus=0 state=READY runtime=0
+pid=1 torus=1 state=READY runtime=0
+pid=1 torus=2 state=READY runtime=0
 rse> echo shell-online
 shell-online
+[RSE] virtio-blk notify idx=907 used=907
+[RSE] virtio-blk notify idx=908 used=908
+[RSE] virtio-blk notify idx=909 used=909
+[RSE] virtio-blk notify idx=910 used=910
+[RSE] virtio-blk notify idx=911 used=911
 rse> cat /persist/hello.txt
-hello from RSE shell
+Z[XY^_\]RSPQVWTUJKHI
+rse> stat /persist/hello.txt
+stat /persist/hello.txt size=20 type=file
 rse> ls /
-ls: empty
+dev/
+persist/
+/ring3.elf
 
 rse> ls /persist
 user.txt
 hello.txt
 
+rse> stat /dev/blk0
+stat /dev/blk0 size=0 type=device
 rse> probe devices
 probe /dev/blk0 ok
 probe /dev/net0 ok
@@ -136,25 +1066,25 @@ probe /dev/loopback ok
 [user] net start pid=1 torus=1
 [init] start
 [init] torus=1
-[init] compute ops=6000000 cycles=112683920 checksum=8086429594797147306
-[init] memstress bytes=16777216 cycles=267333029 checksum=2139095040
-[init] pipe stage1 in=8064 out=8064 cycles=6975712 checksum=1544256
+[init] compute ops=6000000 cycles=183538909 checksum=8086429594797147306
+[init] memstress bytes=16777216 cycles=499005912 checksum=2139095040
+[init] pipe stage1 in=8064 out=8064 cycles=1512304 checksum=1544256
 [RSE] torus init 2
 [user] compute start pid=1 torus=2
-[user] compute cycles=410567 checksum=9537272341150758256
+[user] compute cycles=391350 checksum=9537272341150758256
 [init] start
 [init] torus=2
-[init] compute ops=2000000 cycles=33422201 checksum=9791868472914447520
-[init] pipe stage2a in=8064 out=8064 cycles=1103316 checksum=516109
-[init] pipe stage2b in=16128 wrote=16128 cycles=18511637 checksum=2060365
+[init] compute ops=2000000 cycles=39264599 checksum=9791868472914447520
+[init] pipe stage2a in=8064 out=8064 cycles=1062655 checksum=516109
+[init] pipe stage2b in=16128 wrote=3840 cycles=25446343 checksum=2060365
 [init] net0 test
-[init] net0 wrote=16384 read=16384 cycles=16117336
+[init] net0 wrote=0 read=16384 cycles=9817223
 [RSE] userspace run start
 [RSE] userspace run done
 [RSE] braid scheduler start
-[RSE] torus load a=5 b=1 c=0
+[RSE] torus load a=6 b=1 c=0
 [user] net rx timeout
-[RSE] torus load a=5 b=1 c=0
+[RSE] torus load a=6 b=1 c=0
 [RSE] os braid cycles=1
 [RSE] braid scheduler done
 [RSE] shm projection online
@@ -163,27 +1093,27 @@ probe /dev/loopback ok
 [RSE] shm projection recv torus=0 seq=1
 [RSE] shm projection recv torus=2 seq=1
 [RSE] compute benchmark start
-[RSE] compute ops=400000 cycles=23902753 cycles/op=59 checksum=4180332335208930419
+[RSE] compute ops=400000 cycles=25357649 cycles/op=63 checksum=4180332335208930419
 [RSE] memory benchmark start
-[RSE] memory bytes=67108864 cycles=1942839404 cycles/byte=28
+[RSE] memory bytes=67108864 cycles=3089310519 cycles/byte=46
 [RSE] ramfs benchmark start
-[RSE] ramfs ops=288 cycles=10480649 cycles/op=36391 checksum=12533760 files=0
+[RSE] ramfs ops=288 cycles=18764322 cycles/op=65153 checksum=12533760 files=0
+[RSE] fastio benchmark start
+[RSE] fastio bytes=2097152 cycles=121458249 cycles/byte=57
 [RSE] UEFI FS benchmark start
-[RSE] UEFI FS ops=144 cycles=1652153765 cycles/op=11473290 checksum=12533760
+[RSE] UEFI FS ops=144 cycles=2128665313 cycles/op=14782398 checksum=12533760
 [RSE] UEFI block benchmark start
-[RSE] UEFI block bytes=524288 write cycles=8803740 write cycles/byte=16 read cycles=12183563 read cycles/byte=23 checksum=66846720
+[RSE] UEFI block bytes=524288 write cycles=105006146 write cycles/byte=200 read cycles=15707774 read cycles/byte=29 checksum=66846720
 [RSE] virtio-blk capacity=131072
 [RSE] virtio-blk modern online
 [RSE] virtio-blk benchmark start
-[RSE] virtio desc req=509022208 data=268554240 status=509022336
+[RSE] virtio desc req=495714304 data=268578880 status=495714432
 [RSE] virtio-blk notify idx=0 used=0
 [RSE] virtio-blk notify idx=1 used=1
-[RSE] virtio-blk bytes=512 write cycles=531177483 write cycles/byte=1037456 read cycles=2175070 read cycles/byte=4248 checksum=65280
+[RSE] virtio-blk bytes=512 write cycles=9656796 write cycles/byte=18860 read cycles=14821640 read cycles/byte=28948 checksum=65280
 [RSE] udp/http server benchmark start
-[RSE] udp/http server rx=0 udp=0 http=0 cycles=487287736
+[RSE] udp/http server rx=0 udp=0 http=0 cycles=746916983
 [RSE] http loopback benchmark start
-[RSE] http requests=50000 cycles=60343563 cycles/req=1206 checksum=218650000
+[RSE] http requests=50000 cycles=68850154 cycles/req=1377 checksum=218650000
 [RSE] benchmarks end
-[RSE] UEFI pointer online
-[RSE] UEFI keyboard online
-qemu-system-x86_64: terminating on signal 15 from pid 316749 (timeout)
+[RSE] auto shutdown

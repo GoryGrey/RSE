@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-**The Bible - Last Updated: December 26, 2025 (sys_list hardening + sys_stat + pipe/dup + UEFI run-iso)**
+**The Bible - Last Updated: December 26, 2025 (aligned test memory + UEFI input init + benchmarks avg x3)**
 
 ---
 
@@ -46,7 +46,7 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **UI Input (Keyboard/Mouse)** | ✅ Working | Interactive | Dashboard selection + actions |
 | **Projection Exchange (IVSHMEM)** | ⚠️ Lab-only | 3-torus Multi-VM | Shared-memory transport |
 
-**Test Coverage**: Full system test + UEFI bench + fastio bench + ring3 smoke/exec (UEFI run-iso; exec passes) + Linux baseline + IVSHMEM exchange + sys_wait + sys_ps + sys_stat tests; external UDP/HTTP proof captured in `build/boot/proof.log`.
+**Test Coverage**: Full system test + UEFI bench + fastio bench + ring3 smoke/exec (UEFI run-iso; exec passes) + Linux baseline + IVSHMEM exchange + sys_wait + sys_ps + sys_stat + sys_pipe + sys_dup tests; external UDP/HTTP proof captured in `build/boot/proof.log`.
 
 ### **What's Left** 🚧
 
@@ -134,28 +134,28 @@ RSE/
 
 ### **UEFI Kernel Benchmarks (QEMU, serial output)**
 
-Cycle-counted benchmarks captured in headless QEMU (TSC cycles):
+Cycle-counted benchmarks averaged across 3 headless QEMU runs (TSC cycles):
 
-- **Compute**: 400,000 ops, 38,172,001 cycles (95 cycles/op)
-- **Memory**: 67,108,864 bytes, 1,999,205,557 cycles (29 cycles/byte)
-- **RAMFS File I/O**: 288 ops, 9,246,287 cycles (32,105 cycles/op)
-- **Fast-Path I/O (`/dev/fast0`)**: 2,097,152 bytes, 57,168,866 cycles (27 cycles/byte)
-- **UEFI FAT File I/O (USB disk)**: 144 ops, 929,137,402 cycles (6,452,343 cycles/op)
-- **UEFI Raw Block I/O (USB disk)**: 524288 bytes, write 21,601,816 cycles (41 cycles/byte), read 20,694,473 cycles (39 cycles/byte)
-- **Virtio-Block I/O (disk)**: 512 bytes, write 9,407,301 cycles (18,373 cycles/byte), read 4,126,993 cycles (8,060 cycles/byte)
-- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,048,374 cycles
-- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 20,953,175 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
-- **HTTP Loopback**: 50000 requests, 60,164,835 cycles (1,203 cycles/req)
-- **Init Device Smoke Tests**: /dev/blk0 (512B, 256 ops, 131072 bytes, 0 mismatches, 369,461,010 cycles), /dev/loopback (13B echo, 13B read), /dev/net0 (16,384B tx, 16,384B rx, 11,881,736 cycles)
+- **Compute**: 400,000 ops, 27,630,748 cycles (69 cycles/op)
+- **Memory**: 67,108,864 bytes, 2,301,450,865 cycles (34 cycles/byte)
+- **RAMFS File I/O**: 288 ops, 9,904,718 cycles (34,391 cycles/op)
+- **Fast-Path I/O (`/dev/fast0`)**: 2,097,152 bytes, 72,452,785 cycles (34 cycles/byte)
+- **UEFI FAT File I/O (USB disk)**: 144 ops, 2,119,454,926 cycles (14,718,437 cycles/op)
+- **UEFI Raw Block I/O (USB disk)**: 524,288 bytes, write 40,468,877 cycles (77 cycles/byte), read 39,997,075 cycles (76 cycles/byte)
+- **Virtio-Block I/O (disk)**: 512 bytes, write 11,673,098 cycles (22,798 cycles/byte), read 2,962,657 cycles (5,786 cycles/byte)
+- **Net ARP Probe (virtio-net RX)**: 64 bytes, 4,071,957 cycles
+- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 45,667,664 cycles
+- **HTTP Loopback**: 50,000 requests, 100,639,261 cycles (2,012 cycles/req)
+- **Init Device Smoke Tests**: /dev/blk0 (512B, 256 ops, 131,072 bytes, 0 mismatches, 1,913,877,922 cycles), /dev/loopback (13B echo, 13B read), /dev/net0 (16,384B tx, 16,384B rx, 37,313,274 cycles)
 
 Notes:
 - RAMFS is in-kernel (real ops, in-memory).
 - UEFI FAT I/O uses firmware Block I/O + Simple FS on a USB disk image.
 - UEFI Raw Block I/O uses firmware Block I/O on a raw USB disk image.
 - HTTP benchmark is loopback-only (no full IP stack yet). `/dev/net0` uses a minimal UDP echo path with virtio-net when present (UEFI SNP fallback).
-- Raw UDP/HTTP server uses actual RX path; proof run received 393 packets (197 UDP + 196 HTTP).
+- Raw UDP/HTTP server uses actual RX path; proof runs are logged when an external sender is attached.
 - virtio-net RX is online (ARP probe receives 64-byte reply).
-- Proof log saved at `build/boot/proof.log`.
+- Proof log saved at `build/boot/proof.log` when captured.
 - Raw frame mode is available via `RSE_NET_RAW=1` for debugging.
 
 ### **Linux Baseline (Host, Ubuntu 24.04.3 LTS)**
@@ -240,7 +240,7 @@ current implementation status. Use the tables above for reality.
 
 ### **Legacy Phase 6.1: System Calls**
 - **Status**: ✅ Core Complete
-- **Tests**: 5/7 passing (exec/vfs + sys_wait + sys_ps + sys_stat)
+- **Tests**: 6/7 passing (exec/vfs + sys_wait + sys_ps + sys_stat + sys_pipe + sys_dup)
 - **Key Features**:
   - 43 syscalls defined (POSIX-compatible)
   - 15 syscalls implemented (wait reaping + ps snapshot + stat + pipe/dup)
@@ -499,6 +499,6 @@ This OS is not built on traditional hierarchies. It's built on:
 
 **Status**: 45% Complete (Prototype) | **Next Milestone**: User-mode isolation + ELF loader
 
-**Last Updated**: December 26, 2025 (sys_list hardening + sys_stat + pipe/dup + UEFI run-iso)
+**Last Updated**: December 26, 2025 (aligned test memory + UEFI input init + benchmarks avg x3)
 
 **"Stay degen. Stay future. 🚀"**

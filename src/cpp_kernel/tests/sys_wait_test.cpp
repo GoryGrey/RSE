@@ -14,7 +14,7 @@ TorusContext* current_torus_context = nullptr;
 int main() {
     std::cout << "[sys_wait Tests]" << std::endl;
 
-    std::array<uint8_t, 1 << 20> phys{};
+    alignas(os::PAGE_SIZE) std::array<uint8_t, 1 << 20> phys{};
     os::PhysicalAllocator phys_alloc(reinterpret_cast<uint64_t>(phys.data()), phys.size());
 
     os::TorusScheduler scheduler(0);

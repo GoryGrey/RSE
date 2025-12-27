@@ -186,6 +186,9 @@ public:
             std::cerr << "[VFS] Invalid FD: " << fd << std::endl;
             return -1;
         }
+        if (!desc->isReadable()) {
+            return -EACCES;
+        }
 
         if (desc->isBlockFile()) {
             if (!blockfs_ || !desc->block_file) {
@@ -315,6 +318,9 @@ public:
         if (!desc) {
             std::cerr << "[VFS] Invalid FD: " << fd << std::endl;
             return -1;
+        }
+        if (!desc->isWritable()) {
+            return -EACCES;
         }
 
         if (desc->isBlockFile()) {

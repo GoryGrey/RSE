@@ -45,7 +45,7 @@ static void writeElfImage(std::array<uint8_t, 2048>& buf, const uint8_t* payload
 int main() {
   std::cout << "[ElfProcess Tests]" << std::endl;
 
-  std::array<uint8_t, 1 << 20> phys{};
+  alignas(os::PAGE_SIZE) std::array<uint8_t, 1 << 20> phys{};
   os::PhysicalAllocator phys_alloc(reinterpret_cast<uint64_t>(phys.data()), phys.size());
 
   os::OSProcess proc(1, 0, 0);

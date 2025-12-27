@@ -234,6 +234,18 @@ inline int64_t stat(const char* path, rse_stat* out) {
     return syscall(SYS_STAT, (uint64_t)path, (uint64_t)out);
 }
 
+inline int64_t pipe(int* fds) {
+    return syscall(SYS_PIPE, (uint64_t)fds);
+}
+
+inline int64_t dup(int fd) {
+    return syscall(SYS_DUP, fd);
+}
+
+inline int64_t dup2(int old_fd, int new_fd) {
+    return syscall(SYS_DUP2, old_fd, new_fd);
+}
+
 /**
  * Memory management wrappers
  */

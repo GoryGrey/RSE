@@ -244,15 +244,15 @@ static uint64_t *g_user_pd_user = g_user_pd_user_storage;
 static uint64_t *g_user_pt_user = g_user_pt_user_storage;
 static uint64_t g_user_cr3;
 static uint64_t g_saved_cr3;
-static uint64_t g_saved_rbx;
-static uint64_t g_saved_rbp;
-static uint64_t g_saved_r12;
-static uint64_t g_saved_r13;
-static uint64_t g_saved_r14;
-static uint64_t g_saved_r15;
+uint64_t g_saved_rbx;
+uint64_t g_saved_rbp;
+uint64_t g_saved_r12;
+uint64_t g_saved_r13;
+uint64_t g_saved_r14;
+uint64_t g_saved_r15;
 static struct idt_entry g_idt[256];
 static struct idt_ptr g_idt_desc;
-static uint64_t g_user_mode_kernel_rsp;
+uint64_t g_user_mode_kernel_rsp;
 static volatile int g_user_mode_exited;
 
 static inline void read_idt(struct idt_ptr* out) {

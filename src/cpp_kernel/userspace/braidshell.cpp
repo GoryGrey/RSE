@@ -5,6 +5,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <sys/utsname.h>
+#include <sys/stat.h>
 
 // ANSI color codes for cyberpunk aesthetic
 #define RESET   "\033[0m"
@@ -93,6 +94,7 @@ void printHelp() {
     std::cout << MAGENTA << "│ " << CYAN << BOLD << "info" << RESET << "      - Show system information\n";
     std::cout << MAGENTA << "│ " << CYAN << BOLD << "torus" << RESET << "     - Display torus status\n";
     std::cout << MAGENTA << "│ " << CYAN << BOLD << "perf" << RESET << "      - Show performance metrics\n";
+    std::cout << MAGENTA << "│ " << CYAN << BOLD << "stat" << RESET << "      - Show file metadata\n";
     std::cout << MAGENTA << "│ " << CYAN << BOLD << "matrix" << RESET << "    - Enter the matrix (animation)\n";
     std::cout << MAGENTA << "│ " << CYAN << BOLD << "help" << RESET << "      - Show this help\n";
     std::cout << MAGENTA << "│ " << CYAN << BOLD << "clear" << RESET << "     - Clear screen\n";
@@ -132,6 +134,31 @@ void printPerformance() {
     std::cout << ORANGE << "│" << RESET << "\n";
     std::cout << ORANGE << "│  " << MAGENTA << BOLD << "vs Traditional OS:" << RESET << " " << GREEN << BOLD << "10-20% FASTER" << RESET << " 🚀\n";
     std::cout << ORANGE << "└───────────────────────────────────────────────────────────────┘" << RESET << "\n\n";
+}
+
+void printStat(const std::string& path) {
+    if (path.empty()) {
+        std::cout << RED << "  ✗ stat requires a path" << RESET << "\n\n";
+        return;
+    }
+    struct stat st {};
+    if (::stat(path.c_str(), &st) != 0) {
+        std::cout << RED << "  ✗ stat failed for: " << RESET << BOLD << path << RESET << "\n\n";
+        return;
+    }
+    const char* type = "unknown";
+    if (S_ISREG(st.st_mode)) {
+        type = "file";
+    } else if (S_ISDIR(st.st_mode)) {
+        type = "dir";
+    } else if (S_ISCHR(st.st_mode)) {
+        type = "char";
+    } else if (S_ISBLK(st.st_mode)) {
+        type = "block";
+    }
+    std::cout << CYAN << "  stat " << RESET << path << "\n";
+    std::cout << CYAN << "    size: " << RESET << st.st_size << "\n";
+    std::cout << CYAN << "    type: " << RESET << type << "\n\n";
 }
 
 void printMatrix() {
@@ -194,6 +221,12 @@ int main() {
         }
         else if (line == "perf" || line == "performance") {
             printPerformance();
+        }
+        else if (line.rfind("stat ", 0) == 0) {
+            std::string path = line.substr(5);
+            path.erase(0, path.find_first_not_of(" \t"));
+            path.erase(path.find_last_not_of(" \t") + 1);
+            printStat(path);
         }
         else if (line == "clear") {
             clearScreen();

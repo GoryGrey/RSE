@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-**The Bible - Last Updated: December 26, 2025 (sys_list hardening + sys_stat + UEFI run-iso)**
+**The Bible - Last Updated: December 26, 2025 (sys_list hardening + sys_stat + pipe/dup + UEFI run-iso)**
 
 ---
 
@@ -31,7 +31,7 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **Parallel Execution** | ⚠️ Prototype | Architecture | 3 worker threads |
 | **Memory Optimization** | ⚠️ Prototype | Design-validated | O(1) bounded at 450MB |
 | **Emergent Scheduler** | ⚠️ Prototype | 4/4 internal | Fairness target met in sim |
-| **System Calls** | ⚠️ Partial | 12 implemented (wait + ps + stat) | 43 defined |
+| **System Calls** | ⚠️ Partial | 15 implemented (wait + ps + stat + pipe/dup) | 43 defined |
 | **Memory Management** | ⚠️ Partial | Basic | Page tables + ring3 map + user heap/stack window + brk/mmap remap |
 | **Virtual File System** | ⚠️ Partial | Basic | MemFS + BlockFS + per-process FD tables |
 | **BlockFS Persistence** | ⚠️ Prototype | Basic | `/persist` fixed-slot store |
@@ -136,17 +136,17 @@ RSE/
 
 Cycle-counted benchmarks captured in headless QEMU (TSC cycles):
 
-- **Compute**: 400,000 ops, 50,245,803 cycles (125 cycles/op)
-- **Memory**: 67,108,864 bytes, 331,868,440 cycles (4 cycles/byte)
-- **RAMFS File I/O**: 288 ops, 43,658,825 cycles (151,593 cycles/op)
-- **Fast-Path I/O (`/dev/fast0`)**: 2,097,152 bytes, 104,021,343 cycles (49 cycles/byte)
-- **UEFI FAT File I/O (USB disk)**: 144 ops, 1,489,241,399 cycles (10,341,954 cycles/op)
-- **UEFI Raw Block I/O (USB disk)**: 524288 bytes, write 7,035,180 cycles (13 cycles/byte), read 17,114,430 cycles (32 cycles/byte)
-- **Virtio-Block I/O (disk)**: 512 bytes, write 9,732,574 cycles (19,008 cycles/byte), read 1,622,214 cycles (3,168 cycles/byte)
-- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,031,828 cycles
-- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 384,600,671 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
-- **HTTP Loopback**: 50000 requests, 65,722,322 cycles (1,314 cycles/req)
-- **Init Device Smoke Tests**: /dev/blk0 (512B, 256 ops, 131072 bytes, 0 mismatches, 349,552,595 cycles), /dev/loopback (13B echo, 13B read), /dev/net0 (16,384B tx, 16,384B rx, 62,650,973 cycles)
+- **Compute**: 400,000 ops, 38,172,001 cycles (95 cycles/op)
+- **Memory**: 67,108,864 bytes, 1,999,205,557 cycles (29 cycles/byte)
+- **RAMFS File I/O**: 288 ops, 9,246,287 cycles (32,105 cycles/op)
+- **Fast-Path I/O (`/dev/fast0`)**: 2,097,152 bytes, 57,168,866 cycles (27 cycles/byte)
+- **UEFI FAT File I/O (USB disk)**: 144 ops, 929,137,402 cycles (6,452,343 cycles/op)
+- **UEFI Raw Block I/O (USB disk)**: 524288 bytes, write 21,601,816 cycles (41 cycles/byte), read 20,694,473 cycles (39 cycles/byte)
+- **Virtio-Block I/O (disk)**: 512 bytes, write 9,407,301 cycles (18,373 cycles/byte), read 4,126,993 cycles (8,060 cycles/byte)
+- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,048,374 cycles
+- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 20,953,175 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
+- **HTTP Loopback**: 50000 requests, 60,164,835 cycles (1,203 cycles/req)
+- **Init Device Smoke Tests**: /dev/blk0 (512B, 256 ops, 131072 bytes, 0 mismatches, 369,461,010 cycles), /dev/loopback (13B echo, 13B read), /dev/net0 (16,384B tx, 16,384B rx, 11,881,736 cycles)
 
 Notes:
 - RAMFS is in-kernel (real ops, in-memory).
@@ -243,7 +243,7 @@ current implementation status. Use the tables above for reality.
 - **Tests**: 5/7 passing (exec/vfs + sys_wait + sys_ps + sys_stat)
 - **Key Features**:
   - 43 syscalls defined (POSIX-compatible)
-  - 12 syscalls implemented (wait reaping + ps snapshot + stat)
+  - 15 syscalls implemented (wait reaping + ps snapshot + stat + pipe/dup)
   - Per-torus dispatch (no global handler)
   - 100× faster than traditional OS
 
@@ -499,6 +499,6 @@ This OS is not built on traditional hierarchies. It's built on:
 
 **Status**: 45% Complete (Prototype) | **Next Milestone**: User-mode isolation + ELF loader
 
-**Last Updated**: December 26, 2025 (sys_list hardening + sys_stat + UEFI run-iso)
+**Last Updated**: December 26, 2025 (sys_list hardening + sys_stat + pipe/dup + UEFI run-iso)
 
 **"Stay degen. Stay future. 🚀"**

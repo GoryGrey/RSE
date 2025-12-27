@@ -1,6 +1,6 @@
 # RSE (Resilient Spatial Execution)
 
-**Last Updated**: December 26, 2025 (sys_wait reaping + cpp_kernel build)  
+**Last Updated**: December 26, 2025 (sys_list hardening + sys_stat + pipe/dup + UEFI run-iso)  
 **Status**: Research prototype. Bootable UEFI kernel with an interactive dashboard (keyboard/mouse) and in-kernel workloads; braided projection exchange works in multi-VM via shared memory. Native fast-path I/O is now in-kernel (`/dev/fast0`), while UEFI/virtio remain compatibility paths; ring3 exec smoke now passes with the user-mode window remap.
 
 **Quick Links**: [Project Status](PROJECT_STATUS.md) | [Documentation](#documentation)
@@ -70,16 +70,16 @@ Key properties:
 
 Cycle-counted benchmarks captured in headless QEMU (see `PROJECT_STATUS.md` for the latest run):
 
-- **Compute**: 400,000 ops, 19,014,806 cycles (47 cycles/op)
-- **Memory**: 67,108,864 bytes, 163,215,156 cycles (2 cycles/byte)
-- **RAMFS File I/O**: 288 ops, 9,515,753 cycles (33040 cycles/op)
-- **Fast-Path I/O (`/dev/fast0`)**: 2,097,152 bytes, 70,453,212 cycles (33 cycles/byte)
-- **UEFI FAT File I/O (USB disk)**: 144 ops, 814,353,613 cycles (5,655,233 cycles/op)
-- **UEFI Raw Block I/O (USB disk)**: 524,288 bytes, write 19,562,517 cycles (37 cycles/byte), read 7,511,147 cycles (14 cycles/byte)
-- **Virtio-Block I/O (disk)**: 512 bytes, write 500,454,505 cycles (977,450 cycles/byte), read 7,582,569 cycles (14,809 cycles/byte)
-- **Net ARP Probe (virtio-net RX)**: 64 bytes, 11,925,618 cycles
-- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 32,858,096 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
-- **HTTP Loopback**: 50,000 requests, 122,126,989 cycles (2442 cycles/req)
+- **Compute**: 400,000 ops, 38,172,001 cycles (95 cycles/op)
+- **Memory**: 67,108,864 bytes, 1,999,205,557 cycles (29 cycles/byte)
+- **RAMFS File I/O**: 288 ops, 9,246,287 cycles (32,105 cycles/op)
+- **Fast-Path I/O (`/dev/fast0`)**: 2,097,152 bytes, 57,168,866 cycles (27 cycles/byte)
+- **UEFI FAT File I/O (USB disk)**: 144 ops, 929,137,402 cycles (6,452,343 cycles/op)
+- **UEFI Raw Block I/O (USB disk)**: 524,288 bytes, write 21,601,816 cycles (41 cycles/byte), read 20,694,473 cycles (39 cycles/byte)
+- **Virtio-Block I/O (disk)**: 512 bytes, write 9,407,301 cycles (18,373 cycles/byte), read 4,126,993 cycles (8,060 cycles/byte)
+- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,048,374 cycles
+- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 20,953,175 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
+- **HTTP Loopback**: 50,000 requests, 60,164,835 cycles (1,203 cycles/req)
 
 Notes:
 - These are **QEMU TSC cycle counts**, not wall-clock time.

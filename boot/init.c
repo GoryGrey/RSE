@@ -54,6 +54,28 @@ static void shell_emit(const struct rse_syscalls *sys, const char *msg) {
     sys->write(1, (const uint8_t *)msg, cstr_len(msg));
 }
 
+static void shell_emit_u64(const struct rse_syscalls *sys, uint64_t value) {
+    if (!sys || !sys->write) {
+        return;
+    }
+    char buf[32];
+    uint32_t idx = 0;
+    if (value == 0) {
+        buf[idx++] = '0';
+    } else {
+        while (value && idx < sizeof(buf)) {
+            buf[idx++] = (char)('0' + (value % 10));
+            value /= 10;
+        }
+    }
+    for (uint32_t i = 0; i < idx / 2; ++i) {
+        char t = buf[i];
+        buf[i] = buf[idx - 1 - i];
+        buf[idx - 1 - i] = t;
+    }
+    sys->write(1, (const uint8_t *)buf, idx);
+}
+
 static void shell_cat(const struct rse_syscalls *sys, const char *path) {
     if (!sys || !sys->open || !sys->read || !sys->close || !path) {
         return;
@@ -88,6 +110,33 @@ static void shell_ls(const struct rse_syscalls *sys, const char *path) {
     sys->write(1, (const uint8_t *)buf, (uint32_t)got);
 }
 
+static void shell_stat(const struct rse_syscalls *sys, const char *path) {
+    if (!sys || !sys->stat || !path) {
+        shell_emit(sys, "stat: unsupported\n");
+        return;
+    }
+    struct rse_stat st;
+    int rc = sys->stat(path, &st);
+    if (rc < 0) {
+        shell_emit(sys, "stat: failed\n");
+        return;
+    }
+    const char *type = "unknown";
+    switch (st.type) {
+        case RSE_STAT_FILE: type = "file"; break;
+        case RSE_STAT_DIR: type = "dir"; break;
+        case RSE_STAT_DEVICE: type = "device"; break;
+        default: break;
+    }
+    shell_emit(sys, "stat ");
+    shell_emit(sys, path);
+    shell_emit(sys, " size=");
+    shell_emit_u64(sys, st.size);
+    shell_emit(sys, " type=");
+    shell_emit(sys, type);
+    shell_emit(sys, "\n");
+}
+
 static void shell_ps(const struct rse_syscalls *sys) {
     if (!sys || !sys->ps || !sys->write) {
         shell_emit(sys, "ps: unsupported\n");
@@ -118,7 +167,7 @@ static void shell_probe_dev(const struct rse_syscalls *sys, const char *dev) {
 static void shell_demo(const struct rse_syscalls *sys, int persist) {
     const char *path = persist ? "/persist/hello.txt" : "hello.txt";
     shell_emit(sys, "rse> help\n");
-    shell_emit(sys, "help: echo, cat, ls, probe, ps\n");
+    shell_emit(sys, "help: echo, cat, ls, stat, probe, ps\n");
 
     shell_emit(sys, "rse> ps\n");
     shell_ps(sys);
@@ -140,12 +189,20 @@ static void shell_demo(const struct rse_syscalls *sys, int persist) {
     shell_emit(sys, "\n");
     shell_cat(sys, path);
 
+    shell_emit(sys, "rse> stat ");
+    shell_emit(sys, path);
+    shell_emit(sys, "\n");
+    shell_stat(sys, path);
+
     shell_emit(sys, "rse> ls /\n");
     shell_ls(sys, "/");
     shell_emit(sys, "\n");
     shell_emit(sys, "rse> ls /persist\n");
     shell_ls(sys, "/persist");
     shell_emit(sys, "\n");
+
+    shell_emit(sys, "rse> stat /dev/blk0\n");
+    shell_stat(sys, "/dev/blk0");
 
     shell_emit(sys, "rse> probe devices\n");
     shell_probe_dev(sys, "/dev/blk0");

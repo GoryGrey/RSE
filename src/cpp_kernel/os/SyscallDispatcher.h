@@ -5,6 +5,7 @@
 #include "TorusScheduler.h"
 #include "VFS.h"
 #include "PhysicalAllocator.h"
+#include "LoopbackDevice.h"
 #include <cstring>
 #ifdef RSE_KERNEL
 #include "KernelStubs.h"
@@ -339,6 +340,82 @@ inline int64_t sys_kill(uint64_t pid, uint64_t sig, uint64_t,
     
     // Not implemented yet
     return -ENOSYS;
+}
+
+inline int64_t sys_pipe(uint64_t fds_addr, uint64_t, uint64_t,
+                        uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    if (!fds_addr) {
+        return -EINVAL;
+    }
+    if (!validate_user_range(current, fds_addr, sizeof(int) * 2, true)) {
+        return -EFAULT;
+    }
+
+    Device* dev = create_loopback_device("pipe");
+    if (!dev) {
+        return -ENOMEM;
+    }
+    if (dev->open) {
+        dev->open(dev);
+    }
+
+    int32_t read_fd = current->fd_table.allocateDevice(dev, O_RDONLY);
+    if (read_fd < 0) {
+        delete static_cast<LoopbackData*>(dev->private_data);
+        delete dev;
+        return -ENOMEM;
+    }
+    int32_t write_fd = current->fd_table.allocateDevice(dev, O_WRONLY);
+    if (write_fd < 0) {
+        current->fd_table.free(read_fd);
+        delete static_cast<LoopbackData*>(dev->private_data);
+        delete dev;
+        return -ENOMEM;
+    }
+
+    int fds[2] = { read_fd, write_fd };
+    if (!write_user_bytes(current, fds_addr, fds, sizeof(fds))) {
+        current->fd_table.free(read_fd);
+        current->fd_table.free(write_fd);
+        delete static_cast<LoopbackData*>(dev->private_data);
+        delete dev;
+        return -EFAULT;
+    }
+    return 0;
+}
+
+inline int64_t sys_dup(uint64_t old_fd, uint64_t, uint64_t,
+                       uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    int32_t new_fd = current->fd_table.duplicate(static_cast<int32_t>(old_fd));
+    if (new_fd < 0) {
+        return -EBADF;
+    }
+    return new_fd;
+}
+
+inline int64_t sys_dup2(uint64_t old_fd, uint64_t new_fd, uint64_t,
+                        uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    if (!current->fd_table.get(static_cast<int32_t>(old_fd))) {
+        return -EBADF;
+    }
+    int32_t duped = current->fd_table.duplicateTo(static_cast<int32_t>(old_fd),
+                                                  static_cast<int32_t>(new_fd));
+    if (duped < 0) {
+        return -EINVAL;
+    }
+    return duped;
 }
 
 /**
@@ -935,6 +1012,9 @@ public:
         register_handler(SYS_KILL, sys_kill);
         register_handler(SYS_PS, sys_ps);
         register_handler(SYS_EXEC, sys_exec);
+        register_handler(SYS_PIPE, sys_pipe);
+        register_handler(SYS_DUP, sys_dup);
+        register_handler(SYS_DUP2, sys_dup2);
         register_handler(SYS_OPEN, sys_open);
         register_handler(SYS_CLOSE, sys_close);
         register_handler(SYS_WRITE, sys_write);

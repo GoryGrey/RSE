@@ -3,6 +3,19 @@
 
 #include <stdint.h>
 
+enum rse_stat_type {
+    RSE_STAT_UNKNOWN = 0,
+    RSE_STAT_FILE = 1,
+    RSE_STAT_DIR = 2,
+    RSE_STAT_DEVICE = 3
+};
+
+struct rse_stat {
+    uint64_t size;
+    uint32_t mode;
+    uint32_t type;
+};
+
 struct rse_syscalls {
     void (*log)(const char *msg);
     void (*log_u64)(uint64_t value);
@@ -19,6 +32,7 @@ struct rse_syscalls {
     int (*unlink)(const char *name);
     int (*lseek)(int fd, int64_t offset, int whence);
     int (*list)(const char *path, char *buf, uint32_t len);
+    int (*stat)(const char *path, struct rse_stat *out);
     int (*ps)(char *buf, uint32_t len);
 };
 

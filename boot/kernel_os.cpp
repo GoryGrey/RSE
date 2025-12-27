@@ -600,6 +600,10 @@ static int os_lseek_shim(int fd, int64_t offset, int whence) {
 static int os_list_shim(const char *path, char *buf, uint32_t len) {
     return (int)os::syscall(os::SYS_LIST, (uint64_t)path, (uint64_t)buf, len);
 }
+
+static int os_stat_shim(const char *path, struct rse_stat *out) {
+    return (int)os::syscall(os::SYS_STAT, (uint64_t)path, (uint64_t)out);
+}
 extern "C" void init_main(const struct rse_syscalls *sys);
 extern "C" uint64_t kernel_rdtsc(void);
 extern "C" int rse_block_init(void);
@@ -1585,6 +1589,7 @@ extern "C" void rse_os_run(void) {
         .unlink = os_unlink_shim,
         .lseek = os_lseek_shim,
         .list = os_list_shim,
+        .stat = os_stat_shim,
         .ps = os_ps_dump
     };
 

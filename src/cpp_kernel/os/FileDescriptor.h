@@ -240,6 +240,30 @@ public:
         return -1;
     }
 
+    int32_t duplicateTo(int32_t old_fd, int32_t new_fd) {
+        FileDescriptor* old_desc = get(old_fd);
+        if (!old_desc) {
+            return -1;
+        }
+        if (new_fd < 0 || static_cast<uint32_t>(new_fd) >= MAX_FDS) {
+            return -1;
+        }
+        if (new_fd <= 2) {
+            return -1;
+        }
+        if (new_fd == old_fd) {
+            return new_fd;
+        }
+        if (fds_[new_fd].in_use) {
+            free(new_fd);
+        }
+        fds_[new_fd] = *old_desc;
+        fds_[new_fd].fd = new_fd;
+        fds_[new_fd].ref_count = 1;
+        old_desc->ref_count++;
+        return new_fd;
+    }
+
     void closeOnExec() {
         for (uint32_t i = 3; i < MAX_FDS; i++) {
             if (fds_[i].in_use && fds_[i].closeOnExec()) {

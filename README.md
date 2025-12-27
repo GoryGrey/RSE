@@ -1,7 +1,7 @@
 # RSE (Resilient Spatial Execution)
 
-**Last Updated**: December 26, 2025 (UEFI bench refresh + ring3 exec smoke pass)  
-**Status**: Research prototype. Bootable UEFI kernel with an interactive dashboard (keyboard/mouse) and in-kernel workloads; braided projection exchange works in multi-VM via shared memory. Ring3 smoke + exec works in UEFI, but full user-mode isolation and network transport are still in progress.
+**Last Updated**: December 26, 2025 (UEFI run-iso: user-mode window + brk/mmap remap)  
+**Status**: Research prototype. Bootable UEFI kernel with an interactive dashboard (keyboard/mouse) and in-kernel workloads; braided projection exchange works in multi-VM via shared memory. Ring3 exec smoke passes with a bounded user-mode window, but full user-mode isolation and network transport are still in progress.
 
 **Quick Links**: [Project Status](PROJECT_STATUS.md) | [Documentation](#documentation)
 
@@ -48,7 +48,7 @@ Key properties:
 - **/dev/net0 UDP loopback** with simple RX/echo path (no full IP stack yet).
 - **Init shell demo** (stdout + cat + device probes).
 - **Cooperative userspace tasks** (in-kernel runner using syscalls).
-- **Ring3 smoke + exec path** in UEFI (page mapping + syscall exec).
+- **Ring3 smoke + exec path** in UEFI (user-mode window + page-table refresh on brk/mmap).
 - **Framebuffer dashboard** (boot + benchmark summary panels, keyboard/mouse input, on-screen console).
 - **Braided runtime** (single-node, in-kernel projections + constraint application).
 - **Projection exchange across 3 VMs** via IVSHMEM shared memory transport.
@@ -56,7 +56,7 @@ Key properties:
 
 ## Known Limitations
 
-- No full user-mode isolation yet; ring3 smoke + exec works in UEFI, but most userspace remains cooperative/in-kernel.
+- No full user-mode isolation yet; ring3 exec works in UEFI with a bounded window, but most userspace remains cooperative/in-kernel.
 - Network RX is working for basic ARP/UDP, but needs stress and driver hardening.
 - No full IP/TCP stack (only minimal IPv4/UDP parsing + echo).
   - Raw frame mode can be enabled at build time: `RSE_NET_RAW=1`.
@@ -69,15 +69,15 @@ Key properties:
 
 Cycle-counted benchmarks captured in headless QEMU (see `PROJECT_STATUS.md` for the latest run):
 
-- **Compute**: 400,000 ops, 25,898,701 cycles (64 cycles/op)
-- **Memory**: 67,108,864 bytes, 155,251,839 cycles (2 cycles/byte)
-- **RAMFS File I/O**: 288 ops, 14,595,813 cycles (50679 cycles/op)
-- **UEFI FAT File I/O (USB disk)**: 144 ops, 1,280,419,602 cycles (8891802 cycles/op)
-- **UEFI Raw Block I/O (USB disk)**: 524,288 bytes, write 21,276,876 cycles (40 cycles/byte), read 15,944,929 cycles (30 cycles/byte)
-- **Virtio-Block I/O (disk)**: 512 bytes, write 424,047,656 cycles (828218 cycles/byte), read 9,405,237 cycles (18369 cycles/byte)
-- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,119,277 cycles
-- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 426,634,266 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
-- **HTTP Loopback**: 50,000 requests, 60,981,343 cycles (1219 cycles/req)
+- **Compute**: 400,000 ops, 23,175,219 cycles (57 cycles/op)
+- **Memory**: 67,108,864 bytes, 155,604,992 cycles (2 cycles/byte)
+- **RAMFS File I/O**: 288 ops, 9,260,536 cycles (32154 cycles/op)
+- **UEFI FAT File I/O (USB disk)**: 144 ops, 2,598,435,038 cycles (18044687 cycles/op)
+- **UEFI Raw Block I/O (USB disk)**: 524,288 bytes, write 72,108,594 cycles (137 cycles/byte), read 90,153,268 cycles (171 cycles/byte)
+- **Virtio-Block I/O (disk)**: 512 bytes, write 450,520,608 cycles (879923 cycles/byte), read 62,756,619 cycles (122571 cycles/byte)
+- **Net ARP Probe (virtio-net RX)**: 64 bytes, 5,466,842 cycles
+- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 804,265,218 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
+- **HTTP Loopback**: 50,000 requests, 101,421,019 cycles (2028 cycles/req)
 
 Notes:
 - These are **QEMU TSC cycle counts**, not wall-clock time.

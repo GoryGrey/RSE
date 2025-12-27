@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-**The Bible - Last Updated: December 26, 2025 (UEFI bench refresh + ring3 exec smoke pass)**
+**The Bible - Last Updated: December 26, 2025 (UEFI run-iso: user-mode window + brk/mmap remap)**
 
 ---
 
@@ -32,27 +32,27 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **Memory Optimization** | ⚠️ Prototype | Design-validated | O(1) bounded at 450MB |
 | **Emergent Scheduler** | ⚠️ Prototype | 4/4 internal | Fairness target met in sim |
 | **System Calls** | ⚠️ Partial | 9 implemented | 43 defined |
-| **Memory Management** | ⚠️ Partial | Basic | Page tables + ring3 map + exec (no full isolation) |
+| **Memory Management** | ⚠️ Partial | Basic | Page tables + ring3 map + user heap/stack window + brk/mmap remap |
 | **Virtual File System** | ⚠️ Partial | Basic | MemFS + BlockFS + per-process FD tables |
 | **BlockFS Persistence** | ⚠️ Prototype | Basic | `/persist` fixed-slot store |
 | **I/O System** | ⚠️ Partial | Basic | Console + block + net stubs + IRQ EOI |
 | **FD Isolation** | ⚠️ Prototype | exec_vfs_test | Per-process file descriptor tables |
 | **Userspace Runner** | ⚠️ Prototype | Cooperative | In-kernel user tasks |
-| **Ring3 Smoke (UEFI)** | ⚠️ Prototype | UEFI smoke + exec | Per-process map + syscall exec |
+| **Ring3 Smoke (UEFI)** | ⚠️ Prototype | UEFI smoke + exec | Exec + user page-table refresh (brk/mmap/mprotect) |
 | **BraidShell** | ⚠️ Demo | Visual demo | Not integrated in kernel |
 | **UEFI Boot** | ✅ Working | Serial + framebuffer | Kernel + benchmarks |
 | **Framebuffer Dashboard** | ✅ Working | Visual | Panels + console + input |
 | **UI Input (Keyboard/Mouse)** | ✅ Working | Interactive | Dashboard selection + actions |
 | **Projection Exchange (IVSHMEM)** | ⚠️ Lab-only | 3-torus Multi-VM | Shared-memory transport |
 
-**Test Coverage**: Full system test + UEFI bench + ring3 smoke/exec (UEFI run-iso) + Linux baseline + IVSHMEM exchange; external UDP/HTTP proof captured in `build/boot/proof.log`.
+**Test Coverage**: Full system test + UEFI bench + ring3 smoke/exec (UEFI run-iso with user-mode window + brk/mmap remap) + Linux baseline + IVSHMEM exchange; external UDP/HTTP proof captured in `build/boot/proof.log`.
 
 ### **What's Left** 🚧
 
 | Component | Priority | Estimated Time | Dependencies |
 |-----------|----------|----------------|--------------|
 | More Utilities (ls, cat, ps) | High | 1-2 days | VFS, Scheduler |
-| User-Mode + ELF Loader | High | 1-2 weeks | Syscalls, scheduler (ring3 smoke + syscall exec stub done) |
+| User-Mode + ELF Loader | High | 1-2 weeks | Syscalls, scheduler (ring3 exec + heap/stack window + page-table refresh done) |
 | Real Hardware Drivers | Medium | 1-2 weeks | Boot process |
 | Distributed Mode | Low | 2-4 weeks | Network layer |
 | Full IP/TCP Stack | Medium | 1-2 weeks | Network RX stability |
@@ -497,6 +497,6 @@ This OS is not built on traditional hierarchies. It's built on:
 
 **Status**: 45% Complete (Prototype) | **Next Milestone**: User-mode isolation + ELF loader
 
-**Last Updated**: December 26, 2025 (UEFI bench refresh + ring3 exec smoke pass)
+**Last Updated**: December 26, 2025 (UEFI run-iso: user-mode window + brk/mmap remap)
 
 **"Stay degen. Stay future. 🚀"**

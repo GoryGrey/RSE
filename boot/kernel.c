@@ -27,6 +27,7 @@ extern int rse_os_user_ranges(uint64_t *code_start, uint64_t *code_end,
                               uint64_t *data_start, uint64_t *data_end,
                               uint64_t *stack_start, uint64_t *stack_end);
 extern uint64_t rse_os_user_translate(uint64_t vaddr);
+extern uint64_t rse_os_user_flags(uint64_t vaddr);
 extern int rse_os_prepare_ring3(uint32_t torus_id);
 extern int64_t rse_os_syscall_dispatch(int64_t num,
                                        uint64_t arg1, uint64_t arg2,
@@ -38,6 +39,10 @@ extern int rse_os_ring3_context(uint64_t *entry_out, uint64_t *stack_out);
 #define RSE_SYS_EXEC 2u
 #define RSE_SYS_EXIT 3u
 #define RSE_SYS_WRITE 13u
+#define RSE_SYS_BRK 20u
+#define RSE_SYS_MMAP 21u
+#define RSE_SYS_MUNMAP 22u
+#define RSE_SYS_MPROTECT 23u
 
 __attribute__((used, section(".limine_reqs")))
 LIMINE_REQUESTS_START_MARKER;
@@ -323,11 +328,14 @@ struct int80_frame {
     uint64_t rip, cs, rflags, rsp, ss;
 };
 
-static bool build_user_page_table(uint64_t code_phys, uint64_t stack_phys);
-
 #define USER_VADDR_BASE 0x40000000ull
-#define USER_STACK_VADDR (USER_VADDR_BASE + 0x1000ull)
-#define USER_STACK_TOP (USER_VADDR_BASE + 0x2000ull)
+#define USER_WINDOW_SIZE 0x200000ull
+#define USER_STACK_SIZE 0x10000ull
+#define USER_STACK_TOP (USER_VADDR_BASE + USER_WINDOW_SIZE)
+#define USER_STACK_VADDR (USER_STACK_TOP - USER_STACK_SIZE)
+
+static bool build_user_page_table(uint64_t code_vaddr, uint64_t stack_vaddr,
+                                  uint64_t code_phys, uint64_t stack_phys);
 
 struct exc_frame {
     uint64_t rax, rbx, rcx, rdx;
@@ -369,6 +377,19 @@ __attribute__((naked)) static void user_mode_fault_return(void) {
         "jmp user_mode_fault_return_cont\n");
 }
 
+static bool refresh_user_page_table(uint64_t entry, uint64_t stack) {
+    uint64_t code_phys = 0;
+    uint64_t stack_phys = 0;
+    uint64_t stack_page = USER_STACK_TOP - 0x1000ull;
+    if (stack > 8) {
+        stack_page = stack - 8u;
+    }
+    if (!rse_os_user_map(entry, stack_page, &code_phys, &stack_phys)) {
+        return false;
+    }
+    return build_user_page_table(entry, stack_page, code_phys, stack_phys);
+}
+
 __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
     if (!frame) {
         return;
@@ -402,17 +423,18 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
         uint64_t entry = 0;
         uint64_t stack = 0;
         if (rse_os_ring3_context(&entry, &stack)) {
-            uint64_t code_phys = 0;
-            uint64_t stack_phys = 0;
-            uint64_t stack_page = USER_STACK_VADDR;
-            if (stack > 8) {
-                stack_page = stack - 8u;
-            }
-            if (rse_os_user_map(entry, stack_page, &code_phys, &stack_phys)) {
-                build_user_page_table(code_phys, stack_phys);
-            }
+            refresh_user_page_table(entry, stack);
             frame->rip = entry;
             frame->rsp = stack ? stack : USER_STACK_TOP;
+        }
+        return;
+    }
+    if ((call == RSE_SYS_BRK || call == RSE_SYS_MMAP || call == RSE_SYS_MUNMAP ||
+         call == RSE_SYS_MPROTECT) && rc >= 0) {
+        uint64_t entry = 0;
+        uint64_t stack = 0;
+        if (rse_os_ring3_context(&entry, &stack)) {
+            refresh_user_page_table(entry, stack);
         }
     }
 }
@@ -600,6 +622,19 @@ __attribute__((naked, unused)) static void irq_stub(void) {
 #define PTE_PS 0x80ull
 #define PTE_NX (1ull << 63)
 #define PTE_ADDR_MASK 0x000FFFFFFFFFF000ull
+#define RSE_USER_FLAG_PRESENT 0x1ull
+#define RSE_USER_FLAG_WRITE 0x2ull
+
+static uint64_t user_flags_to_pte(uint64_t user_flags) {
+    if (!(user_flags & RSE_USER_FLAG_PRESENT)) {
+        return 0;
+    }
+    uint64_t flags = PTE_PRESENT | PTE_USER;
+    if (user_flags & RSE_USER_FLAG_WRITE) {
+        flags |= PTE_RW | PTE_NX;
+    }
+    return flags;
+}
 
 static void map_user_pt_entry(uint64_t vaddr, uint64_t phys, uint64_t flags) {
     uint64_t idx = (vaddr >> 12) & 0x1FFu;
@@ -612,7 +647,7 @@ static void map_user_range(uint64_t start, uint64_t end, uint64_t flags) {
     }
     uint64_t v = start & ~(0xFFFULL);
     uint64_t v_end = (end + 0xFFFULL) & ~(0xFFFULL);
-    const uint64_t user_max = USER_VADDR_BASE + 0x200000ull;
+    const uint64_t user_max = USER_VADDR_BASE + USER_WINDOW_SIZE;
     for (; v < v_end; v += 0x1000ULL) {
         if (v < USER_VADDR_BASE || v >= user_max) {
             continue;
@@ -621,11 +656,19 @@ static void map_user_range(uint64_t start, uint64_t end, uint64_t flags) {
         if (!phys) {
             continue;
         }
-        map_user_pt_entry(v, phys, flags);
+        uint64_t pte_flags = flags;
+        if (pte_flags == 0) {
+            pte_flags = user_flags_to_pte(rse_os_user_flags(v));
+            if (pte_flags == 0) {
+                continue;
+            }
+        }
+        map_user_pt_entry(v, phys, pte_flags);
     }
 }
 
-static bool build_user_page_table(uint64_t code_phys, uint64_t stack_phys) {
+static bool build_user_page_table(uint64_t code_vaddr, uint64_t stack_vaddr,
+                                  uint64_t code_phys, uint64_t stack_phys) {
     if (!g_user_pml4) {
         g_user_pml4 = (uint64_t *)uefi_alloc_pages(4096u);
     }
@@ -669,26 +712,18 @@ static bool build_user_page_table(uint64_t code_phys, uint64_t stack_phys) {
         ((uint64_t)(uintptr_t)g_user_pt_user & PTE_ADDR_MASK) |
         PTE_PRESENT | PTE_RW | PTE_USER;
 
-    uint64_t code_start = 0;
-    uint64_t code_end = 0;
-    uint64_t data_start = 0;
-    uint64_t data_end = 0;
-    uint64_t stack_start = 0;
-    uint64_t stack_end = 0;
-    if (rse_os_user_ranges(&code_start, &code_end, &data_start, &data_end,
-                           &stack_start, &stack_end)) {
-        map_user_range(code_start, code_end, PTE_PRESENT | PTE_USER);
-        map_user_range(data_start, data_end, PTE_PRESENT | PTE_USER | PTE_RW | PTE_NX);
-        map_user_range(stack_start, stack_end, PTE_PRESENT | PTE_USER | PTE_RW | PTE_NX);
+    map_user_range(USER_VADDR_BASE, USER_VADDR_BASE + USER_WINDOW_SIZE, 0);
+
+    if (code_phys != 0 && code_vaddr != 0) {
+        uint64_t code_idx = (code_vaddr >> 12) & 0x1FFu;
+        g_user_pt_user[code_idx] = (code_phys & PTE_ADDR_MASK) |
+                                   PTE_PRESENT | PTE_USER;
     }
-
-    uint64_t code_idx = (USER_VADDR_BASE >> 12) & 0x1FFu;
-    uint64_t stack_idx = (USER_STACK_VADDR >> 12) & 0x1FFu;
-
-    g_user_pt_user[code_idx] = (code_phys & PTE_ADDR_MASK) |
-                               PTE_PRESENT | PTE_USER;
-    g_user_pt_user[stack_idx] = (stack_phys & PTE_ADDR_MASK) |
-                                PTE_PRESENT | PTE_RW | PTE_USER | PTE_NX;
+    if (stack_phys != 0 && stack_vaddr != 0) {
+        uint64_t stack_idx = (stack_vaddr >> 12) & 0x1FFu;
+        g_user_pt_user[stack_idx] = (stack_phys & PTE_ADDR_MASK) |
+                                    PTE_PRESENT | PTE_RW | PTE_USER | PTE_NX;
+    }
 
     g_user_cr3 = (uint64_t)(uintptr_t)g_user_pml4 & PTE_ADDR_MASK;
     return true;
@@ -847,7 +882,8 @@ static bool setup_user_pages(uint64_t *entry_out, uint64_t *stack_out) {
 
     uint64_t os_code_phys = 0;
     uint64_t os_stack_phys = 0;
-    if (rse_os_user_map(USER_VADDR_BASE, USER_STACK_VADDR, &os_code_phys, &os_stack_phys)) {
+    uint64_t stack_page = USER_STACK_TOP - 0x1000ull;
+    if (rse_os_user_map(USER_VADDR_BASE, stack_page, &os_code_phys, &os_stack_phys)) {
         g_user_code_page = (uint8_t *)(uintptr_t)os_code_phys;
         g_user_stack_page = (uint8_t *)(uintptr_t)os_stack_phys;
         serial_write("[RSE] user setup os map ok\n");
@@ -873,7 +909,8 @@ static bool setup_user_pages(uint64_t *entry_out, uint64_t *stack_out) {
 
     uint64_t code_phys = (uint64_t)(uintptr_t)g_user_code_page;
     uint64_t stack_phys = (uint64_t)(uintptr_t)g_user_stack_page;
-    if (!build_user_page_table(code_phys, stack_phys)) {
+    if (!build_user_page_table(USER_VADDR_BASE, stack_page,
+                               code_phys, stack_phys)) {
         serial_write("[RSE] user page table build failed\n");
         return false;
     }

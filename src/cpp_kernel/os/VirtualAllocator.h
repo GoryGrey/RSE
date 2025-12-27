@@ -321,6 +321,22 @@ public:
             heap_brk_ = heap_start_;
         }
     }
+
+    void setHeapBounds(uint64_t start, uint64_t end) {
+        start = align_up(start);
+        end = align_down(end);
+        if (end <= start) {
+            return;
+        }
+        heap_start_ = start;
+        heap_end_ = end;
+        if (heap_brk_ < heap_start_) {
+            heap_brk_ = heap_start_;
+        }
+        if (heap_brk_ > heap_end_) {
+            heap_brk_ = heap_end_;
+        }
+    }
     
     /**
      * Get heap bounds.

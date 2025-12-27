@@ -397,9 +397,15 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
         return -ENOMEM;
     }
 #ifdef RSE_KERNEL
-    static constexpr uint64_t kKernelUserStackBase = 0x40001000ull;
-    static constexpr uint64_t kKernelUserStackTop = 0x40002000ull;
+    static constexpr uint64_t kKernelUserBase = 0x40000000ull;
+    static constexpr uint64_t kKernelUserWindow = 0x200000ull;
+    static constexpr uint64_t kKernelUserStackSize = 64 * 1024ull;
+    static constexpr uint64_t kKernelUserStackTop = kKernelUserBase + kKernelUserWindow;
+    static constexpr uint64_t kKernelUserStackBase = kKernelUserStackTop - kKernelUserStackSize;
+    static constexpr uint64_t kKernelUserHeapBase = kKernelUserBase;
+    static constexpr uint64_t kKernelUserHeapLimit = kKernelUserStackBase;
     new_va->setStackBounds(kKernelUserStackBase, kKernelUserStackTop);
+    new_va->setHeapBounds(kKernelUserHeapBase, kKernelUserHeapLimit);
 #endif
 
     current->vmem = new_va;
@@ -408,7 +414,7 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
     current->context = CPUContext();
 
 #ifdef RSE_KERNEL
-    const uint64_t stack_size = PAGE_SIZE;
+    const uint64_t stack_size = kKernelUserStackSize;
 #else
     const uint64_t stack_size = 64 * 1024;
 #endif

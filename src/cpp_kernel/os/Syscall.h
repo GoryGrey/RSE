@@ -72,6 +72,9 @@ constexpr int EBADF     = 9;   // Bad file descriptor
 #ifndef ECHILD
 constexpr int ECHILD    = 10;  // No child processes
 #endif
+#ifndef EAGAIN
+constexpr int EAGAIN    = 11;  // Try again
+#endif
 #ifndef ENOMEM
 constexpr int ENOMEM    = 12;  // Out of memory
 #endif

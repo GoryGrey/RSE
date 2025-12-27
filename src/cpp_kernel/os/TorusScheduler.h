@@ -39,6 +39,7 @@ private:
     // Process queues
     FixedVector<OSProcess*, 1024> ready_queue_;     // Processes ready to run
     FixedVector<OSProcess*, 1024> blocked_queue_;   // Processes waiting for I/O
+    FixedVector<OSProcess*, 1024> zombie_queue_;    // Exited, waiting for parent
     
     // Current running process
     OSProcess* current_process_;
@@ -80,6 +81,34 @@ public:
         
         return true;
     }
+
+    bool pushZombie(OSProcess* proc) {
+        if (!proc) {
+            return false;
+        }
+        if (!zombie_queue_.push_back(proc)) {
+            std::cerr << "[TorusScheduler " << torus_id_ << "] Zombie queue full!" << std::endl;
+            return false;
+        }
+        return true;
+    }
+
+    OSProcess* reapZombie(uint32_t parent_pid, int* exit_code) {
+        for (size_t i = 0; i < zombie_queue_.size(); ++i) {
+            OSProcess* proc = zombie_queue_[i];
+            if (!proc) {
+                continue;
+            }
+            if (proc->parent_pid == parent_pid) {
+                if (exit_code) {
+                    *exit_code = proc->exit_code;
+                }
+                zombie_queue_.erase_at(i);
+                return proc;
+            }
+        }
+        return nullptr;
+    }
     
     /**
      * Remove a process from all queues.
@@ -103,6 +132,13 @@ public:
         for (size_t i = 0; i < blocked_queue_.size(); i++) {
             if (blocked_queue_[i]->pid == pid) {
                 blocked_queue_.erase_at(i);
+                return true;
+            }
+        }
+
+        for (size_t i = 0; i < zombie_queue_.size(); i++) {
+            if (zombie_queue_[i]->pid == pid) {
+                zombie_queue_.erase_at(i);
                 return true;
             }
         }
@@ -265,7 +301,8 @@ public:
             }
             // Check if process terminated
             else if (current_process_->isZombie()) {
-                // Process is done, don't reschedule
+                // Process is done, hand to parent for reaping
+                (void)pushZombie(current_process_);
                 current_process_ = nullptr;
                 context_switches_++;
             }

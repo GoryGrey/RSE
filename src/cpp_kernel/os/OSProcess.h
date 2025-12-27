@@ -110,6 +110,7 @@ public:
     // ========== State ==========
     ProcessState state;
     int exit_code;              // Exit code (if zombie)
+    bool kernel_owned;          // True if allocated by kernel heap
     
     // ========== CPU Context ==========
     CPUContext context;
@@ -144,6 +145,7 @@ public:
           torus_id(torus_id),
           state(ProcessState::READY),
           exit_code(0),
+          kernel_owned(false),
           priority(100),          // Default priority
           time_slice(100),        // Default time slice
           total_runtime(0),
@@ -270,6 +272,14 @@ public:
     void setZombie(int code) { 
         state = ProcessState::ZOMBIE; 
         exit_code = code;
+    }
+
+    void setKernelOwned(bool owned) {
+        kernel_owned = owned;
+    }
+
+    bool isKernelOwned() const {
+        return kernel_owned;
     }
     
     // ========== Scheduling ==========

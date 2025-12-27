@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-**The Bible - Last Updated: December 26, 2025 (UEFI run-iso: fast-path I/O bench + ring3 exec fault noted)**
+**The Bible - Last Updated: December 26, 2025 (sys_wait reaping + cpp_kernel build)**
 
 ---
 
@@ -31,29 +31,29 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **Parallel Execution** | ⚠️ Prototype | Architecture | 3 worker threads |
 | **Memory Optimization** | ⚠️ Prototype | Design-validated | O(1) bounded at 450MB |
 | **Emergent Scheduler** | ⚠️ Prototype | 4/4 internal | Fairness target met in sim |
-| **System Calls** | ⚠️ Partial | 9 implemented | 43 defined |
+| **System Calls** | ⚠️ Partial | 10 implemented (wait reaps) | 43 defined |
 | **Memory Management** | ⚠️ Partial | Basic | Page tables + ring3 map + user heap/stack window + brk/mmap remap |
 | **Virtual File System** | ⚠️ Partial | Basic | MemFS + BlockFS + per-process FD tables |
 | **BlockFS Persistence** | ⚠️ Prototype | Basic | `/persist` fixed-slot store |
 | **I/O System** | ⚠️ Partial | Basic | Console + block + net stubs + fast0 + IRQ EOI |
-| **Fast-Path I/O (fast0)** | ⚠️ Prototype | fastio bench | 39 cycles/byte (2MB loopback) |
+| **Fast-Path I/O (fast0)** | ⚠️ Prototype | fastio bench | 33 cycles/byte (2MB loopback) |
 | **FD Isolation** | ⚠️ Prototype | exec_vfs_test | Per-process file descriptor tables |
 | **Userspace Runner** | ⚠️ Prototype | Cooperative | In-kernel user tasks |
-| **Ring3 Smoke (UEFI)** | ⚠️ Prototype | UEFI smoke + exec (faulting) | Exec currently faults after user-mode window remap |
+| **Ring3 Smoke (UEFI)** | ⚠️ Prototype | UEFI smoke + exec | Exec smoke passes after user page-table rebuild |
 | **BraidShell** | ⚠️ Demo | Visual demo | Not integrated in kernel |
 | **UEFI Boot** | ✅ Working | Serial + framebuffer | Kernel + benchmarks |
 | **Framebuffer Dashboard** | ✅ Working | Visual | Panels + console + input |
 | **UI Input (Keyboard/Mouse)** | ✅ Working | Interactive | Dashboard selection + actions |
 | **Projection Exchange (IVSHMEM)** | ⚠️ Lab-only | 3-torus Multi-VM | Shared-memory transport |
 
-**Test Coverage**: Full system test + UEFI bench + fastio bench + ring3 smoke/exec (UEFI run-iso; exec currently faults after user-mode window remap) + Linux baseline + IVSHMEM exchange; external UDP/HTTP proof captured in `build/boot/proof.log`.
+**Test Coverage**: Full system test + UEFI bench + fastio bench + ring3 smoke/exec (UEFI run-iso; exec passes) + Linux baseline + IVSHMEM exchange; external UDP/HTTP proof captured in `build/boot/proof.log`.
 
 ### **What's Left** 🚧
 
 | Component | Priority | Estimated Time | Dependencies |
 |-----------|----------|----------------|--------------|
 | More Utilities (ls, cat, ps) | High | 1-2 days | VFS, Scheduler |
-| User-Mode + ELF Loader | High | 1-2 weeks | Syscalls, scheduler (ring3 exec faults after user-mode window remap) |
+| User-Mode + ELF Loader | High | 1-2 weeks | Syscalls, scheduler (ring3 exec passes; expand isolation + syscall surface) |
 | Real Hardware Drivers | Medium | 1-2 weeks | Boot process |
 | Distributed Mode | Low | 2-4 weeks | Network layer |
 | Full IP/TCP Stack | Medium | 1-2 weeks | Network RX stability |
@@ -136,16 +136,17 @@ RSE/
 
 Cycle-counted benchmarks captured in headless QEMU (TSC cycles):
 
-- **Compute**: 400,000 ops, 25,898,701 cycles (64 cycles/op)
-- **Memory**: 67,108,864 bytes, 155,251,839 cycles (2 cycles/byte)
-- **RAMFS File I/O**: 288 ops, 14,595,813 cycles (50679 cycles/op)
-- **UEFI FAT File I/O (USB disk)**: 144 ops, 1,280,419,602 cycles (8891802 cycles/op)
-- **UEFI Raw Block I/O (USB disk)**: 524288 bytes, write 21,276,876 cycles (40 cycles/byte), read 15,944,929 cycles (30 cycles/byte)
-- **Virtio-Block I/O (disk)**: 512 bytes, write 424,047,656 cycles (828218 cycles/byte), read 9,405,237 cycles (18369 cycles/byte)
-- **Net ARP Probe (virtio-net RX)**: 64 bytes, 2,119,277 cycles
-- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 426,634,266 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
-- **HTTP Loopback**: 50000 requests, 60,981,343 cycles (1219 cycles/req)
-- **Init Device Smoke Tests**: /dev/blk0 (512B, 256 ops, 131072 bytes, 0 mismatches, 452,010,290 cycles), /dev/loopback (13B echo, 13B read), /dev/net0 (16,384B tx, 16,384B rx, 35,309,646 cycles)
+- **Compute**: 400,000 ops, 19,014,806 cycles (47 cycles/op)
+- **Memory**: 67,108,864 bytes, 163,215,156 cycles (2 cycles/byte)
+- **RAMFS File I/O**: 288 ops, 9,515,753 cycles (33040 cycles/op)
+- **Fast-Path I/O (`/dev/fast0`)**: 2,097,152 bytes, 70,453,212 cycles (33 cycles/byte)
+- **UEFI FAT File I/O (USB disk)**: 144 ops, 814,353,613 cycles (5,655,233 cycles/op)
+- **UEFI Raw Block I/O (USB disk)**: 524288 bytes, write 19,562,517 cycles (37 cycles/byte), read 7,511,147 cycles (14 cycles/byte)
+- **Virtio-Block I/O (disk)**: 512 bytes, write 500,454,505 cycles (977,450 cycles/byte), read 7,582,569 cycles (14,809 cycles/byte)
+- **Net ARP Probe (virtio-net RX)**: 64 bytes, 11,925,618 cycles
+- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 32,858,096 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
+- **HTTP Loopback**: 50000 requests, 122,126,989 cycles (2442 cycles/req)
+- **Init Device Smoke Tests**: /dev/blk0 (512B, 256 ops, 131072 bytes, 0 mismatches, 307,531,625 cycles), /dev/loopback (13B echo, 13B read), /dev/net0 (16,384B tx, 16,384B rx, 11,260,022 cycles)
 
 Notes:
 - RAMFS is in-kernel (real ops, in-memory).
@@ -242,7 +243,7 @@ current implementation status. Use the tables above for reality.
 - **Tests**: 2/7 passing
 - **Key Features**:
   - 43 syscalls defined (POSIX-compatible)
-  - 9 syscalls implemented
+  - 10 syscalls implemented (wait reaping, non-blocking)
   - Per-torus dispatch (no global handler)
   - 100× faster than traditional OS
 
@@ -498,6 +499,6 @@ This OS is not built on traditional hierarchies. It's built on:
 
 **Status**: 45% Complete (Prototype) | **Next Milestone**: User-mode isolation + ELF loader
 
-**Last Updated**: December 26, 2025 (UEFI run-iso: fast-path I/O bench + ring3 exec fault noted)
+**Last Updated**: December 26, 2025 (sys_wait reaping + cpp_kernel build)
 
 **"Stay degen. Stay future. 🚀"**

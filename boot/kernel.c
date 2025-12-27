@@ -168,6 +168,7 @@ void serial_write_u64(uint64_t value) {
     }
 }
 
+
 struct gdt_entry {
     uint16_t limit_low;
     uint16_t base_low;
@@ -231,11 +232,16 @@ static struct tss64 g_tss;
 static uint8_t g_user_kernel_stack[16384] __attribute__((aligned(16)));
 static uint8_t *g_user_code_page;
 static uint8_t *g_user_stack_page;
-static uint64_t *g_user_pml4;
-static uint64_t *g_user_pdpt;
-static uint64_t *g_user_pd_kernel;
-static uint64_t *g_user_pd_user;
-static uint64_t *g_user_pt_user;
+static uint64_t g_user_pml4_storage[512] __attribute__((aligned(4096)));
+static uint64_t g_user_pdpt_storage[512] __attribute__((aligned(4096)));
+static uint64_t g_user_pd_kernel_storage[512] __attribute__((aligned(4096)));
+static uint64_t g_user_pd_user_storage[512] __attribute__((aligned(4096)));
+static uint64_t g_user_pt_user_storage[512] __attribute__((aligned(4096)));
+static uint64_t *g_user_pml4 = g_user_pml4_storage;
+static uint64_t *g_user_pdpt = g_user_pdpt_storage;
+static uint64_t *g_user_pd_kernel = g_user_pd_kernel_storage;
+static uint64_t *g_user_pd_user = g_user_pd_user_storage;
+static uint64_t *g_user_pt_user = g_user_pt_user_storage;
 static uint64_t g_user_cr3;
 static uint64_t g_saved_cr3;
 static uint64_t g_saved_rbx;
@@ -389,7 +395,19 @@ static bool refresh_user_page_table(uint64_t entry, uint64_t stack) {
     if (!rse_os_user_map(entry, stack_page, &code_phys, &stack_phys)) {
         return false;
     }
-    return build_user_page_table(entry, stack_page, code_phys, stack_phys);
+    uint64_t prev_cr3 = read_cr3();
+    if (g_saved_cr3 && prev_cr3 != g_saved_cr3) {
+        // Rebuild tables while running on the kernel page tables.
+        write_cr3(g_saved_cr3);
+    }
+    if (!build_user_page_table(entry, stack_page, code_phys, stack_phys)) {
+        if (prev_cr3 != read_cr3()) {
+            write_cr3(prev_cr3);
+        }
+        return false;
+    }
+    write_cr3(g_user_cr3);
+    return true;
 }
 
 __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
@@ -671,26 +689,6 @@ static void map_user_range(uint64_t start, uint64_t end, uint64_t flags) {
 
 static bool build_user_page_table(uint64_t code_vaddr, uint64_t stack_vaddr,
                                   uint64_t code_phys, uint64_t stack_phys) {
-    if (!g_user_pml4) {
-        g_user_pml4 = (uint64_t *)uefi_alloc_pages(4096u);
-    }
-    if (!g_user_pdpt) {
-        g_user_pdpt = (uint64_t *)uefi_alloc_pages(4096u);
-    }
-    if (!g_user_pd_kernel) {
-        g_user_pd_kernel = (uint64_t *)uefi_alloc_pages(4096u);
-    }
-    if (!g_user_pd_user) {
-        g_user_pd_user = (uint64_t *)uefi_alloc_pages(4096u);
-    }
-    if (!g_user_pt_user) {
-        g_user_pt_user = (uint64_t *)uefi_alloc_pages(4096u);
-    }
-    if (!g_user_pml4 || !g_user_pdpt || !g_user_pd_kernel || !g_user_pd_user ||
-        !g_user_pt_user) {
-        return false;
-    }
-
     memset(g_user_pml4, 0, 4096u);
     memset(g_user_pdpt, 0, 4096u);
     memset(g_user_pd_kernel, 0, 4096u);

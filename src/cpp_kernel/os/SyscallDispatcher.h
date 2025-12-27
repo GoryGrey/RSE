@@ -89,6 +89,24 @@ inline bool read_user_bytes(OSProcess* proc, uint64_t addr, void* dst, uint64_t 
     return proc->vmem->readUser(dst, addr, size);
 }
 
+inline bool write_user_bytes(OSProcess* proc, uint64_t addr, const void* src, uint64_t size) {
+    if (!src || size == 0) {
+        return false;
+    }
+    if (!enforce_user_memory(proc)) {
+        if (!addr) {
+            return false;
+        }
+        uint8_t* dst = reinterpret_cast<uint8_t*>(addr);
+        const uint8_t* in = static_cast<const uint8_t*>(src);
+        for (uint64_t i = 0; i < size; ++i) {
+            dst[i] = in[i];
+        }
+        return true;
+    }
+    return proc->vmem->writeUser(addr, src, size);
+}
+
 inline bool copy_user_string(OSProcess* proc, uint64_t addr, char* dst,
                              uint32_t cap, uint32_t* out_len) {
     if (!dst || cap == 0 || addr == 0) {
@@ -223,6 +241,7 @@ inline int64_t sys_fork(uint64_t, uint64_t, uint64_t,
     
     // Create child process
     OSProcess* child = new OSProcess(child_pid, parent->pid, parent->torus_id);
+    child->setKernelOwned(true);
     
     // Copy parent's context
     child->context = parent->context;
@@ -271,20 +290,43 @@ inline int64_t sys_fork(uint64_t, uint64_t, uint64_t,
  */
 inline int64_t sys_wait(uint64_t status_ptr, uint64_t, uint64_t,
                         uint64_t, uint64_t, uint64_t) {
-    (void)status_ptr;
     OSProcess* current = get_current_process();
     if (!current) {
         return -ESRCH;
     }
-    
-    // For now, just return -ECHILD (no child processes)
-    // Real implementation would search for zombie children
-    // and block if none are ready
-    
-    std::cout << "[sys_wait] Process " << current->pid 
-              << " waiting for child (not implemented)" << std::endl;
-    
-    return -ECHILD;
+    TorusScheduler* scheduler = get_current_scheduler();
+    if (!scheduler) {
+        return -ESRCH;
+    }
+
+    int exit_code = 0;
+    OSProcess* zombie = scheduler->reapZombie(current->pid, &exit_code);
+    if (!zombie) {
+        bool has_child = false;
+        scheduler->forEachProcess([&](OSProcess* proc) {
+            if (proc && proc->parent_pid == current->pid) {
+                has_child = true;
+            }
+        });
+        return has_child ? -EAGAIN : -ECHILD;
+    }
+
+    if (status_ptr != 0) {
+        if (!validate_user_range(current, status_ptr, sizeof(int), true)) {
+            (void)scheduler->pushZombie(zombie);
+            return -EFAULT;
+        }
+        if (!write_user_bytes(current, status_ptr, &exit_code, sizeof(exit_code))) {
+            (void)scheduler->pushZombie(zombie);
+            return -EFAULT;
+        }
+    }
+
+    int64_t pid = static_cast<int64_t>(zombie->pid);
+    if (zombie->isKernelOwned()) {
+        delete zombie;
+    }
+    return pid;
 }
 
 /**

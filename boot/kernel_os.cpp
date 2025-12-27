@@ -39,9 +39,9 @@ struct alloc_header {
     size_t size;
 };
 
-static uint8_t heap_area[2 * 1024 * 1024];
+static uint8_t heap_area[8 * 1024 * 1024];
 static size_t heap_offset;
-static uint8_t phys_mem[16 * 1024 * 1024];
+alignas(4096) static uint8_t phys_mem[16 * 1024 * 1024];
 static constexpr uint32_t kTorusCount = 3;
 static constexpr uint32_t kExtraProcs = 4;
 
@@ -552,7 +552,9 @@ static os::BlockFS* create_blockfs(uint32_t torus_id) {
 static os::PhysicalAllocator* create_phys_alloc(uint32_t torus_id) {
     alignas(os::PhysicalAllocator) static uint8_t storage[kTorusCount][sizeof(os::PhysicalAllocator)];
     const size_t total = sizeof(phys_mem);
-    const size_t stride = total / kTorusCount;
+    static constexpr size_t kPhysAlign = 4096;
+    const size_t raw_stride = total / kTorusCount;
+    const size_t stride = raw_stride & ~(kPhysAlign - 1);
     const size_t offset = stride * torus_id;
     const size_t size = (torus_id == (kTorusCount - 1)) ? (total - offset) : stride;
     uint8_t* base = phys_mem + offset;

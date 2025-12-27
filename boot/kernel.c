@@ -404,7 +404,11 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
         if (rse_os_ring3_context(&entry, &stack)) {
             uint64_t code_phys = 0;
             uint64_t stack_phys = 0;
-            if (rse_os_user_map(entry, USER_STACK_VADDR, &code_phys, &stack_phys)) {
+            uint64_t stack_page = USER_STACK_VADDR;
+            if (stack > 8) {
+                stack_page = stack - 8u;
+            }
+            if (rse_os_user_map(entry, stack_page, &code_phys, &stack_phys)) {
                 build_user_page_table(code_phys, stack_phys);
             }
             frame->rip = entry;

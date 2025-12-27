@@ -1,7 +1,7 @@
 # RSE (Resilient Spatial Execution)
 
-**Last Updated**: December 26, 2025 (UEFI run-iso: user-mode window + brk/mmap remap)  
-**Status**: Research prototype. Bootable UEFI kernel with an interactive dashboard (keyboard/mouse) and in-kernel workloads; braided projection exchange works in multi-VM via shared memory. Ring3 exec smoke passes with a bounded user-mode window, but full user-mode isolation and network transport are still in progress.
+**Last Updated**: December 26, 2025 (UEFI run-iso: fast-path I/O bench + ring3 exec fault noted)  
+**Status**: Research prototype. Bootable UEFI kernel with an interactive dashboard (keyboard/mouse) and in-kernel workloads; braided projection exchange works in multi-VM via shared memory. Native fast-path I/O is now in-kernel (`/dev/fast0`), while UEFI/virtio remain compatibility paths; ring3 exec smoke is currently faulting after the user-mode window remap.
 
 **Quick Links**: [Project Status](PROJECT_STATUS.md) | [Documentation](#documentation)
 
@@ -48,7 +48,8 @@ Key properties:
 - **/dev/net0 UDP loopback** with simple RX/echo path (no full IP stack yet).
 - **Init shell demo** (stdout + cat + device probes).
 - **Cooperative userspace tasks** (in-kernel runner using syscalls).
-- **Ring3 smoke + exec path** in UEFI (user-mode window + page-table refresh on brk/mmap).
+- **Ring3 smoke + exec path** in UEFI (user-mode window + page-table refresh on brk/mmap; exec smoke currently faults).
+- **Fast-path I/O device** (`/dev/fast0`) using a native ring buffer (in-kernel).
 - **Framebuffer dashboard** (boot + benchmark summary panels, keyboard/mouse input, on-screen console).
 - **Braided runtime** (single-node, in-kernel projections + constraint application).
 - **Projection exchange across 3 VMs** via IVSHMEM shared memory transport.
@@ -56,7 +57,7 @@ Key properties:
 
 ## Known Limitations
 
-- No full user-mode isolation yet; ring3 exec works in UEFI with a bounded window, but most userspace remains cooperative/in-kernel.
+- No full user-mode isolation yet; ring3 exec smoke currently faults in UEFI after the user-mode window remap.
 - Network RX is working for basic ARP/UDP, but needs stress and driver hardening.
 - No full IP/TCP stack (only minimal IPv4/UDP parsing + echo).
   - Raw frame mode can be enabled at build time: `RSE_NET_RAW=1`.
@@ -69,15 +70,16 @@ Key properties:
 
 Cycle-counted benchmarks captured in headless QEMU (see `PROJECT_STATUS.md` for the latest run):
 
-- **Compute**: 400,000 ops, 23,175,219 cycles (57 cycles/op)
-- **Memory**: 67,108,864 bytes, 155,604,992 cycles (2 cycles/byte)
-- **RAMFS File I/O**: 288 ops, 9,260,536 cycles (32154 cycles/op)
-- **UEFI FAT File I/O (USB disk)**: 144 ops, 2,598,435,038 cycles (18044687 cycles/op)
-- **UEFI Raw Block I/O (USB disk)**: 524,288 bytes, write 72,108,594 cycles (137 cycles/byte), read 90,153,268 cycles (171 cycles/byte)
-- **Virtio-Block I/O (disk)**: 512 bytes, write 450,520,608 cycles (879923 cycles/byte), read 62,756,619 cycles (122571 cycles/byte)
-- **Net ARP Probe (virtio-net RX)**: 64 bytes, 5,466,842 cycles
-- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 804,265,218 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
-- **HTTP Loopback**: 50,000 requests, 101,421,019 cycles (2028 cycles/req)
+- **Compute**: 400,000 ops, 23,299,623 cycles (58 cycles/op)
+- **Memory**: 67,108,864 bytes, 173,322,734 cycles (2 cycles/byte)
+- **RAMFS File I/O**: 288 ops, 9,516,994 cycles (33045 cycles/op)
+- **Fast-Path I/O (`/dev/fast0`)**: 2,097,152 bytes, 82,294,399 cycles (39 cycles/byte)
+- **UEFI FAT File I/O (USB disk)**: 144 ops, 1,964,927,353 cycles (13645328 cycles/op)
+- **UEFI Raw Block I/O (USB disk)**: 524,288 bytes, write 40,353,366 cycles (76 cycles/byte), read 15,221,428 cycles (29 cycles/byte)
+- **Virtio-Block I/O (disk)**: 512 bytes, write 430,506,361 cycles (840832 cycles/byte), read 4,484,008 cycles (8757 cycles/byte)
+- **Net ARP Probe (virtio-net RX)**: 64 bytes, 8,324,404 cycles
+- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 20,573,549 cycles (proof: rx=393 udp=197 http=196; see `build/boot/proof.log`)
+- **HTTP Loopback**: 50,000 requests, 52,878,740 cycles (1057 cycles/req)
 
 Notes:
 - These are **QEMU TSC cycle counts**, not wall-clock time.

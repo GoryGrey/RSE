@@ -35,6 +35,8 @@ extern int64_t rse_os_syscall_dispatch(int64_t num,
                                        uint64_t arg5, uint64_t arg6);
 extern int rse_os_ring3_entry(uint64_t *entry_out);
 extern int rse_os_ring3_context(uint64_t *entry_out, uint64_t *stack_out);
+extern int rse_os_fastio_bench(uint64_t *bytes_out, uint64_t *cycles_out,
+                               uint64_t *cycles_per_byte_out);
 
 #define RSE_SYS_EXEC 2u
 #define RSE_SYS_EXIT 3u
@@ -331,7 +333,7 @@ struct int80_frame {
 #define USER_VADDR_BASE 0x40000000ull
 #define USER_WINDOW_SIZE 0x200000ull
 #define USER_STACK_SIZE 0x10000ull
-#define USER_STACK_TOP (USER_VADDR_BASE + USER_WINDOW_SIZE)
+#define USER_STACK_TOP (USER_VADDR_BASE + USER_WINDOW_SIZE - 0x1000ull)
 #define USER_STACK_VADDR (USER_STACK_TOP - USER_STACK_SIZE)
 
 static bool build_user_page_table(uint64_t code_vaddr, uint64_t stack_vaddr,
@@ -1269,6 +1271,9 @@ struct rse_bench_metrics {
     uint64_t ramfs_ops;
     uint64_t ramfs_cycles;
     uint64_t ramfs_cycles_per_op;
+    uint64_t fastio_bytes;
+    uint64_t fastio_cycles;
+    uint64_t fastio_cycles_per_byte;
     uint64_t uefi_fs_ops;
     uint64_t uefi_fs_cycles;
     uint64_t uefi_fs_cycles_per_op;
@@ -3762,6 +3767,31 @@ static void bench_files(void) {
     serial_write("\n");
 }
 
+static void bench_fastio(void) {
+    serial_write("[RSE] fastio benchmark start\n");
+    if (!g_os_initialized) {
+        serial_write("[RSE] fastio unavailable (os not ready)\n");
+        return;
+    }
+    uint64_t bytes = 0;
+    uint64_t cycles = 0;
+    uint64_t cycles_per_byte = 0;
+    if (!rse_os_fastio_bench(&bytes, &cycles, &cycles_per_byte)) {
+        serial_write("[RSE] fastio unavailable\n");
+        return;
+    }
+    g_metrics.fastio_bytes = bytes;
+    g_metrics.fastio_cycles = cycles;
+    g_metrics.fastio_cycles_per_byte = cycles_per_byte;
+    serial_write("[RSE] fastio bytes=");
+    serial_write_u64(bytes);
+    serial_write(" cycles=");
+    serial_write_u64(cycles);
+    serial_write(" cycles/byte=");
+    serial_write_u64(cycles_per_byte);
+    serial_write("\n");
+}
+
 static void init_workloads(void) {
     if (g_os_initialized) {
         serial_write("[RSE] init workloads skipped (already ready)\n");
@@ -4085,6 +4115,7 @@ static void run_benchmarks(struct rse_boot_info *boot_info, int do_init) {
     bench_compute();
     bench_memory();
     bench_files();
+    bench_fastio();
     bench_uefi_fs(boot_info);
     bench_uefi_block(boot_info);
     bench_virtio_block();
@@ -4530,6 +4561,8 @@ static void fb_draw_dashboard(struct limine_framebuffer *fb) {
     fb_draw_label_u64(fb, right_x + 12, line, "MEM CYC/B:", g_metrics.memory_cycles_per_byte, UI_MUTED, UI_TEXT);
     line += line_step;
     fb_draw_label_u64(fb, right_x + 12, line, "RAMFS CYC/OP:", g_metrics.ramfs_cycles_per_op, UI_MUTED, UI_TEXT);
+    line += line_step;
+    fb_draw_label_u64(fb, right_x + 12, line, "FAST I/O CYC/B:", g_metrics.fastio_cycles_per_byte, UI_MUTED, UI_TEXT);
     line += line_step;
     fb_draw_label_u64(fb, right_x + 12, line, "UEFI FS CYC/OP:", g_metrics.uefi_fs_cycles_per_op, UI_MUTED, UI_TEXT);
     line += line_step;

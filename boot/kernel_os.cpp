@@ -15,6 +15,7 @@
 #include "../src/cpp_kernel/os/BlockDevice.h"
 #include "../src/cpp_kernel/os/LoopbackDevice.h"
 #include "../src/cpp_kernel/os/NetDevice.h"
+#include "../src/cpp_kernel/os/FastPathDevice.h"
 #include "../src/cpp_kernel/braided/BraidCoordinator.h"
 #include "../src/cpp_kernel/braided/BraidedKernel.h"
 #if RSE_NET_EXCHANGE
@@ -709,6 +710,7 @@ struct TorusRuntime {
     os::BlockFS* blockfs;
     os::DeviceManager* dev_mgr;
     os::Device* console;
+    os::Device* fastio;
     os::TorusScheduler* scheduler;
     os::SyscallDispatcher* dispatcher;
     os::PhysicalAllocator* phys_alloc;
@@ -828,6 +830,64 @@ static bool install_ring3_elf(TorusRuntime& rt, os::OSProcess* proc) {
 
 static TorusRuntime g_runtimes[kTorusCount] = {};
 static int g_runtimes_ready = 0;
+
+extern "C" int rse_os_fastio_bench(uint64_t* bytes_out,
+                                   uint64_t* cycles_out,
+                                   uint64_t* cycles_per_byte_out) {
+    if (!bytes_out || !cycles_out || !cycles_per_byte_out) {
+        return 0;
+    }
+    if (!g_runtimes_ready) {
+        return 0;
+    }
+    TorusRuntime& rt = g_runtimes[0];
+    if (!rt.fastio || !rt.fastio->write || !rt.fastio->read) {
+        return 0;
+    }
+
+    os::fastpath_reset(rt.fastio);
+
+    static uint8_t payload[4096];
+    static uint8_t scratch[4096];
+    for (uint32_t i = 0; i < sizeof(payload); ++i) {
+        payload[i] = (uint8_t)(i ^ 0x5a);
+        scratch[i] = 0;
+    }
+
+    const uint32_t iterations = 256;
+    uint64_t bytes = 0;
+    uint64_t start = kernel_rdtsc();
+    for (uint32_t i = 0; i < iterations; ++i) {
+        ssize_t wrote = rt.fastio->write(rt.fastio, payload, sizeof(payload));
+        if (wrote <= 0) {
+            break;
+        }
+        bytes += (uint64_t)wrote;
+        uint32_t remaining = (uint32_t)wrote;
+        uint32_t offset = 0;
+        while (remaining > 0) {
+            ssize_t got = rt.fastio->read(rt.fastio, scratch + offset, remaining);
+            if (got <= 0) {
+                remaining = 0;
+                break;
+            }
+            bytes += (uint64_t)got;
+            remaining -= (uint32_t)got;
+            offset += (uint32_t)got;
+        }
+        if (offset == 0) {
+            break;
+        }
+    }
+    uint64_t end = kernel_rdtsc();
+
+    uint64_t cycles = end - start;
+    uint64_t cycles_per_byte = bytes ? (cycles / bytes) : 0;
+    *bytes_out = bytes;
+    *cycles_out = cycles;
+    *cycles_per_byte_out = cycles_per_byte;
+    return 1;
+}
 
 static int os_ps_dump(char *buf, uint32_t len) {
     if (!buf || len == 0) {
@@ -1432,6 +1492,7 @@ extern "C" void rse_os_run(void) {
         rt.blockfs = create_blockfs(torus_id);
         rt.dev_mgr = create_device_manager(torus_id);
         rt.console = nullptr;
+        rt.fastio = nullptr;
         rt.scheduler = create_scheduler(torus_id);
         rt.dispatcher = create_dispatcher(torus_id);
         rt.phys_alloc = create_phys_alloc(torus_id);
@@ -1442,6 +1503,11 @@ extern "C" void rse_os_run(void) {
         rt.dev_mgr->registerDevice(console);
         rt.dev_mgr->registerDevice(dev_null);
         rt.dev_mgr->registerDevice(dev_zero);
+        os::Device* dev_fast = os::create_fastpath_device("fast0");
+        if (dev_fast) {
+            rt.dev_mgr->registerDevice(dev_fast);
+            rt.fastio = dev_fast;
+        }
         if (has_block && block_size > 0) {
             os::Device* dev_blk = os::create_block_device("blk0", block_size);
             if (dev_blk) {

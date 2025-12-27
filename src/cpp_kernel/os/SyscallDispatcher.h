@@ -400,7 +400,7 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
     static constexpr uint64_t kKernelUserBase = 0x40000000ull;
     static constexpr uint64_t kKernelUserWindow = 0x200000ull;
     static constexpr uint64_t kKernelUserStackSize = 64 * 1024ull;
-    static constexpr uint64_t kKernelUserStackTop = kKernelUserBase + kKernelUserWindow;
+    static constexpr uint64_t kKernelUserStackTop = kKernelUserBase + kKernelUserWindow - PAGE_SIZE;
     static constexpr uint64_t kKernelUserStackBase = kKernelUserStackTop - kKernelUserStackSize;
     static constexpr uint64_t kKernelUserHeapBase = kKernelUserBase;
     static constexpr uint64_t kKernelUserHeapLimit = kKernelUserStackBase;

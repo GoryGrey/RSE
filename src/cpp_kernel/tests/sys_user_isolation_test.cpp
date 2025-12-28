@@ -48,6 +48,16 @@ int main() {
     scheduler.tick();
     assert(scheduler.getCurrentProcess() == &proc);
 
+    uint64_t guard_bytes = proc.vmem->getStackGuardBytes();
+    if (guard_bytes > 0) {
+        uint64_t guard_start = proc.vmem->getStackMappedStart() - guard_bytes;
+        for (uint64_t addr = guard_start;
+             addr < proc.vmem->getStackMappedStart();
+             addr += os::PAGE_SIZE) {
+            assert(!proc.vmem->getPageTable()->isMapped(addr));
+        }
+    }
+
     const char path[] = "/hello.txt";
     uint64_t path_addr = write_user_string(proc, path);
     int64_t fd = os::syscall(os::SYS_OPEN, path_addr,
@@ -60,6 +70,12 @@ int main() {
     assert(proc.vmem->writeUser(payload_addr, payload, sizeof(payload) - 1));
     int64_t wrote = os::syscall(os::SYS_WRITE, fd, payload_addr, sizeof(payload) - 1);
     assert(wrote == static_cast<int64_t>(sizeof(payload) - 1));
+
+    uint64_t huge_count = static_cast<uint64_t>(UINT32_MAX) + 1;
+    int64_t huge_write = os::syscall(os::SYS_WRITE, fd, payload_addr, huge_count);
+    assert(huge_write == -os::EINVAL);
+    int64_t huge_read = os::syscall(os::SYS_READ, fd, payload_addr, huge_count);
+    assert(huge_read == -os::EINVAL);
 
     uint64_t bad_addr = proc.vmem->getStackEnd() + os::PAGE_SIZE;
     int64_t bad_write = os::syscall(os::SYS_WRITE, fd, bad_addr, 4);

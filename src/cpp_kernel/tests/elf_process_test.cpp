@@ -10,7 +10,7 @@ using os::Elf64_Ehdr;
 using os::Elf64_Phdr;
 
 static void writeElfImage(std::array<uint8_t, 2048>& buf, const uint8_t* payload,
-                          size_t payload_len, uint64_t entry) {
+                          size_t payload_len, uint64_t entry, uint32_t flags) {
   std::memset(buf.data(), 0, buf.size());
 
   Elf64_Ehdr ehdr{};
@@ -29,7 +29,7 @@ static void writeElfImage(std::array<uint8_t, 2048>& buf, const uint8_t* payload
 
   Elf64_Phdr phdr{};
   phdr.p_type = os::PT_LOAD;
-  phdr.p_flags = os::PF_R | os::PF_X;
+  phdr.p_flags = flags;
   phdr.p_offset = 0x100;
   phdr.p_vaddr = entry;
   phdr.p_paddr = entry;
@@ -53,7 +53,8 @@ int main() {
 
   const char payload[] = "ELF-OK";
   std::array<uint8_t, 2048> image{};
-  writeElfImage(image, reinterpret_cast<const uint8_t*>(payload), sizeof(payload), 0x400000);
+  writeElfImage(image, reinterpret_cast<const uint8_t*>(payload), sizeof(payload), 0x400000,
+                os::PF_R | os::PF_X);
 
   bool ok = proc.loadElfImage(image.data(), image.size());
   assert(ok);
@@ -66,6 +67,14 @@ int main() {
   assert(ptr != nullptr);
   assert(std::memcmp(ptr, payload, sizeof(payload)) == 0);
   assert(ptr[sizeof(payload)] == 0);
+
+  os::OSProcess proc_wx(2, 0, 0);
+  proc_wx.initMemory(&phys_alloc);
+  std::array<uint8_t, 2048> bad_image{};
+  writeElfImage(bad_image, reinterpret_cast<const uint8_t*>(payload), sizeof(payload), 0x400000,
+                os::PF_R | os::PF_W | os::PF_X);
+  bool bad_ok = proc_wx.loadElfImage(bad_image.data(), bad_image.size());
+  assert(!bad_ok);
 
   std::cout << "  ✓ all tests passed" << std::endl;
   return 0;

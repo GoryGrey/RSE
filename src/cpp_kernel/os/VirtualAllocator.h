@@ -29,6 +29,8 @@ private:
     
     uint64_t stack_start_;
     uint64_t stack_end_;
+    uint64_t stack_guard_bytes_;
+    uint64_t stack_mapped_start_;
     
 public:
     VirtualAllocator(PageTable* pt, PhysicalAllocator* pa)
@@ -38,7 +40,9 @@ public:
           heap_end_(0x00000000'40000000ULL),     // 1GB
           heap_brk_(0x00000000'00400000ULL),
           stack_start_(0x00007FFF'FFFF0000ULL),  // Near top of user space
-          stack_end_(0x00007FFF'FFFFF000ULL) {
+          stack_end_(0x00007FFF'FFFFF000ULL),
+          stack_guard_bytes_(0),
+          stack_mapped_start_(0) {
     }
     
     /**
@@ -190,14 +194,47 @@ public:
         
         // Align size
         size = align_up(size);
-        
+        uint64_t guard_before = 0;
+        uint64_t guard_after = 0;
+
         // Choose address if not specified
         if (addr == 0) {
-            addr = heap_brk_;
+            guard_before = PAGE_SIZE;
+            guard_after = PAGE_SIZE;
+            uint64_t region_size = size + guard_before + guard_after;
+            if (region_size < size) {
+                std::cerr << "[VirtualAllocator] mmap size overflow!" << std::endl;
+                return 0;
+            }
+            uint64_t search_start = align_up(heap_brk_);
+            bool found = false;
+            if (page_table_) {
+                for (uint64_t candidate = search_start; candidate <= heap_end_; candidate += PAGE_SIZE) {
+                    if (candidate > heap_end_ - region_size) {
+                        break;
+                    }
+                    bool overlap = false;
+                    uint64_t candidate_end = candidate + region_size;
+                    for (uint64_t virt = candidate; virt < candidate_end; virt += PAGE_SIZE) {
+                        if (page_table_->isMapped(virt)) {
+                            overlap = true;
+                            break;
+                        }
+                    }
+                    if (!overlap) {
+                        addr = candidate + guard_before;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (!found) {
+                return 0;
+            }
+        } else {
+            // Align address
+            addr = align_down(addr);
         }
-        
-        // Align address
-        addr = align_down(addr);
         
         // Check bounds
         if (addr < heap_start_ || addr > heap_end_) {
@@ -291,11 +328,19 @@ public:
         if (size == 0) {
             return 0;
         }
+        stack_guard_bytes_ = 0;
+        stack_mapped_start_ = 0;
         size = align_up(size);
         if (stack_end_ < stack_start_ + size) {
             return 0;
         }
-        uint64_t guard = size > PAGE_SIZE ? PAGE_SIZE : 0;
+        uint64_t guard_pages = 0;
+        if (size >= PAGE_SIZE * 3) {
+            guard_pages = 2;
+        } else if (size > PAGE_SIZE) {
+            guard_pages = 1;
+        }
+        uint64_t guard = guard_pages * PAGE_SIZE;
         uint64_t stack_base = stack_end_ - size;
         uint64_t mapped_base = stack_base + guard;
         uint64_t mapped_size = size - guard;
@@ -305,6 +350,8 @@ public:
         if (!mapRange(mapped_base, mapped_size, PTE_USER | PTE_WRITABLE, nullptr, 0)) {
             return 0;
         }
+        stack_guard_bytes_ = guard;
+        stack_mapped_start_ = mapped_base;
         return stack_end_;
     }
     
@@ -395,6 +442,8 @@ public:
     uint64_t getHeapBrk() const { return heap_brk_; }
     uint64_t getStackStart() const { return stack_start_; }
     uint64_t getStackEnd() const { return stack_end_; }
+    uint64_t getStackMappedStart() const { return stack_mapped_start_; }
+    uint64_t getStackGuardBytes() const { return stack_guard_bytes_; }
     PageTable* getPageTable() const { return page_table_; }
     PhysicalAllocator* getPhysicalAllocator() const { return phys_alloc_; }
 
@@ -539,6 +588,8 @@ public:
         va->heap_brk_ = heap_brk_;
         va->stack_start_ = stack_start_;
         va->stack_end_ = stack_end_;
+        va->stack_guard_bytes_ = stack_guard_bytes_;
+        va->stack_mapped_start_ = stack_mapped_start_;
         return va;
     }
     

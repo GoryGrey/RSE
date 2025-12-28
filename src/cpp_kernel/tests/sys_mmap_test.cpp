@@ -41,6 +41,9 @@ int main() {
     invalid = os::syscall(os::SYS_MMAP, (uint64_t)mapped + 1, os::PAGE_SIZE,
                           os::PROT_READ | os::PROT_WRITE);
     assert(invalid == -os::EINVAL);
+    int64_t wx = os::syscall(os::SYS_MMAP, 0, os::PAGE_SIZE,
+                             os::PROT_EXEC | os::PROT_WRITE);
+    assert(wx == -os::EACCES);
 
     int64_t overlap = os::syscall(os::SYS_MMAP, (uint64_t)mapped, os::PAGE_SIZE,
                                   os::PROT_READ | os::PROT_WRITE);
@@ -58,6 +61,9 @@ int main() {
     assert(rc == -os::EINVAL);
     rc = os::syscall(os::SYS_MPROTECT, (uint64_t)mapped, 0, os::PROT_READ);
     assert(rc == -os::EINVAL);
+    rc = os::syscall(os::SYS_MPROTECT, (uint64_t)mapped, os::PAGE_SIZE,
+                     os::PROT_EXEC | os::PROT_WRITE);
+    assert(rc == -os::EACCES);
 
     rc = os::syscall(os::SYS_MUNMAP, (uint64_t)mapped + os::PAGE_SIZE, os::PAGE_SIZE);
     assert(rc == 0);

@@ -743,6 +743,9 @@ inline int64_t sys_write(uint64_t fd, uint64_t buf_addr, uint64_t count,
     if (!current) {
         return -ESRCH;
     }
+    if (count > static_cast<uint64_t>(UINT32_MAX)) {
+        return -EINVAL;
+    }
     if (count != 0 && !validate_user_range(current, buf_addr, count, false)) {
         return -EFAULT;
     }
@@ -790,6 +793,9 @@ inline int64_t sys_read(uint64_t fd, uint64_t buf_addr, uint64_t count,
     OSProcess* current = get_current_process();
     if (!current) {
         return -ESRCH;
+    }
+    if (count > static_cast<uint64_t>(UINT32_MAX)) {
+        return -EINVAL;
     }
     if (count != 0 && !validate_user_range(current, buf_addr, count, true)) {
         return -EFAULT;
@@ -1149,6 +1155,9 @@ inline int64_t sys_mmap(uint64_t addr, uint64_t size, uint64_t prot,
     }
     if (addr > UINT64_MAX - size) {
         return -EINVAL;
+    }
+    if ((prot & (PROT_EXEC | PROT_WRITE)) == (PROT_EXEC | PROT_WRITE)) {
+        return -EACCES;
     }
     if (enforce_user_memory(current) && addr != 0 &&
         !current->vmem->isUserRange(addr, size)) {

@@ -197,6 +197,9 @@ public:
 
         for (size_t i = 0; i < image.segments.size(); ++i) {
             const ElfSegment& seg = image.segments[i];
+            if ((seg.flags & PF_W) && (seg.flags & PF_X)) {
+                return false;
+            }
             const uint8_t* seg_data = data + seg.offset;
             if (!vmem->mapSegment(seg_data, seg.filesz, seg.vaddr, seg.memsz, seg.flags)) {
                 return false;
@@ -244,10 +247,8 @@ public:
         if (sp == 0) {
             return false;
         }
-        uint64_t stack_bytes = align_up(stack_size);
         memory.stack_end = vmem->getStackEnd();
-        uint64_t guard = stack_bytes > PAGE_SIZE ? PAGE_SIZE : 0;
-        memory.stack_start = memory.stack_end - stack_bytes + guard;
+        memory.stack_start = vmem->getStackMappedStart();
         memory.stack_pointer = sp;
 
         context.rip = image.entry;

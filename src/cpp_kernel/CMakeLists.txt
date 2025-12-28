@@ -174,6 +174,12 @@ if(NOT MSVC)
     target_link_libraries(sys_stat_test atomic)
 endif()
 
+# sys_user_isolation test
+add_executable(sys_user_isolation_test tests/sys_user_isolation_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(sys_user_isolation_test atomic)
+endif()
+
 # sys_vfs_persist test
 add_executable(sys_vfs_persist_test tests/sys_vfs_persist_test.cpp)
 if(NOT MSVC)

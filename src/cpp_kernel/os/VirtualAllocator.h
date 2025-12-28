@@ -372,11 +372,21 @@ public:
     }
 
     bool validateUserRange(uint64_t addr, uint64_t size, bool write) const {
+        if (size == 0) {
+            return true;
+        }
+        uint64_t end = addr + size - 1;
+        if (end < addr) {
+            return false;
+        }
         if (!isUserRange(addr, size) || !page_table_) {
             return false;
         }
+        if (end == UINT64_MAX) {
+            return false;
+        }
         uint64_t virt_start = align_down(addr);
-        uint64_t virt_end = align_up(addr + size);
+        uint64_t virt_end = align_up(end + 1);
         for (uint64_t virt = virt_start; virt < virt_end; virt += PAGE_SIZE) {
             const PageTableEntry* pte = page_table_->getPTE(virt);
             if (!pte || !pte->isPresent() || !pte->isUser()) {
@@ -400,6 +410,11 @@ public:
         uint64_t addr = src;
         uint64_t remaining = size;
         while (remaining > 0) {
+            uint64_t page = align_down(addr);
+            const PageTableEntry* pte = page_table_->getPTE(page);
+            if (!pte || !pte->isPresent() || !pte->isUser()) {
+                return false;
+            }
             uint64_t phys = page_table_->translate(addr);
             if (phys == 0) {
                 return false;
@@ -435,6 +450,11 @@ public:
         uint64_t addr = dst;
         uint64_t remaining = size;
         while (remaining > 0) {
+            uint64_t page = align_down(addr);
+            const PageTableEntry* pte = page_table_->getPTE(page);
+            if (!pte || !pte->isPresent() || !pte->isUser() || !pte->isWritable()) {
+                return false;
+            }
             uint64_t phys = page_table_->translate(addr);
             if (phys == 0) {
                 return false;

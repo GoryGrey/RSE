@@ -502,6 +502,10 @@ private:
         bool ok = true;
 
         for (uint64_t virt = virt_start; virt < virt_end; virt += PAGE_SIZE) {
+            if (page_table_->isMapped(virt)) {
+                ok = false;
+                break;
+            }
             uint64_t phys = phys_alloc_->allocateFrame();
             if (phys == 0) {
                 ok = false;

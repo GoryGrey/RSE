@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/blockfs_test.dir/tests/blockfs_test.cpp.o -o blockfs_test  -latomic 

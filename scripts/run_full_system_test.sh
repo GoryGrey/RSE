@@ -2,9 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BOOT_LOG_DIR="${ROOT_DIR}/build/boot"
-BOOT_LOG="${BOOT_LOG_DIR}/boot.log"
-NET_LOG_DIR="${ROOT_DIR}/benchmarks/net_exchange"
+BOOT_LOG_DIR="${BOOT_LOG_DIR:-${ROOT_DIR}/build/boot}"
+BOOT_LOG="${BOOT_LOG:-${BOOT_LOG_DIR}/boot.log}"
+NET_LOG_DIR="${NET_LOG_DIR:-${ROOT_DIR}/benchmarks/net_exchange}"
 TIMEOUT_BOOT="${TIMEOUT_BOOT:-90}"
 TIMEOUT_EXCHANGE="${TIMEOUT_EXCHANGE:-45}"
 
@@ -25,6 +25,18 @@ check_log() {
   local file="$1"
   local pattern="$2"
   rg -q --fixed-strings "$pattern" "$file" || fail "missing '$pattern' in $file"
+}
+
+validate_exchange_logs() {
+  for torus_id in 0 1 2; do
+    local log="${NET_LOG_DIR}/torus${torus_id}.log"
+    [[ -f "${log}" ]] || return 1
+    rg -q --fixed-strings "[RSE] shm projection online" "${log}" || return 1
+    rg -q --fixed-strings "[RSE] shm projection exchange start" "${log}" || return 1
+    rg -q --fixed-strings "[RSE] shm projection acked seq=1" "${log}" || return 1
+    rg -q --fixed-strings "[RSE] shm projection recv torus=" "${log}" || return 1
+  done
+  return 0
 }
 
 for cmd in cmake make timeout qemu-system-x86_64 xorriso mkfs.fat mcopy mmd sgdisk rg truncate; do
@@ -87,14 +99,20 @@ check_log "${BOOT_LOG}" "[RSE] benchmarks end"
 check_log "${BOOT_LOG}" "[RSE] UEFI keyboard online"
 
 say "Run projection exchange (SHM, 3 VMs)"
-TIMEOUT_SECS="${TIMEOUT_EXCHANGE}" "${ROOT_DIR}/scripts/run_projection_exchange.sh"
-for torus_id in 0 1 2; do
-  log="${NET_LOG_DIR}/torus${torus_id}.log"
-  [[ -f "${log}" ]] || fail "missing exchange log: ${log}"
-  check_log "${log}" "[RSE] shm projection online"
-  check_log "${log}" "[RSE] shm projection exchange start"
-  check_log "${log}" "[RSE] shm projection acked seq=1"
-  check_log "${log}" "[RSE] shm projection recv torus="
+exchange_timeout="${TIMEOUT_EXCHANGE}"
+exchange_ok=0
+for attempt in 1 2 3; do
+  say "Projection exchange attempt ${attempt}/3 (timeout ${exchange_timeout}s, logs=${NET_LOG_DIR})"
+  rm -f "${NET_LOG_DIR}/torus0.log" "${NET_LOG_DIR}/torus1.log" "${NET_LOG_DIR}/torus2.log"
+  TIMEOUT_SECS="${exchange_timeout}" LOG_DIR="${NET_LOG_DIR}" "${ROOT_DIR}/scripts/run_projection_exchange.sh"
+  if validate_exchange_logs; then
+    exchange_ok=1
+    break
+  fi
+  exchange_timeout=$((exchange_timeout + 30))
 done
+if [[ "${exchange_ok}" -ne 1 ]]; then
+  fail "projection exchange logs missing expected markers after retries"
+fi
 
 say "Full system test OK"

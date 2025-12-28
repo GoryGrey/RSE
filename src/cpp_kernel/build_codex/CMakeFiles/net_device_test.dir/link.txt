@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/net_device_test.dir/tests/net_device_test.cpp.o -o net_device_test  -latomic 

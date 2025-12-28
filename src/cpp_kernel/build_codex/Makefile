@@ -335,6 +335,175 @@ threadsafe_scheduler_test/fast:
 .PHONY : threadsafe_scheduler_test/fast
 
 #=============================================================================
+# Target rules for targets named elf_loader_test
+
+# Build rule for target.
+elf_loader_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 elf_loader_test
+.PHONY : elf_loader_test
+
+# fast build rule for target.
+elf_loader_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/elf_loader_test.dir/build.make CMakeFiles/elf_loader_test.dir/build
+.PHONY : elf_loader_test/fast
+
+#=============================================================================
+# Target rules for targets named elf_process_test
+
+# Build rule for target.
+elf_process_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 elf_process_test
+.PHONY : elf_process_test
+
+# fast build rule for target.
+elf_process_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/elf_process_test.dir/build.make CMakeFiles/elf_process_test.dir/build
+.PHONY : elf_process_test/fast
+
+#=============================================================================
+# Target rules for targets named exec_vfs_test
+
+# Build rule for target.
+exec_vfs_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 exec_vfs_test
+.PHONY : exec_vfs_test
+
+# fast build rule for target.
+exec_vfs_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/exec_vfs_test.dir/build.make CMakeFiles/exec_vfs_test.dir/build
+.PHONY : exec_vfs_test/fast
+
+#=============================================================================
+# Target rules for targets named blockfs_test
+
+# Build rule for target.
+blockfs_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 blockfs_test
+.PHONY : blockfs_test
+
+# fast build rule for target.
+blockfs_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/blockfs_test.dir/build.make CMakeFiles/blockfs_test.dir/build
+.PHONY : blockfs_test/fast
+
+#=============================================================================
+# Target rules for targets named net_device_test
+
+# Build rule for target.
+net_device_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 net_device_test
+.PHONY : net_device_test
+
+# fast build rule for target.
+net_device_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/net_device_test.dir/build.make CMakeFiles/net_device_test.dir/build
+.PHONY : net_device_test/fast
+
+#=============================================================================
+# Target rules for targets named sys_wait_test
+
+# Build rule for target.
+sys_wait_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sys_wait_test
+.PHONY : sys_wait_test
+
+# fast build rule for target.
+sys_wait_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_wait_test.dir/build.make CMakeFiles/sys_wait_test.dir/build
+.PHONY : sys_wait_test/fast
+
+#=============================================================================
+# Target rules for targets named sys_kill_test
+
+# Build rule for target.
+sys_kill_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sys_kill_test
+.PHONY : sys_kill_test
+
+# fast build rule for target.
+sys_kill_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_kill_test.dir/build.make CMakeFiles/sys_kill_test.dir/build
+.PHONY : sys_kill_test/fast
+
+#=============================================================================
+# Target rules for targets named sys_ps_test
+
+# Build rule for target.
+sys_ps_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sys_ps_test
+.PHONY : sys_ps_test
+
+# fast build rule for target.
+sys_ps_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_ps_test.dir/build.make CMakeFiles/sys_ps_test.dir/build
+.PHONY : sys_ps_test/fast
+
+#=============================================================================
+# Target rules for targets named sys_stat_test
+
+# Build rule for target.
+sys_stat_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sys_stat_test
+.PHONY : sys_stat_test
+
+# fast build rule for target.
+sys_stat_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_stat_test.dir/build.make CMakeFiles/sys_stat_test.dir/build
+.PHONY : sys_stat_test/fast
+
+#=============================================================================
+# Target rules for targets named sys_pipe_test
+
+# Build rule for target.
+sys_pipe_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sys_pipe_test
+.PHONY : sys_pipe_test
+
+# fast build rule for target.
+sys_pipe_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_pipe_test.dir/build.make CMakeFiles/sys_pipe_test.dir/build
+.PHONY : sys_pipe_test/fast
+
+#=============================================================================
+# Target rules for targets named sys_dup_test
+
+# Build rule for target.
+sys_dup_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sys_dup_test
+.PHONY : sys_dup_test
+
+# fast build rule for target.
+sys_dup_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_dup_test.dir/build.make CMakeFiles/sys_dup_test.dir/build
+.PHONY : sys_dup_test/fast
+
+#=============================================================================
+# Target rules for targets named sys_mmap_test
+
+# Build rule for target.
+sys_mmap_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sys_mmap_test
+.PHONY : sys_mmap_test
+
+# fast build rule for target.
+sys_mmap_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_mmap_test.dir/build.make CMakeFiles/sys_mmap_test.dir/build
+.PHONY : sys_mmap_test/fast
+
+#=============================================================================
+# Target rules for targets named sys_time_sleep_test
+
+# Build rule for target.
+sys_time_sleep_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sys_time_sleep_test
+.PHONY : sys_time_sleep_test
+
+# fast build rule for target.
+sys_time_sleep_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_time_sleep_test.dir/build.make CMakeFiles/sys_time_sleep_test.dir/build
+.PHONY : sys_time_sleep_test/fast
+
+#=============================================================================
 # Target rules for targets named memory_telemetry_test
 
 # Build rule for target.
@@ -783,6 +952,30 @@ tests/allocator_test.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/allocator_test.dir/build.make CMakeFiles/allocator_test.dir/tests/allocator_test.cpp.s
 .PHONY : tests/allocator_test.cpp.s
 
+tests/blockfs_test.o: tests/blockfs_test.cpp.o
+.PHONY : tests/blockfs_test.o
+
+# target to build an object file
+tests/blockfs_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/blockfs_test.dir/build.make CMakeFiles/blockfs_test.dir/tests/blockfs_test.cpp.o
+.PHONY : tests/blockfs_test.cpp.o
+
+tests/blockfs_test.i: tests/blockfs_test.cpp.i
+.PHONY : tests/blockfs_test.i
+
+# target to preprocess a source file
+tests/blockfs_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/blockfs_test.dir/build.make CMakeFiles/blockfs_test.dir/tests/blockfs_test.cpp.i
+.PHONY : tests/blockfs_test.cpp.i
+
+tests/blockfs_test.s: tests/blockfs_test.cpp.s
+.PHONY : tests/blockfs_test.s
+
+# target to generate assembly for a file
+tests/blockfs_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/blockfs_test.dir/build.make CMakeFiles/blockfs_test.dir/tests/blockfs_test.cpp.s
+.PHONY : tests/blockfs_test.cpp.s
+
 tests/c_api_test.o: tests/c_api_test.c.o
 .PHONY : tests/c_api_test.o
 
@@ -806,6 +999,78 @@ tests/c_api_test.s: tests/c_api_test.c.s
 tests/c_api_test.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/c_api_test.dir/build.make CMakeFiles/c_api_test.dir/tests/c_api_test.c.s
 .PHONY : tests/c_api_test.c.s
+
+tests/elf_loader_test.o: tests/elf_loader_test.cpp.o
+.PHONY : tests/elf_loader_test.o
+
+# target to build an object file
+tests/elf_loader_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/elf_loader_test.dir/build.make CMakeFiles/elf_loader_test.dir/tests/elf_loader_test.cpp.o
+.PHONY : tests/elf_loader_test.cpp.o
+
+tests/elf_loader_test.i: tests/elf_loader_test.cpp.i
+.PHONY : tests/elf_loader_test.i
+
+# target to preprocess a source file
+tests/elf_loader_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/elf_loader_test.dir/build.make CMakeFiles/elf_loader_test.dir/tests/elf_loader_test.cpp.i
+.PHONY : tests/elf_loader_test.cpp.i
+
+tests/elf_loader_test.s: tests/elf_loader_test.cpp.s
+.PHONY : tests/elf_loader_test.s
+
+# target to generate assembly for a file
+tests/elf_loader_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/elf_loader_test.dir/build.make CMakeFiles/elf_loader_test.dir/tests/elf_loader_test.cpp.s
+.PHONY : tests/elf_loader_test.cpp.s
+
+tests/elf_process_test.o: tests/elf_process_test.cpp.o
+.PHONY : tests/elf_process_test.o
+
+# target to build an object file
+tests/elf_process_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/elf_process_test.dir/build.make CMakeFiles/elf_process_test.dir/tests/elf_process_test.cpp.o
+.PHONY : tests/elf_process_test.cpp.o
+
+tests/elf_process_test.i: tests/elf_process_test.cpp.i
+.PHONY : tests/elf_process_test.i
+
+# target to preprocess a source file
+tests/elf_process_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/elf_process_test.dir/build.make CMakeFiles/elf_process_test.dir/tests/elf_process_test.cpp.i
+.PHONY : tests/elf_process_test.cpp.i
+
+tests/elf_process_test.s: tests/elf_process_test.cpp.s
+.PHONY : tests/elf_process_test.s
+
+# target to generate assembly for a file
+tests/elf_process_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/elf_process_test.dir/build.make CMakeFiles/elf_process_test.dir/tests/elf_process_test.cpp.s
+.PHONY : tests/elf_process_test.cpp.s
+
+tests/exec_vfs_test.o: tests/exec_vfs_test.cpp.o
+.PHONY : tests/exec_vfs_test.o
+
+# target to build an object file
+tests/exec_vfs_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/exec_vfs_test.dir/build.make CMakeFiles/exec_vfs_test.dir/tests/exec_vfs_test.cpp.o
+.PHONY : tests/exec_vfs_test.cpp.o
+
+tests/exec_vfs_test.i: tests/exec_vfs_test.cpp.i
+.PHONY : tests/exec_vfs_test.i
+
+# target to preprocess a source file
+tests/exec_vfs_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/exec_vfs_test.dir/build.make CMakeFiles/exec_vfs_test.dir/tests/exec_vfs_test.cpp.i
+.PHONY : tests/exec_vfs_test.cpp.i
+
+tests/exec_vfs_test.s: tests/exec_vfs_test.cpp.s
+.PHONY : tests/exec_vfs_test.s
+
+# target to generate assembly for a file
+tests/exec_vfs_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/exec_vfs_test.dir/build.make CMakeFiles/exec_vfs_test.dir/tests/exec_vfs_test.cpp.s
+.PHONY : tests/exec_vfs_test.cpp.s
 
 tests/fixed_structures_test.o: tests/fixed_structures_test.cpp.o
 .PHONY : tests/fixed_structures_test.o
@@ -879,6 +1144,222 @@ tests/memory_telemetry_test.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/memory_telemetry_test.dir/build.make CMakeFiles/memory_telemetry_test.dir/tests/memory_telemetry_test.cpp.s
 .PHONY : tests/memory_telemetry_test.cpp.s
 
+tests/net_device_test.o: tests/net_device_test.cpp.o
+.PHONY : tests/net_device_test.o
+
+# target to build an object file
+tests/net_device_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/net_device_test.dir/build.make CMakeFiles/net_device_test.dir/tests/net_device_test.cpp.o
+.PHONY : tests/net_device_test.cpp.o
+
+tests/net_device_test.i: tests/net_device_test.cpp.i
+.PHONY : tests/net_device_test.i
+
+# target to preprocess a source file
+tests/net_device_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/net_device_test.dir/build.make CMakeFiles/net_device_test.dir/tests/net_device_test.cpp.i
+.PHONY : tests/net_device_test.cpp.i
+
+tests/net_device_test.s: tests/net_device_test.cpp.s
+.PHONY : tests/net_device_test.s
+
+# target to generate assembly for a file
+tests/net_device_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/net_device_test.dir/build.make CMakeFiles/net_device_test.dir/tests/net_device_test.cpp.s
+.PHONY : tests/net_device_test.cpp.s
+
+tests/sys_dup_test.o: tests/sys_dup_test.cpp.o
+.PHONY : tests/sys_dup_test.o
+
+# target to build an object file
+tests/sys_dup_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_dup_test.dir/build.make CMakeFiles/sys_dup_test.dir/tests/sys_dup_test.cpp.o
+.PHONY : tests/sys_dup_test.cpp.o
+
+tests/sys_dup_test.i: tests/sys_dup_test.cpp.i
+.PHONY : tests/sys_dup_test.i
+
+# target to preprocess a source file
+tests/sys_dup_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_dup_test.dir/build.make CMakeFiles/sys_dup_test.dir/tests/sys_dup_test.cpp.i
+.PHONY : tests/sys_dup_test.cpp.i
+
+tests/sys_dup_test.s: tests/sys_dup_test.cpp.s
+.PHONY : tests/sys_dup_test.s
+
+# target to generate assembly for a file
+tests/sys_dup_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_dup_test.dir/build.make CMakeFiles/sys_dup_test.dir/tests/sys_dup_test.cpp.s
+.PHONY : tests/sys_dup_test.cpp.s
+
+tests/sys_kill_test.o: tests/sys_kill_test.cpp.o
+.PHONY : tests/sys_kill_test.o
+
+# target to build an object file
+tests/sys_kill_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_kill_test.dir/build.make CMakeFiles/sys_kill_test.dir/tests/sys_kill_test.cpp.o
+.PHONY : tests/sys_kill_test.cpp.o
+
+tests/sys_kill_test.i: tests/sys_kill_test.cpp.i
+.PHONY : tests/sys_kill_test.i
+
+# target to preprocess a source file
+tests/sys_kill_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_kill_test.dir/build.make CMakeFiles/sys_kill_test.dir/tests/sys_kill_test.cpp.i
+.PHONY : tests/sys_kill_test.cpp.i
+
+tests/sys_kill_test.s: tests/sys_kill_test.cpp.s
+.PHONY : tests/sys_kill_test.s
+
+# target to generate assembly for a file
+tests/sys_kill_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_kill_test.dir/build.make CMakeFiles/sys_kill_test.dir/tests/sys_kill_test.cpp.s
+.PHONY : tests/sys_kill_test.cpp.s
+
+tests/sys_mmap_test.o: tests/sys_mmap_test.cpp.o
+.PHONY : tests/sys_mmap_test.o
+
+# target to build an object file
+tests/sys_mmap_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_mmap_test.dir/build.make CMakeFiles/sys_mmap_test.dir/tests/sys_mmap_test.cpp.o
+.PHONY : tests/sys_mmap_test.cpp.o
+
+tests/sys_mmap_test.i: tests/sys_mmap_test.cpp.i
+.PHONY : tests/sys_mmap_test.i
+
+# target to preprocess a source file
+tests/sys_mmap_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_mmap_test.dir/build.make CMakeFiles/sys_mmap_test.dir/tests/sys_mmap_test.cpp.i
+.PHONY : tests/sys_mmap_test.cpp.i
+
+tests/sys_mmap_test.s: tests/sys_mmap_test.cpp.s
+.PHONY : tests/sys_mmap_test.s
+
+# target to generate assembly for a file
+tests/sys_mmap_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_mmap_test.dir/build.make CMakeFiles/sys_mmap_test.dir/tests/sys_mmap_test.cpp.s
+.PHONY : tests/sys_mmap_test.cpp.s
+
+tests/sys_pipe_test.o: tests/sys_pipe_test.cpp.o
+.PHONY : tests/sys_pipe_test.o
+
+# target to build an object file
+tests/sys_pipe_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_pipe_test.dir/build.make CMakeFiles/sys_pipe_test.dir/tests/sys_pipe_test.cpp.o
+.PHONY : tests/sys_pipe_test.cpp.o
+
+tests/sys_pipe_test.i: tests/sys_pipe_test.cpp.i
+.PHONY : tests/sys_pipe_test.i
+
+# target to preprocess a source file
+tests/sys_pipe_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_pipe_test.dir/build.make CMakeFiles/sys_pipe_test.dir/tests/sys_pipe_test.cpp.i
+.PHONY : tests/sys_pipe_test.cpp.i
+
+tests/sys_pipe_test.s: tests/sys_pipe_test.cpp.s
+.PHONY : tests/sys_pipe_test.s
+
+# target to generate assembly for a file
+tests/sys_pipe_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_pipe_test.dir/build.make CMakeFiles/sys_pipe_test.dir/tests/sys_pipe_test.cpp.s
+.PHONY : tests/sys_pipe_test.cpp.s
+
+tests/sys_ps_test.o: tests/sys_ps_test.cpp.o
+.PHONY : tests/sys_ps_test.o
+
+# target to build an object file
+tests/sys_ps_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_ps_test.dir/build.make CMakeFiles/sys_ps_test.dir/tests/sys_ps_test.cpp.o
+.PHONY : tests/sys_ps_test.cpp.o
+
+tests/sys_ps_test.i: tests/sys_ps_test.cpp.i
+.PHONY : tests/sys_ps_test.i
+
+# target to preprocess a source file
+tests/sys_ps_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_ps_test.dir/build.make CMakeFiles/sys_ps_test.dir/tests/sys_ps_test.cpp.i
+.PHONY : tests/sys_ps_test.cpp.i
+
+tests/sys_ps_test.s: tests/sys_ps_test.cpp.s
+.PHONY : tests/sys_ps_test.s
+
+# target to generate assembly for a file
+tests/sys_ps_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_ps_test.dir/build.make CMakeFiles/sys_ps_test.dir/tests/sys_ps_test.cpp.s
+.PHONY : tests/sys_ps_test.cpp.s
+
+tests/sys_stat_test.o: tests/sys_stat_test.cpp.o
+.PHONY : tests/sys_stat_test.o
+
+# target to build an object file
+tests/sys_stat_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_stat_test.dir/build.make CMakeFiles/sys_stat_test.dir/tests/sys_stat_test.cpp.o
+.PHONY : tests/sys_stat_test.cpp.o
+
+tests/sys_stat_test.i: tests/sys_stat_test.cpp.i
+.PHONY : tests/sys_stat_test.i
+
+# target to preprocess a source file
+tests/sys_stat_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_stat_test.dir/build.make CMakeFiles/sys_stat_test.dir/tests/sys_stat_test.cpp.i
+.PHONY : tests/sys_stat_test.cpp.i
+
+tests/sys_stat_test.s: tests/sys_stat_test.cpp.s
+.PHONY : tests/sys_stat_test.s
+
+# target to generate assembly for a file
+tests/sys_stat_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_stat_test.dir/build.make CMakeFiles/sys_stat_test.dir/tests/sys_stat_test.cpp.s
+.PHONY : tests/sys_stat_test.cpp.s
+
+tests/sys_time_sleep_test.o: tests/sys_time_sleep_test.cpp.o
+.PHONY : tests/sys_time_sleep_test.o
+
+# target to build an object file
+tests/sys_time_sleep_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_time_sleep_test.dir/build.make CMakeFiles/sys_time_sleep_test.dir/tests/sys_time_sleep_test.cpp.o
+.PHONY : tests/sys_time_sleep_test.cpp.o
+
+tests/sys_time_sleep_test.i: tests/sys_time_sleep_test.cpp.i
+.PHONY : tests/sys_time_sleep_test.i
+
+# target to preprocess a source file
+tests/sys_time_sleep_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_time_sleep_test.dir/build.make CMakeFiles/sys_time_sleep_test.dir/tests/sys_time_sleep_test.cpp.i
+.PHONY : tests/sys_time_sleep_test.cpp.i
+
+tests/sys_time_sleep_test.s: tests/sys_time_sleep_test.cpp.s
+.PHONY : tests/sys_time_sleep_test.s
+
+# target to generate assembly for a file
+tests/sys_time_sleep_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_time_sleep_test.dir/build.make CMakeFiles/sys_time_sleep_test.dir/tests/sys_time_sleep_test.cpp.s
+.PHONY : tests/sys_time_sleep_test.cpp.s
+
+tests/sys_wait_test.o: tests/sys_wait_test.cpp.o
+.PHONY : tests/sys_wait_test.o
+
+# target to build an object file
+tests/sys_wait_test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_wait_test.dir/build.make CMakeFiles/sys_wait_test.dir/tests/sys_wait_test.cpp.o
+.PHONY : tests/sys_wait_test.cpp.o
+
+tests/sys_wait_test.i: tests/sys_wait_test.cpp.i
+.PHONY : tests/sys_wait_test.i
+
+# target to preprocess a source file
+tests/sys_wait_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_wait_test.dir/build.make CMakeFiles/sys_wait_test.dir/tests/sys_wait_test.cpp.i
+.PHONY : tests/sys_wait_test.cpp.i
+
+tests/sys_wait_test.s: tests/sys_wait_test.cpp.s
+.PHONY : tests/sys_wait_test.s
+
+# target to generate assembly for a file
+tests/sys_wait_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_wait_test.dir/build.make CMakeFiles/sys_wait_test.dir/tests/sys_wait_test.cpp.s
+.PHONY : tests/sys_wait_test.cpp.s
+
 tests/threadsafe_scheduler_test.o: tests/threadsafe_scheduler_test.cpp.o
 .PHONY : tests/threadsafe_scheduler_test.o
 
@@ -919,19 +1400,32 @@ help:
 	@echo "... betti_rdl_demo"
 	@echo "... betti_rdl_stress_test"
 	@echo "... bettios_kernel"
+	@echo "... blockfs_test"
 	@echo "... c_api_test"
 	@echo "... distributed_counter"
+	@echo "... elf_loader_test"
+	@echo "... elf_process_test"
+	@echo "... exec_vfs_test"
 	@echo "... fixed_structures_test"
 	@echo "... grey_sir_reference"
 	@echo "... hanoi_demo"
 	@echo "... killer_demo_memory_test"
 	@echo "... mega_demo"
 	@echo "... memory_telemetry_test"
+	@echo "... net_device_test"
 	@echo "... os_userspace_init"
 	@echo "... parallel_hanoi_test"
 	@echo "... parallel_scaling_test_v2"
 	@echo "... rse_native_hanoi"
 	@echo "... stress_test"
+	@echo "... sys_dup_test"
+	@echo "... sys_kill_test"
+	@echo "... sys_mmap_test"
+	@echo "... sys_pipe_test"
+	@echo "... sys_ps_test"
+	@echo "... sys_stat_test"
+	@echo "... sys_time_sleep_test"
+	@echo "... sys_wait_test"
 	@echo "... threadsafe_scheduler_test"
 	@echo "... Microkernel.o"
 	@echo "... Microkernel.i"
@@ -981,9 +1475,21 @@ help:
 	@echo "... tests/allocator_test.o"
 	@echo "... tests/allocator_test.i"
 	@echo "... tests/allocator_test.s"
+	@echo "... tests/blockfs_test.o"
+	@echo "... tests/blockfs_test.i"
+	@echo "... tests/blockfs_test.s"
 	@echo "... tests/c_api_test.o"
 	@echo "... tests/c_api_test.i"
 	@echo "... tests/c_api_test.s"
+	@echo "... tests/elf_loader_test.o"
+	@echo "... tests/elf_loader_test.i"
+	@echo "... tests/elf_loader_test.s"
+	@echo "... tests/elf_process_test.o"
+	@echo "... tests/elf_process_test.i"
+	@echo "... tests/elf_process_test.s"
+	@echo "... tests/exec_vfs_test.o"
+	@echo "... tests/exec_vfs_test.i"
+	@echo "... tests/exec_vfs_test.s"
 	@echo "... tests/fixed_structures_test.o"
 	@echo "... tests/fixed_structures_test.i"
 	@echo "... tests/fixed_structures_test.s"
@@ -993,6 +1499,33 @@ help:
 	@echo "... tests/memory_telemetry_test.o"
 	@echo "... tests/memory_telemetry_test.i"
 	@echo "... tests/memory_telemetry_test.s"
+	@echo "... tests/net_device_test.o"
+	@echo "... tests/net_device_test.i"
+	@echo "... tests/net_device_test.s"
+	@echo "... tests/sys_dup_test.o"
+	@echo "... tests/sys_dup_test.i"
+	@echo "... tests/sys_dup_test.s"
+	@echo "... tests/sys_kill_test.o"
+	@echo "... tests/sys_kill_test.i"
+	@echo "... tests/sys_kill_test.s"
+	@echo "... tests/sys_mmap_test.o"
+	@echo "... tests/sys_mmap_test.i"
+	@echo "... tests/sys_mmap_test.s"
+	@echo "... tests/sys_pipe_test.o"
+	@echo "... tests/sys_pipe_test.i"
+	@echo "... tests/sys_pipe_test.s"
+	@echo "... tests/sys_ps_test.o"
+	@echo "... tests/sys_ps_test.i"
+	@echo "... tests/sys_ps_test.s"
+	@echo "... tests/sys_stat_test.o"
+	@echo "... tests/sys_stat_test.i"
+	@echo "... tests/sys_stat_test.s"
+	@echo "... tests/sys_time_sleep_test.o"
+	@echo "... tests/sys_time_sleep_test.i"
+	@echo "... tests/sys_time_sleep_test.s"
+	@echo "... tests/sys_wait_test.o"
+	@echo "... tests/sys_wait_test.i"
+	@echo "... tests/sys_wait_test.s"
 	@echo "... tests/threadsafe_scheduler_test.o"
 	@echo "... tests/threadsafe_scheduler_test.i"
 	@echo "... tests/threadsafe_scheduler_test.s"

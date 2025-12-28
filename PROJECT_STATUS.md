@@ -48,6 +48,9 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 
 **Test Coverage**: Full system test + UEFI bench + fastio bench + ring3 smoke/exec (UEFI run-iso; exec passes) + Linux baseline + IVSHMEM exchange + sys_wait + sys_ps + sys_stat + sys_pipe + sys_dup tests; external UDP/HTTP proof captured in `build/boot/proof.log`.
 
+**Note (3-VM SHM exchange)**: If the IDE freezes during the projection exchange step, run the test from a terminal and redirect logs outside the repo to avoid heavy file-watcher load:
+`NET_LOG_DIR=/tmp/rse_net_exchange TIMEOUT_EXCHANGE=90 TIMEOUT_BOOT=120 ./scripts/run_full_system_test.sh`
+
 ### **What's Left** 🚧
 
 | Component | Priority | Estimated Time | Dependencies |

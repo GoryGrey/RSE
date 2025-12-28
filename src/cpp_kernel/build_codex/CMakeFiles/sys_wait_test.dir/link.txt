@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/sys_wait_test.dir/tests/sys_wait_test.cpp.o -o sys_wait_test  -latomic 

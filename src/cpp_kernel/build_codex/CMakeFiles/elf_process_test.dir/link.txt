@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/elf_process_test.dir/tests/elf_process_test.cpp.o -o elf_process_test  -latomic 

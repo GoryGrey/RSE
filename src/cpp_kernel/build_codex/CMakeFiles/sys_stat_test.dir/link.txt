@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/sys_stat_test.dir/tests/sys_stat_test.cpp.o -o sys_stat_test  -latomic 

@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/sys_pipe_test.dir/tests/sys_pipe_test.cpp.o -o sys_pipe_test  -latomic 

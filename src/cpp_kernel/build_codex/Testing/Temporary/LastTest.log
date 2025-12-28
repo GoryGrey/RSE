@@ -1,0 +1,540 @@
+Start testing: Dec 27 13:08 EST
+----------------------------------------------------------
+1/6 Testing: allocator_test
+1/6 Test: allocator_test
+Command: "/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/allocator_test"
+Directory: /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex
+"allocator_test" start time: Dec 27 13:08 EST
+Output:
+----------------------------------------------------------
+
+[BoundedAllocator Tests] Starting test suite...
+======================================================================
+  Test 1: Basic Allocation...
+
+[BoundedAllocator] ========== INITIALIZATION ==========
+[BoundedAllocator] Initialized Process pool: 327680 x 64 = 20971520 bytes
+[BoundedAllocator] Initialized Event pool: 1638400 x 32 = 52428800 bytes
+[BoundedAllocator] Initialized Edge pool: 163840 x 64 = 10485760 bytes
+[BoundedAllocator] Initialized generic pool: 67108864 bytes
+[BoundedAllocator] ========== READY ==========
+  ✓ Basic Allocation and Deallocation
+  Test 2: Pool Exhaustion...
+  ✓ Pool Management
+  Test 3: Concurrent Allocations...
+  ✓ Concurrent Allocations
+  Test 4: No Unbounded Growth...
+  ✓ No Unbounded Growth
+  Test 5: Freelist Reuse...
+  ✓ Freelist Reuse
+  Test 6: Generic Pool Allocation...
+  ✓ Generic Pool Allocation
+  Test 7: Mixed Operations Stress...
+  ✓ Mixed Operations Stress Test
+  Test 8: Capacity Limits...
+  ✓ Capacity Limits
+  Test 9: Statistics Tracking...
+  ✓ Statistics Tracking
+  Test 10: Deterministic Failure...
+[BoundedAllocator] Process allocation too large: 1073741824
+  ✓ Deterministic Failure on Exhaustion
+
+10/10 tests passed
+======================================================================
+[Metal] Memory Manager: Folding Entropy...
+
+[BoundedAllocator] ========== FINAL STATISTICS ==========
+[BoundedAllocator] Process Pool Stats:
+    Current: 17408 bytes
+    Peak: 25344 bytes
+    Allocations: 5797
+    Deallocations: 5525
+    Failures: 0
+[BoundedAllocator] Event Pool Stats:
+    Current: 8448 bytes
+    Peak: 8480 bytes
+    Allocations: 5614
+    Deallocations: 5350
+    Failures: 0
+[BoundedAllocator] Edge Pool Stats:
+    Current: 16896 bytes
+    Peak: 16896 bytes
+    Allocations: 265
+    Deallocations: 1
+    Failures: 0
+[BoundedAllocator] Generic Pool Stats:
+    Current: 35296 bytes
+    Peak: 35296 bytes
+    Allocations: 221
+    Deallocations: 0
+    Failures: 0
+[BoundedAllocator] ===================================
+
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Passed.
+"allocator_test" end time: Dec 27 13:08 EST
+"allocator_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/6 Testing: fixed_structures_test
+2/6 Test: fixed_structures_test
+Command: "/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/fixed_structures_test"
+Directory: /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex
+"fixed_structures_test" start time: Dec 27 13:08 EST
+Output:
+----------------------------------------------------------
+[FixedStructures Tests]
+[Metal] ToroidalSpace <32x32x32> Init.
+[Metal] ToroidalSpace <32x32x32> Init.
+[BETTI-RDL] Initializing space-time kernel...
+    > Spatial: ToroidalSpace<32,32,32>
+    > Temporal: Event-driven with adaptive delays
+  ✓ all tests passed
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Passed.
+"fixed_structures_test" end time: Dec 27 13:08 EST
+"fixed_structures_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/6 Testing: c_api_test
+3/6 Test: c_api_test
+Command: "/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/c_api_test"
+Directory: /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex
+"c_api_test" start time: Dec 27 13:08 EST
+Output:
+----------------------------------------------------------
+==================================================
+   BETTI-RDL C API TEST
+==================================================
+
+[SETUP] Creating Betti-RDL kernel...
+
+[BoundedAllocator] ========== INITIALIZATION ==========
+[BoundedAllocator] Initialized Process pool: 327680 x 64 = 20971520 bytes
+[BoundedAllocator] Initialized Event pool: 1638400 x 32 = 52428800 bytes
+[BoundedAllocator] Initialized Edge pool: 163840 x 64 = 10485760 bytes
+[BoundedAllocator] Initialized generic pool: 67108864 bytes
+[BoundedAllocator] ========== READY ==========
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+[SETUP] Spawning 10 processes...
+[INJECT] Sending events with values 1, 2, 3...
+
+[COMPUTE] Running distributed counter...
+
+[RESULTS]
+  Events processed (this run): 30
+  Events processed (lifetime): 30
+  Current time: 9
+  Active processes: 10
+
+[VALIDATION]
+  [OK] C API working
+  [OK] O(1) memory maintained
+  [OK] FFI layer functional
+
+==================================================
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Passed.
+"c_api_test" end time: Dec 27 13:08 EST
+"c_api_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/6 Testing: threadsafe_scheduler_test
+4/6 Test: threadsafe_scheduler_test
+Command: "/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/threadsafe_scheduler_test"
+Directory: /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex
+"threadsafe_scheduler_test" start time: Dec 27 13:08 EST
+Output:
+----------------------------------------------------------
+=================================================
+   BETTI-RDL THREAD-SAFE SCHEDULER TEST SUITE
+=================================================
+
+[BoundedAllocator] ========== INITIALIZATION ==========
+[BoundedAllocator] Initialized Process pool: 327680 x 64 = 20971520 bytes
+[BoundedAllocator] Initialized Event pool: 1638400 x 32 = 52428800 bytes
+[BoundedAllocator] Initialized Edge pool: 163840 x 64 = 10485760 bytes
+[BoundedAllocator] Initialized generic pool: 67108864 bytes
+[BoundedAllocator] ========== READY ==========
+
+=================================================
+   TEST 1: run(max_events) Returns Count Processed
+=================================================
+Validates that run(max_events) processes AT MOST max_events and returns the count
+
+[Metal] ToroidalSpace <32x32x32> Init.
+[BETTI-RDL] Initializing space-time kernel...
+    > Spatial: ToroidalSpace<32,32,32>
+    > Temporal: Event-driven with adaptive delays
+
+[BETTI-RDL] Starting execution...
+
+[BETTI-RDL] ✓ EXECUTION COMPLETE
+    > Events Processed (this run): 10
+    > Events Processed (lifetime): 10
+    > Final Time: 9
+    > Processes: 5
+    > Edges: 5
+    > Duration: 0ms
+    > Memory Before: 0 bytes
+    > Memory After: 0 bytes
+    > Memory Delta: 0 bytes
+  First run(10): 10 events processed
+  Lifetime total after first run: 10
+
+[BETTI-RDL] Starting execution...
+
+[BETTI-RDL] ✓ EXECUTION COMPLETE
+    > Events Processed (this run): 5
+    > Events Processed (lifetime): 15
+    > Final Time: 14
+    > Processes: 5
+    > Edges: 5
+    > Duration: 0ms
+    > Memory Before: 0 bytes
+    > Memory After: 0 bytes
+    > Memory Delta: 0 bytes
+  Second run(5): 5 events processed
+  Lifetime total after second run: 15
+
+  [✓] PASS: run() correctly processes at most max_events and returns count
+
+
+=================================================
+   TEST 2: Concurrent Event Injection
+=================================================
+Validates that injectEvent() is thread-safe and events are properly queued
+
+[Metal] ToroidalSpace <32x32x32> Init.
+[BETTI-RDL] Initializing space-time kernel...
+    > Spatial: ToroidalSpace<32,32,32>
+    > Temporal: Event-driven with adaptive delays
+  Spawning 4 threads injecting 25 events each...
+
+  All injections complete. Running scheduler...
+
+
+[BETTI-RDL] Starting execution...
+
+[BETTI-RDL] ✓ EXECUTION COMPLETE
+    > Events Processed (this run): 100
+    > Events Processed (lifetime): 100
+    > Final Time: 0
+    > Processes: 1
+    > Edges: 0
+    > Duration: 0ms
+    > Memory Before: 0 bytes
+    > Memory After: 0 bytes
+    > Memory Delta: 0 bytes
+  Events processed: 100 / 100
+
+  [✓] PASS: Thread-safe event injection works correctly
+
+
+=================================================
+   TEST 3: Determinism Despite Concurrent Injection
+=================================================
+Validates that results are deterministic regardless of thread interleaving
+
+[Metal] ToroidalSpace <32x32x32> Init.
+[BETTI-RDL] Initializing space-time kernel...
+    > Spatial: ToroidalSpace<32,32,32>
+    > Temporal: Event-driven with adaptive delays
+
+[BETTI-RDL] Starting execution...
+
+[BETTI-RDL] ✓ EXECUTION COMPLETE
+    > Events Processed (this run): 100
+    > Events Processed (lifetime): 100
+    > Final Time: 10
+    > Processes: 3
+    > Edges: 3
+    > Duration: 0ms
+    > Memory Before: 0 bytes
+    > Memory After: 0 bytes
+    > Memory Delta: 0 bytes
+  Run 1: Final time = 10
+[Metal] ToroidalSpace <32x32x32> Init.
+[BETTI-RDL] Initializing space-time kernel...
+    > Spatial: ToroidalSpace<32,32,32>
+    > Temporal: Event-driven with adaptive delays
+
+[BETTI-RDL] Starting execution...
+
+[BETTI-RDL] ✓ EXECUTION COMPLETE
+    > Events Processed (this run): 100
+    > Events Processed (lifetime): 100
+    > Final Time: 10
+    > Processes: 3
+    > Edges: 3
+    > Duration: 0ms
+    > Memory Before: 0 bytes
+    > Memory After: 0 bytes
+    > Memory Delta: 0 bytes
+  Run 2: Final time = 10
+[Metal] ToroidalSpace <32x32x32> Init.
+[BETTI-RDL] Initializing space-time kernel...
+    > Spatial: ToroidalSpace<32,32,32>
+    > Temporal: Event-driven with adaptive delays
+
+[BETTI-RDL] Starting execution...
+
+[BETTI-RDL] ✓ EXECUTION COMPLETE
+    > Events Processed (this run): 100
+    > Events Processed (lifetime): 100
+    > Final Time: 10
+    > Processes: 3
+    > Edges: 3
+    > Duration: 0ms
+    > Memory Before: 0 bytes
+    > Memory After: 0 bytes
+    > Memory Delta: 0 bytes
+  Run 3: Final time = 10
+
+  [✓] PASS: All runs produced identical results
+
+
+=================================================
+   TEST 4: BettiRDLCompute run() Semantics
+=================================================
+Validates that BettiRDLCompute also uses correct run() semantics
+
+[Metal] ToroidalSpace <32x32x32> Init.
+[COMPUTE] Initializing Betti-RDL with real computation...
+  First batch (max 5): 5 events
+  Second batch (max 5): 5 events
+
+  [✓] PASS: BettiRDLCompute run() semantics correct
+
+
+=================================================
+   TEST 5: Lifetime Event Counter
+=================================================
+Validates that getEventsProcessed() returns lifetime total, not per-run count
+
+[Metal] ToroidalSpace <32x32x32> Init.
+[BETTI-RDL] Initializing space-time kernel...
+    > Spatial: ToroidalSpace<32,32,32>
+    > Temporal: Event-driven with adaptive delays
+
+[BETTI-RDL] Starting execution...
+
+[BETTI-RDL] ✓ EXECUTION COMPLETE
+    > Events Processed (this run): 10
+    > Events Processed (lifetime): 10
+    > Final Time: 9
+    > Processes: 3
+    > Edges: 3
+    > Duration: 0ms
+    > Memory Before: 0 bytes
+    > Memory After: 0 bytes
+    > Memory Delta: 0 bytes
+  Run 1: processed=10, lifetime=10
+
+[BETTI-RDL] Starting execution...
+
+[BETTI-RDL] ✓ EXECUTION COMPLETE
+    > Events Processed (this run): 10
+    > Events Processed (lifetime): 20
+    > Final Time: 19
+    > Processes: 3
+    > Edges: 3
+    > Duration: 0ms
+    > Memory Before: 0 bytes
+    > Memory After: 0 bytes
+    > Memory Delta: 0 bytes
+  Run 2: processed=10, lifetime=20
+
+[BETTI-RDL] Starting execution...
+
+[BETTI-RDL] ✓ EXECUTION COMPLETE
+    > Events Processed (this run): 10
+    > Events Processed (lifetime): 30
+    > Final Time: 29
+    > Processes: 3
+    > Edges: 3
+    > Duration: 0ms
+    > Memory Before: 0 bytes
+    > Memory After: 0 bytes
+    > Memory Delta: 0 bytes
+  Run 3: processed=10, lifetime=30
+
+  [✓] PASS: Lifetime counter correctly accumulates
+
+
+=================================================
+   TEST 6: Current Time Tracking
+=================================================
+Validates that getCurrentTime() progresses correctly
+
+[Metal] ToroidalSpace <32x32x32> Init.
+[BETTI-RDL] Initializing space-time kernel...
+    > Spatial: ToroidalSpace<32,32,32>
+    > Temporal: Event-driven with adaptive delays
+  Initial time: 0
+
+[BETTI-RDL] Starting execution...
+
+[BETTI-RDL] ✓ EXECUTION COMPLETE
+    > Events Processed (this run): 1
+    > Events Processed (lifetime): 1
+    > Final Time: 0
+    > Processes: 1
+    > Edges: 0
+    > Duration: 0ms
+    > Memory Before: 0 bytes
+    > Memory After: 0 bytes
+    > Memory Delta: 0 bytes
+  Time after run(10): 0
+
+  [✓] PASS: Time tracking works correctly
+
+
+=================================================
+   ALL TESTS PASSED ✓
+=================================================
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"threadsafe_scheduler_test" end time: Dec 27 13:08 EST
+"threadsafe_scheduler_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/6 Testing: memory_telemetry_test
+5/6 Test: memory_telemetry_test
+Command: "/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/memory_telemetry_test"
+Directory: /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex
+"memory_telemetry_test" start time: Dec 27 13:08 EST
+Output:
+----------------------------------------------------------
+Running Memory Telemetry Test...
+Initial RSS: 3538944 bytes
+Initial Peak: 3538944 bytes
+Allocating 10MB...
+
+[BoundedAllocator] ========== INITIALIZATION ==========
+[BoundedAllocator] Initialized Process pool: 327680 x 64 = 20971520 bytes
+[BoundedAllocator] Initialized Event pool: 1638400 x 32 = 52428800 bytes
+[BoundedAllocator] Initialized Edge pool: 163840 x 64 = 10485760 bytes
+[BoundedAllocator] Initialized generic pool: 67108864 bytes
+[BoundedAllocator] ========== READY ==========
+RSS after alloc: 14024704 bytes
+Peak after alloc: 14024704 bytes
+Resetting Peak...
+Peak after reset: 14024704 bytes
+RSS after reset: 14024704 bytes
+Memory Telemetry Test PASSED
+<end of output>
+Test time =   0.01 sec
+----------------------------------------------------------
+Test Passed.
+"memory_telemetry_test" end time: Dec 27 13:08 EST
+"memory_telemetry_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+6/6 Testing: killer_demo_memory_test
+6/6 Test: killer_demo_memory_test
+Command: "/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/killer_demo_memory_test"
+Directory: /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex
+"killer_demo_memory_test" start time: Dec 27 13:08 EST
+Output:
+----------------------------------------------------------
+[KillerDemo] Starting Memory Regression Test...
+[Metal] ToroidalSpace <32x32x32> Init.
+[BETTI-RDL] Initializing space-time kernel...
+    > Spatial: ToroidalSpace<32,32,32>
+    > Temporal: Event-driven with adaptive delays
+[KillerDemo] Spawning 100 processes...
+[KillerDemo] Creating edges...
+[KillerDemo] Injecting initial events...
+[KillerDemo] Warming up (1000 steps)...
+
+[BETTI-RDL] Starting execution...
+
+[BoundedAllocator] ========== INITIALIZATION ==========
+[BoundedAllocator] Initialized Process pool: 327680 x 64 = 20971520 bytes
+[BoundedAllocator] Initialized Event pool: 1638400 x 32 = 52428800 bytes
+[BoundedAllocator] Initialized Edge pool: 163840 x 64 = 10485760 bytes
+[BoundedAllocator] Initialized generic pool: 67108864 bytes
+[BoundedAllocator] ========== READY ==========
+
+[BETTI-RDL] ✓ EXECUTION COMPLETE
+    > Events Processed (this run): 1000
+    > Events Processed (lifetime): 1000
+    > Final Time: 6
+    > Processes: 100
+    > Edges: 200
+    > Duration: 0ms
+    > Memory Before: 0 bytes
+    > Memory After: 0 bytes
+    > Memory Delta: 0 bytes
+[KillerDemo] Baseline Memory Usage:
+  Internal Used: 0 bytes
+  System RSS:    7471104 bytes
+[KillerDemo] Running heavy load (50000 steps)...
+
+[BETTI-RDL] Starting execution...
+
+[BETTI-RDL] ✓ EXECUTION COMPLETE
+    > Events Processed (this run): 50000
+    > Events Processed (lifetime): 51000
+    > Final Time: 14
+    > Processes: 100
+    > Edges: 200
+    > Duration: 15ms
+    > Memory Before: 0 bytes
+    > Memory After: 0 bytes
+    > Memory Delta: 0 bytes
+    > Events/sec: 3.33333e+06
+[KillerDemo] Processed 50000 events.
+[KillerDemo] Post-Load Memory Usage:
+  Internal Used: 0 bytes
+  System RSS:    7471104 bytes
+[KillerDemo] Internal Memory Delta: 0 bytes
+[KillerDemo] RSS Delta: 0 bytes
+[KillerDemo] SUCCESS: Memory usage is stable (O(1)).
+
+[BoundedAllocator] ========== FINAL STATISTICS ==========
+[BoundedAllocator] Process Pool Stats:
+    Current: 0 bytes
+    Peak: 0 bytes
+    Allocations: 0
+    Deallocations: 0
+    Failures: 0
+[BoundedAllocator] Event Pool Stats:
+    Current: 0 bytes
+    Peak: 0 bytes
+    Allocations: 0
+    Deallocations: 0
+    Failures: 0
+[BoundedAllocator] Edge Pool Stats:
+    Current: 0 bytes
+    Peak: 0 bytes
+    Allocations: 0
+    Deallocations: 0
+    Failures: 0
+[BoundedAllocator] Generic Pool Stats:
+    Current: 0 bytes
+    Peak: 0 bytes
+    Allocations: 0
+    Deallocations: 0
+    Failures: 0
+[BoundedAllocator] ===================================
+
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"killer_demo_memory_test" end time: Dec 27 13:08 EST
+"killer_demo_memory_test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Dec 27 13:08 EST

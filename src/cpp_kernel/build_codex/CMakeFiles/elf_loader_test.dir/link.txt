@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/elf_loader_test.dir/tests/elf_loader_test.cpp.o -o elf_loader_test  -latomic 

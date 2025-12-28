@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/exec_vfs_test.dir/tests/exec_vfs_test.cpp.o -o exec_vfs_test  -latomic 

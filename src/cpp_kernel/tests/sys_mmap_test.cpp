@@ -36,6 +36,10 @@ int main() {
     assert(mapped > 0);
     assert(proc.vmem->isUserRange((uint64_t)mapped, os::PAGE_SIZE * 2));
 
+    int64_t overlap = os::syscall(os::SYS_MMAP, (uint64_t)mapped, os::PAGE_SIZE,
+                                  os::PROT_READ | os::PROT_WRITE);
+    assert(overlap == -os::ENOMEM);
+
     int64_t rc = os::syscall(os::SYS_MPROTECT, (uint64_t)mapped, os::PAGE_SIZE,
                              os::PROT_READ);
     assert(rc == 0);

@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/sys_dup_test.dir/tests/sys_dup_test.cpp.o -o sys_dup_test  -latomic 

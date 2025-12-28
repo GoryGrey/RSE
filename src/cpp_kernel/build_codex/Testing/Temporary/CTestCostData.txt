@@ -1,0 +1,7 @@
+allocator_test 2 0.00724125
+fixed_structures_test 2 0.00450065
+c_api_test 2 0.00495824
+threadsafe_scheduler_test 2 0.00905269
+memory_telemetry_test 2 0.0068756
+killer_demo_memory_test 2 0.0176819
+---

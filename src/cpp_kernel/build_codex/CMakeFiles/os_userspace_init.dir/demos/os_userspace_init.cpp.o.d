@@ -33,6 +33,8 @@ CMakeFiles/os_userspace_init.dir/demos/os_userspace_init.cpp.o: \
  /usr/include/strings.h \
  /usr/include/x86_64-linux-gnu/bits/strings_fortified.h \
  /usr/include/x86_64-linux-gnu/bits/string_fortified.h \
+ /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/VirtualAllocator.h \
+ /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/PageTable.h \
  /usr/include/c++/13/iostream /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/c++/13/ostream /usr/include/c++/13/ios \
  /usr/include/c++/13/iosfwd /usr/include/c++/13/bits/stringfwd.h \
@@ -175,7 +177,8 @@ CMakeFiles/os_userspace_init.dir/demos/os_userspace_init.cpp.o: \
  /usr/include/c++/13/bits/basic_ios.tcc \
  /usr/include/c++/13/bits/ostream.tcc /usr/include/c++/13/istream \
  /usr/include/c++/13/bits/istream.tcc \
- /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/TorusScheduler.h \
+ /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/PhysicalAllocator.h \
+ /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/ElfLoader.h \
  /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/../FixedStructures.h \
  /usr/include/c++/13/array /usr/include/c++/13/cassert \
  /usr/include/assert.h /usr/include/c++/13/functional \
@@ -196,14 +199,22 @@ CMakeFiles/os_userspace_init.dir/demos/os_userspace_init.cpp.o: \
  /usr/include/c++/13/bits/stl_heap.h \
  /usr/include/c++/13/bits/uniform_int_dist.h \
  /usr/include/c++/13/bits/stl_tempbuf.h /usr/include/c++/13/utility \
- /usr/include/c++/13/bits/stl_relops.h /usr/include/c++/13/algorithm \
- /usr/include/c++/13/bits/ranges_algo.h \
+ /usr/include/c++/13/bits/stl_relops.h \
+ /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/FileDescriptor.h \
+ /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/TorusScheduler.h \
+ /usr/include/c++/13/algorithm /usr/include/c++/13/bits/ranges_algo.h \
  /usr/include/c++/13/bits/ranges_algobase.h \
  /usr/include/c++/13/pstl/glue_algorithm_defs.h \
  /usr/include/c++/13/pstl/execution_defs.h \
  /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/VFS.h \
- /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/FileDescriptor.h \
  /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/MemFS.h \
+ /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/Device.h \
+ /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/BlockDevice.h \
+ /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/BlockFS.h \
+ /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/LoopbackDevice.h \
+ /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/ConsoleDevice.h \
+ /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/BasicDevices.h \
+ /home/gorygrey/Apps/RSE/src/cpp_kernel/demos/../os/NetDevice.h \
  /usr/include/c++/13/chrono /usr/include/c++/13/bits/chrono.h \
  /usr/include/c++/13/ratio /usr/include/c++/13/limits \
  /usr/include/c++/13/ctime /usr/include/c++/13/bits/parse_numbers.h \

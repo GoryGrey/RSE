@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/sys_mmap_test.dir/tests/sys_mmap_test.cpp.o -o sys_mmap_test  -latomic 

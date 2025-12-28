@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/sys_kill_test.dir/tests/sys_kill_test.cpp.o -o sys_kill_test  -latomic 

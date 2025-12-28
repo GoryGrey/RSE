@@ -79,6 +79,19 @@ all: CMakeFiles/c_api_test.dir/all
 all: CMakeFiles/allocator_test.dir/all
 all: CMakeFiles/fixed_structures_test.dir/all
 all: CMakeFiles/threadsafe_scheduler_test.dir/all
+all: CMakeFiles/elf_loader_test.dir/all
+all: CMakeFiles/elf_process_test.dir/all
+all: CMakeFiles/exec_vfs_test.dir/all
+all: CMakeFiles/blockfs_test.dir/all
+all: CMakeFiles/net_device_test.dir/all
+all: CMakeFiles/sys_wait_test.dir/all
+all: CMakeFiles/sys_kill_test.dir/all
+all: CMakeFiles/sys_ps_test.dir/all
+all: CMakeFiles/sys_stat_test.dir/all
+all: CMakeFiles/sys_pipe_test.dir/all
+all: CMakeFiles/sys_dup_test.dir/all
+all: CMakeFiles/sys_mmap_test.dir/all
+all: CMakeFiles/sys_time_sleep_test.dir/all
 all: CMakeFiles/memory_telemetry_test.dir/all
 all: CMakeFiles/killer_demo_memory_test.dir/all
 all: CMakeFiles/stress_test.dir/all
@@ -107,6 +120,19 @@ clean: CMakeFiles/c_api_test.dir/clean
 clean: CMakeFiles/allocator_test.dir/clean
 clean: CMakeFiles/fixed_structures_test.dir/clean
 clean: CMakeFiles/threadsafe_scheduler_test.dir/clean
+clean: CMakeFiles/elf_loader_test.dir/clean
+clean: CMakeFiles/elf_process_test.dir/clean
+clean: CMakeFiles/exec_vfs_test.dir/clean
+clean: CMakeFiles/blockfs_test.dir/clean
+clean: CMakeFiles/net_device_test.dir/clean
+clean: CMakeFiles/sys_wait_test.dir/clean
+clean: CMakeFiles/sys_kill_test.dir/clean
+clean: CMakeFiles/sys_ps_test.dir/clean
+clean: CMakeFiles/sys_stat_test.dir/clean
+clean: CMakeFiles/sys_pipe_test.dir/clean
+clean: CMakeFiles/sys_dup_test.dir/clean
+clean: CMakeFiles/sys_mmap_test.dir/clean
+clean: CMakeFiles/sys_time_sleep_test.dir/clean
 clean: CMakeFiles/memory_telemetry_test.dir/clean
 clean: CMakeFiles/killer_demo_memory_test.dir/clean
 clean: CMakeFiles/stress_test.dir/clean
@@ -147,7 +173,7 @@ CMakeFiles/bettios_kernel.dir/clean:
 CMakeFiles/hanoi_demo.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/hanoi_demo.dir/build.make CMakeFiles/hanoi_demo.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/hanoi_demo.dir/build.make CMakeFiles/hanoi_demo.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=23,24 "Built target hanoi_demo"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=31,32 "Built target hanoi_demo"
 .PHONY : CMakeFiles/hanoi_demo.dir/all
 
 # Build rule for subdir invocation for target.
@@ -173,7 +199,7 @@ CMakeFiles/hanoi_demo.dir/clean:
 CMakeFiles/parallel_hanoi_test.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/parallel_hanoi_test.dir/build.make CMakeFiles/parallel_hanoi_test.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/parallel_hanoi_test.dir/build.make CMakeFiles/parallel_hanoi_test.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=33,34 "Built target parallel_hanoi_test"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=43,44 "Built target parallel_hanoi_test"
 .PHONY : CMakeFiles/parallel_hanoi_test.dir/all
 
 # Build rule for subdir invocation for target.
@@ -199,7 +225,7 @@ CMakeFiles/parallel_hanoi_test.dir/clean:
 CMakeFiles/rse_native_hanoi.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/rse_native_hanoi.dir/build.make CMakeFiles/rse_native_hanoi.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/rse_native_hanoi.dir/build.make CMakeFiles/rse_native_hanoi.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=37,38 "Built target rse_native_hanoi"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=47,48 "Built target rse_native_hanoi"
 .PHONY : CMakeFiles/rse_native_hanoi.dir/all
 
 # Build rule for subdir invocation for target.
@@ -329,7 +355,7 @@ CMakeFiles/adaptive_delay_validation.dir/clean:
 CMakeFiles/distributed_counter.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_counter.dir/build.make CMakeFiles/distributed_counter.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/distributed_counter.dir/build.make CMakeFiles/distributed_counter.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=17,18 "Built target distributed_counter"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=19,20 "Built target distributed_counter"
 .PHONY : CMakeFiles/distributed_counter.dir/all
 
 # Build rule for subdir invocation for target.
@@ -355,7 +381,7 @@ CMakeFiles/distributed_counter.dir/clean:
 CMakeFiles/os_userspace_init.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_userspace_init.dir/build.make CMakeFiles/os_userspace_init.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_userspace_init.dir/build.make CMakeFiles/os_userspace_init.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=31,32 "Built target os_userspace_init"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=41,42 "Built target os_userspace_init"
 .PHONY : CMakeFiles/os_userspace_init.dir/all
 
 # Build rule for subdir invocation for target.
@@ -381,7 +407,7 @@ CMakeFiles/os_userspace_init.dir/clean:
 CMakeFiles/parallel_scaling_test_v2.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/parallel_scaling_test_v2.dir/build.make CMakeFiles/parallel_scaling_test_v2.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/parallel_scaling_test_v2.dir/build.make CMakeFiles/parallel_scaling_test_v2.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=35,36 "Built target parallel_scaling_test_v2"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=45,46 "Built target parallel_scaling_test_v2"
 .PHONY : CMakeFiles/parallel_scaling_test_v2.dir/all
 
 # Build rule for subdir invocation for target.
@@ -433,7 +459,7 @@ CMakeFiles/betti_rdl_c.dir/clean:
 CMakeFiles/c_api_test.dir/all: CMakeFiles/betti_rdl_c.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/c_api_test.dir/build.make CMakeFiles/c_api_test.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/c_api_test.dir/build.make CMakeFiles/c_api_test.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=15,16 "Built target c_api_test"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=17,18 "Built target c_api_test"
 .PHONY : CMakeFiles/c_api_test.dir/all
 
 # Build rule for subdir invocation for target.
@@ -485,7 +511,7 @@ CMakeFiles/allocator_test.dir/clean:
 CMakeFiles/fixed_structures_test.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/fixed_structures_test.dir/build.make CMakeFiles/fixed_structures_test.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/fixed_structures_test.dir/build.make CMakeFiles/fixed_structures_test.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=19,20 "Built target fixed_structures_test"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=27,28 "Built target fixed_structures_test"
 .PHONY : CMakeFiles/fixed_structures_test.dir/all
 
 # Build rule for subdir invocation for target.
@@ -511,7 +537,7 @@ CMakeFiles/fixed_structures_test.dir/clean:
 CMakeFiles/threadsafe_scheduler_test.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/threadsafe_scheduler_test.dir/build.make CMakeFiles/threadsafe_scheduler_test.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/threadsafe_scheduler_test.dir/build.make CMakeFiles/threadsafe_scheduler_test.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=41,42 "Built target threadsafe_scheduler_test"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=67,68 "Built target threadsafe_scheduler_test"
 .PHONY : CMakeFiles/threadsafe_scheduler_test.dir/all
 
 # Build rule for subdir invocation for target.
@@ -531,13 +557,351 @@ CMakeFiles/threadsafe_scheduler_test.dir/clean:
 .PHONY : CMakeFiles/threadsafe_scheduler_test.dir/clean
 
 #=============================================================================
+# Target rules for target CMakeFiles/elf_loader_test.dir
+
+# All Build rule for target.
+CMakeFiles/elf_loader_test.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/elf_loader_test.dir/build.make CMakeFiles/elf_loader_test.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/elf_loader_test.dir/build.make CMakeFiles/elf_loader_test.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=21,22 "Built target elf_loader_test"
+.PHONY : CMakeFiles/elf_loader_test.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/elf_loader_test.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/elf_loader_test.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 0
+.PHONY : CMakeFiles/elf_loader_test.dir/rule
+
+# Convenience name for target.
+elf_loader_test: CMakeFiles/elf_loader_test.dir/rule
+.PHONY : elf_loader_test
+
+# clean rule for target.
+CMakeFiles/elf_loader_test.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/elf_loader_test.dir/build.make CMakeFiles/elf_loader_test.dir/clean
+.PHONY : CMakeFiles/elf_loader_test.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/elf_process_test.dir
+
+# All Build rule for target.
+CMakeFiles/elf_process_test.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/elf_process_test.dir/build.make CMakeFiles/elf_process_test.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/elf_process_test.dir/build.make CMakeFiles/elf_process_test.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=23,24 "Built target elf_process_test"
+.PHONY : CMakeFiles/elf_process_test.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/elf_process_test.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/elf_process_test.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 0
+.PHONY : CMakeFiles/elf_process_test.dir/rule
+
+# Convenience name for target.
+elf_process_test: CMakeFiles/elf_process_test.dir/rule
+.PHONY : elf_process_test
+
+# clean rule for target.
+CMakeFiles/elf_process_test.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/elf_process_test.dir/build.make CMakeFiles/elf_process_test.dir/clean
+.PHONY : CMakeFiles/elf_process_test.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/exec_vfs_test.dir
+
+# All Build rule for target.
+CMakeFiles/exec_vfs_test.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/exec_vfs_test.dir/build.make CMakeFiles/exec_vfs_test.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/exec_vfs_test.dir/build.make CMakeFiles/exec_vfs_test.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=25,26 "Built target exec_vfs_test"
+.PHONY : CMakeFiles/exec_vfs_test.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/exec_vfs_test.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/exec_vfs_test.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 0
+.PHONY : CMakeFiles/exec_vfs_test.dir/rule
+
+# Convenience name for target.
+exec_vfs_test: CMakeFiles/exec_vfs_test.dir/rule
+.PHONY : exec_vfs_test
+
+# clean rule for target.
+CMakeFiles/exec_vfs_test.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/exec_vfs_test.dir/build.make CMakeFiles/exec_vfs_test.dir/clean
+.PHONY : CMakeFiles/exec_vfs_test.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/blockfs_test.dir
+
+# All Build rule for target.
+CMakeFiles/blockfs_test.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/blockfs_test.dir/build.make CMakeFiles/blockfs_test.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/blockfs_test.dir/build.make CMakeFiles/blockfs_test.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=15,16 "Built target blockfs_test"
+.PHONY : CMakeFiles/blockfs_test.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/blockfs_test.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/blockfs_test.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 0
+.PHONY : CMakeFiles/blockfs_test.dir/rule
+
+# Convenience name for target.
+blockfs_test: CMakeFiles/blockfs_test.dir/rule
+.PHONY : blockfs_test
+
+# clean rule for target.
+CMakeFiles/blockfs_test.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/blockfs_test.dir/build.make CMakeFiles/blockfs_test.dir/clean
+.PHONY : CMakeFiles/blockfs_test.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/net_device_test.dir
+
+# All Build rule for target.
+CMakeFiles/net_device_test.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/net_device_test.dir/build.make CMakeFiles/net_device_test.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/net_device_test.dir/build.make CMakeFiles/net_device_test.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=39,40 "Built target net_device_test"
+.PHONY : CMakeFiles/net_device_test.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/net_device_test.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/net_device_test.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 0
+.PHONY : CMakeFiles/net_device_test.dir/rule
+
+# Convenience name for target.
+net_device_test: CMakeFiles/net_device_test.dir/rule
+.PHONY : net_device_test
+
+# clean rule for target.
+CMakeFiles/net_device_test.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/net_device_test.dir/build.make CMakeFiles/net_device_test.dir/clean
+.PHONY : CMakeFiles/net_device_test.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/sys_wait_test.dir
+
+# All Build rule for target.
+CMakeFiles/sys_wait_test.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_wait_test.dir/build.make CMakeFiles/sys_wait_test.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_wait_test.dir/build.make CMakeFiles/sys_wait_test.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=65,66 "Built target sys_wait_test"
+.PHONY : CMakeFiles/sys_wait_test.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/sys_wait_test.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/sys_wait_test.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 0
+.PHONY : CMakeFiles/sys_wait_test.dir/rule
+
+# Convenience name for target.
+sys_wait_test: CMakeFiles/sys_wait_test.dir/rule
+.PHONY : sys_wait_test
+
+# clean rule for target.
+CMakeFiles/sys_wait_test.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_wait_test.dir/build.make CMakeFiles/sys_wait_test.dir/clean
+.PHONY : CMakeFiles/sys_wait_test.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/sys_kill_test.dir
+
+# All Build rule for target.
+CMakeFiles/sys_kill_test.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_kill_test.dir/build.make CMakeFiles/sys_kill_test.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_kill_test.dir/build.make CMakeFiles/sys_kill_test.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=53,54 "Built target sys_kill_test"
+.PHONY : CMakeFiles/sys_kill_test.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/sys_kill_test.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/sys_kill_test.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 0
+.PHONY : CMakeFiles/sys_kill_test.dir/rule
+
+# Convenience name for target.
+sys_kill_test: CMakeFiles/sys_kill_test.dir/rule
+.PHONY : sys_kill_test
+
+# clean rule for target.
+CMakeFiles/sys_kill_test.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_kill_test.dir/build.make CMakeFiles/sys_kill_test.dir/clean
+.PHONY : CMakeFiles/sys_kill_test.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/sys_ps_test.dir
+
+# All Build rule for target.
+CMakeFiles/sys_ps_test.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_ps_test.dir/build.make CMakeFiles/sys_ps_test.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_ps_test.dir/build.make CMakeFiles/sys_ps_test.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=59,60 "Built target sys_ps_test"
+.PHONY : CMakeFiles/sys_ps_test.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/sys_ps_test.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/sys_ps_test.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 0
+.PHONY : CMakeFiles/sys_ps_test.dir/rule
+
+# Convenience name for target.
+sys_ps_test: CMakeFiles/sys_ps_test.dir/rule
+.PHONY : sys_ps_test
+
+# clean rule for target.
+CMakeFiles/sys_ps_test.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_ps_test.dir/build.make CMakeFiles/sys_ps_test.dir/clean
+.PHONY : CMakeFiles/sys_ps_test.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/sys_stat_test.dir
+
+# All Build rule for target.
+CMakeFiles/sys_stat_test.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_stat_test.dir/build.make CMakeFiles/sys_stat_test.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_stat_test.dir/build.make CMakeFiles/sys_stat_test.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=61,62 "Built target sys_stat_test"
+.PHONY : CMakeFiles/sys_stat_test.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/sys_stat_test.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/sys_stat_test.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 0
+.PHONY : CMakeFiles/sys_stat_test.dir/rule
+
+# Convenience name for target.
+sys_stat_test: CMakeFiles/sys_stat_test.dir/rule
+.PHONY : sys_stat_test
+
+# clean rule for target.
+CMakeFiles/sys_stat_test.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_stat_test.dir/build.make CMakeFiles/sys_stat_test.dir/clean
+.PHONY : CMakeFiles/sys_stat_test.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/sys_pipe_test.dir
+
+# All Build rule for target.
+CMakeFiles/sys_pipe_test.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_pipe_test.dir/build.make CMakeFiles/sys_pipe_test.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_pipe_test.dir/build.make CMakeFiles/sys_pipe_test.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=57,58 "Built target sys_pipe_test"
+.PHONY : CMakeFiles/sys_pipe_test.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/sys_pipe_test.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/sys_pipe_test.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 0
+.PHONY : CMakeFiles/sys_pipe_test.dir/rule
+
+# Convenience name for target.
+sys_pipe_test: CMakeFiles/sys_pipe_test.dir/rule
+.PHONY : sys_pipe_test
+
+# clean rule for target.
+CMakeFiles/sys_pipe_test.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_pipe_test.dir/build.make CMakeFiles/sys_pipe_test.dir/clean
+.PHONY : CMakeFiles/sys_pipe_test.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/sys_dup_test.dir
+
+# All Build rule for target.
+CMakeFiles/sys_dup_test.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_dup_test.dir/build.make CMakeFiles/sys_dup_test.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_dup_test.dir/build.make CMakeFiles/sys_dup_test.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=51,52 "Built target sys_dup_test"
+.PHONY : CMakeFiles/sys_dup_test.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/sys_dup_test.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/sys_dup_test.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 0
+.PHONY : CMakeFiles/sys_dup_test.dir/rule
+
+# Convenience name for target.
+sys_dup_test: CMakeFiles/sys_dup_test.dir/rule
+.PHONY : sys_dup_test
+
+# clean rule for target.
+CMakeFiles/sys_dup_test.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_dup_test.dir/build.make CMakeFiles/sys_dup_test.dir/clean
+.PHONY : CMakeFiles/sys_dup_test.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/sys_mmap_test.dir
+
+# All Build rule for target.
+CMakeFiles/sys_mmap_test.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_mmap_test.dir/build.make CMakeFiles/sys_mmap_test.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_mmap_test.dir/build.make CMakeFiles/sys_mmap_test.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=55,56 "Built target sys_mmap_test"
+.PHONY : CMakeFiles/sys_mmap_test.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/sys_mmap_test.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/sys_mmap_test.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 0
+.PHONY : CMakeFiles/sys_mmap_test.dir/rule
+
+# Convenience name for target.
+sys_mmap_test: CMakeFiles/sys_mmap_test.dir/rule
+.PHONY : sys_mmap_test
+
+# clean rule for target.
+CMakeFiles/sys_mmap_test.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_mmap_test.dir/build.make CMakeFiles/sys_mmap_test.dir/clean
+.PHONY : CMakeFiles/sys_mmap_test.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/sys_time_sleep_test.dir
+
+# All Build rule for target.
+CMakeFiles/sys_time_sleep_test.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_time_sleep_test.dir/build.make CMakeFiles/sys_time_sleep_test.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_time_sleep_test.dir/build.make CMakeFiles/sys_time_sleep_test.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=63,64 "Built target sys_time_sleep_test"
+.PHONY : CMakeFiles/sys_time_sleep_test.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/sys_time_sleep_test.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/sys_time_sleep_test.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles 0
+.PHONY : CMakeFiles/sys_time_sleep_test.dir/rule
+
+# Convenience name for target.
+sys_time_sleep_test: CMakeFiles/sys_time_sleep_test.dir/rule
+.PHONY : sys_time_sleep_test
+
+# clean rule for target.
+CMakeFiles/sys_time_sleep_test.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/sys_time_sleep_test.dir/build.make CMakeFiles/sys_time_sleep_test.dir/clean
+.PHONY : CMakeFiles/sys_time_sleep_test.dir/clean
+
+#=============================================================================
 # Target rules for target CMakeFiles/memory_telemetry_test.dir
 
 # All Build rule for target.
 CMakeFiles/memory_telemetry_test.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/memory_telemetry_test.dir/build.make CMakeFiles/memory_telemetry_test.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/memory_telemetry_test.dir/build.make CMakeFiles/memory_telemetry_test.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=29,30 "Built target memory_telemetry_test"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=37,38 "Built target memory_telemetry_test"
 .PHONY : CMakeFiles/memory_telemetry_test.dir/all
 
 # Build rule for subdir invocation for target.
@@ -563,7 +927,7 @@ CMakeFiles/memory_telemetry_test.dir/clean:
 CMakeFiles/killer_demo_memory_test.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/killer_demo_memory_test.dir/build.make CMakeFiles/killer_demo_memory_test.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/killer_demo_memory_test.dir/build.make CMakeFiles/killer_demo_memory_test.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=25,26 "Built target killer_demo_memory_test"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=33,34 "Built target killer_demo_memory_test"
 .PHONY : CMakeFiles/killer_demo_memory_test.dir/all
 
 # Build rule for subdir invocation for target.
@@ -589,7 +953,7 @@ CMakeFiles/killer_demo_memory_test.dir/clean:
 CMakeFiles/stress_test.dir/all: CMakeFiles/betti_rdl_c.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/stress_test.dir/build.make CMakeFiles/stress_test.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/stress_test.dir/build.make CMakeFiles/stress_test.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=39,40 "Built target stress_test"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=49,50 "Built target stress_test"
 .PHONY : CMakeFiles/stress_test.dir/all
 
 # Build rule for subdir invocation for target.
@@ -615,7 +979,7 @@ CMakeFiles/stress_test.dir/clean:
 CMakeFiles/mega_demo.dir/all: CMakeFiles/betti_rdl_c.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/mega_demo.dir/build.make CMakeFiles/mega_demo.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/mega_demo.dir/build.make CMakeFiles/mega_demo.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=27,28 "Built target mega_demo"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=35,36 "Built target mega_demo"
 .PHONY : CMakeFiles/mega_demo.dir/all
 
 # Build rule for subdir invocation for target.
@@ -641,7 +1005,7 @@ CMakeFiles/mega_demo.dir/clean:
 CMakeFiles/grey_sir_reference.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/grey_sir_reference.dir/build.make CMakeFiles/grey_sir_reference.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/grey_sir_reference.dir/build.make CMakeFiles/grey_sir_reference.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=21,22 "Built target grey_sir_reference"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/gorygrey/Apps/RSE/src/cpp_kernel/build_codex/CMakeFiles --progress-num=29,30 "Built target grey_sir_reference"
 .PHONY : CMakeFiles/grey_sir_reference.dir/all
 
 # Build rule for subdir invocation for target.

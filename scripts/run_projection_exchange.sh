@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LOG_DIR="${ROOT_DIR}/benchmarks/net_exchange"
-BUILD_BASE="${ROOT_DIR}/build/net_exchange"
+LOG_DIR="${LOG_DIR:-${ROOT_DIR}/benchmarks/net_exchange}"
+BUILD_BASE="${BUILD_BASE:-${ROOT_DIR}/build/net_exchange}"
 SHM_PATH="${SHM_PATH:-${BUILD_BASE}/ivshmem.bin}"
 
 cd "${ROOT_DIR}"

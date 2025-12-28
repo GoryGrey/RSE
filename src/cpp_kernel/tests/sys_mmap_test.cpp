@@ -44,6 +44,15 @@ int main() {
                              os::PROT_READ);
     assert(rc == 0);
 
+    rc = os::syscall(os::SYS_MUNMAP, (uint64_t)mapped + os::PAGE_SIZE, os::PAGE_SIZE);
+    assert(rc == 0);
+    rc = os::syscall(os::SYS_MPROTECT, (uint64_t)mapped, os::PAGE_SIZE * 2,
+                     os::PROT_READ);
+    assert(rc == -os::EACCES);
+    uint8_t value = 0x5a;
+    bool write_ok = proc.vmem->writeUser((uint64_t)mapped, &value, sizeof(value));
+    assert(write_ok);
+
     rc = os::syscall(os::SYS_MUNMAP, (uint64_t)mapped, os::PAGE_SIZE * 2);
     assert(rc == 0);
 

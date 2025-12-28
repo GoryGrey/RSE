@@ -109,10 +109,21 @@ public:
      */
     void free(uint64_t addr, uint64_t size) {
         if (size == 0) return;
-        
+
+        if (addr > UINT64_MAX - size) {
+            return;
+        }
+        uint64_t end = addr + size;
+        if (end > UINT64_MAX - (PAGE_SIZE - 1)) {
+            return;
+        }
+
         // Align to page boundaries
         uint64_t virt_start = align_down(addr);
-        uint64_t virt_end = align_up(addr + size);
+        uint64_t virt_end = align_up(end);
+        if (virt_end < virt_start) {
+            return;
+        }
         
         // Unmap and free physical frames
         for (uint64_t virt = virt_start; virt < virt_end; virt += PAGE_SIZE) {
@@ -307,10 +318,24 @@ public:
      */
     bool mprotect(uint64_t addr, uint64_t size, uint64_t prot) {
         if (size == 0) return true;
-        
+        if (!page_table_) {
+            return false;
+        }
+
+        if (addr > UINT64_MAX - size) {
+            return false;
+        }
+        uint64_t end = addr + size;
+        if (end > UINT64_MAX - (PAGE_SIZE - 1)) {
+            return false;
+        }
+
         // Align to page boundaries
         uint64_t virt_start = align_down(addr);
-        uint64_t virt_end = align_up(addr + size);
+        uint64_t virt_end = align_up(end);
+        if (virt_end < virt_start) {
+            return false;
+        }
         
         // Convert protection flags to PTE flags
         uint64_t pte_flags = PTE_PRESENT | PTE_USER;
@@ -318,6 +343,13 @@ public:
             pte_flags |= PTE_WRITABLE;
         }
         
+        for (uint64_t virt = virt_start; virt < virt_end; virt += PAGE_SIZE) {
+            const PageTableEntry* pte = page_table_->getPTE(virt);
+            if (!pte || !pte->isPresent() || !pte->isUser()) {
+                return false;
+            }
+        }
+
         // Update protection for each page
         for (uint64_t virt = virt_start; virt < virt_end; virt += PAGE_SIZE) {
             if (!page_table_->protect(virt, pte_flags)) {
@@ -532,7 +564,14 @@ private:
         }
 
         uint64_t virt_start = align_down(addr);
-        uint64_t virt_end = align_up(addr + size);
+        if (addr > UINT64_MAX - size) {
+            return false;
+        }
+        uint64_t end = addr + size;
+        if (end > UINT64_MAX - (PAGE_SIZE - 1)) {
+            return false;
+        }
+        uint64_t virt_end = align_up(end);
         uint64_t data_remaining = init_size;
         uint64_t data_offset = addr - virt_start;
         uint64_t mapped_end = virt_start;

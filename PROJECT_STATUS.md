@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: December 28, 2025 (dev path hardening + persist path validation + net loopback backpressure)
+Last Updated: December 28, 2025 (mprotect unmapped guard + range overflow checks)
 
 ---
 
@@ -28,7 +28,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - MemFS + BlockFS with per-process file descriptors.
 - BlockFS persistence with checksum + journal + corruption detection.
 - Syscall dispatcher with user-range validation and per-torus dispatch.
-- User mmap rejects overlaps; VFS reserves `/dev` and rejects invalid `/persist` subpaths; net loopback backpressure returns `-EAGAIN`.
+- User mmap rejects overlaps; mprotect refuses unmapped ranges; VFS reserves `/dev` and rejects invalid `/persist` subpaths; net loopback backpressure returns `-EAGAIN`.
 - Ring3 exec smoke (UEFI): exec path works; isolation still evolving.
 - Projection exchange across 3 VMs via IVSHMEM shared memory.
 - BraidShell demo with telemetry sourced from real logs.

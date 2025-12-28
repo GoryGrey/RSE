@@ -1,0 +1,131 @@
+#include "../os/SyscallDispatcher.h"
+#include "../os/MemFS.h"
+#include "../os/VFS.h"
+#include "../os/BlockFS.h"
+#include "../os/PhysicalAllocator.h"
+#include "../os/TorusScheduler.h"
+
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <cstring>
+#include <iostream>
+
+namespace os {
+TorusContext* current_torus_context = nullptr;
+}
+
+static uint64_t write_user_string(os::OSProcess& proc, const char* value) {
+    size_t len = std::strlen(value) + 1;
+    uint64_t addr = proc.vmem->allocate(len);
+    assert(addr != 0);
+    bool ok = proc.vmem->writeUser(addr, value, len);
+    assert(ok);
+    return addr;
+}
+
+int main() {
+    std::cout << "[sys_vfs_persist Tests]" << std::endl;
+
+    alignas(os::PAGE_SIZE) std::array<uint8_t, 1 << 20> phys{};
+    os::PhysicalAllocator phys_alloc(reinterpret_cast<uint64_t>(phys.data()), phys.size());
+
+    os::MemFS memfs;
+    os::VFS vfs(&memfs);
+
+    os::rse_block_configure(512, 20000);
+    os::BlockFS blockfs;
+    bool mounted = blockfs.mount(512, os::rse_block_total_blocks());
+    assert(mounted);
+    vfs.setBlockFS(&blockfs);
+
+    os::TorusScheduler scheduler(0);
+    os::SyscallDispatcher dispatcher;
+    os::TorusContext ctx;
+    ctx.scheduler = &scheduler;
+    ctx.dispatcher = &dispatcher;
+    ctx.vfs = &vfs;
+    ctx.phys_alloc = &phys_alloc;
+    os::current_torus_context = &ctx;
+
+    os::OSProcess proc(1, 0, 0);
+    proc.initMemory(&phys_alloc);
+    scheduler.addProcess(&proc);
+    scheduler.tick();
+    assert(scheduler.getCurrentProcess() == &proc);
+
+    const char mem_path[] = "/hello.txt";
+    uint64_t mem_path_addr = write_user_string(proc, mem_path);
+    int64_t mem_fd = os::syscall(os::SYS_OPEN, mem_path_addr,
+                                 os::O_CREAT | os::O_TRUNC | os::O_RDWR);
+    assert(mem_fd >= 0);
+
+    const char payload[] = "memfs";
+    uint64_t payload_addr = proc.vmem->allocate(sizeof(payload) - 1);
+    assert(payload_addr != 0);
+    assert(proc.vmem->writeUser(payload_addr, payload, sizeof(payload) - 1));
+    int64_t wrote = os::syscall(os::SYS_WRITE, mem_fd, payload_addr, sizeof(payload) - 1);
+    assert(wrote == static_cast<int64_t>(sizeof(payload) - 1));
+    (void)os::syscall(os::SYS_LSEEK, mem_fd, 0, SEEK_SET);
+
+    std::array<char, 16> mem_out{};
+    uint64_t mem_out_addr = proc.vmem->allocate(mem_out.size());
+    assert(mem_out_addr != 0);
+    int64_t mem_read = os::syscall(os::SYS_READ, mem_fd, mem_out_addr, sizeof(payload) - 1);
+    assert(mem_read == static_cast<int64_t>(sizeof(payload) - 1));
+    assert(proc.vmem->readUser(mem_out.data(), mem_out_addr, mem_out.size()));
+    assert(std::memcmp(mem_out.data(), payload, sizeof(payload) - 1) == 0);
+
+    const char persist_path[] = "/persist/alpha.txt";
+    uint64_t persist_addr = write_user_string(proc, persist_path);
+    int64_t persist_fd = os::syscall(os::SYS_OPEN, persist_addr,
+                                     os::O_CREAT | os::O_TRUNC | os::O_RDWR);
+    assert(persist_fd >= 0);
+
+    const char persist_payload[] = "blockfs";
+    uint64_t persist_payload_addr = proc.vmem->allocate(sizeof(persist_payload) - 1);
+    assert(persist_payload_addr != 0);
+    assert(proc.vmem->writeUser(persist_payload_addr, persist_payload, sizeof(persist_payload) - 1));
+    int64_t persist_wrote = os::syscall(os::SYS_WRITE, persist_fd,
+                                        persist_payload_addr, sizeof(persist_payload) - 1);
+    assert(persist_wrote == static_cast<int64_t>(sizeof(persist_payload) - 1));
+    (void)os::syscall(os::SYS_LSEEK, persist_fd, 0, SEEK_SET);
+
+    std::array<char, 16> persist_out{};
+    uint64_t persist_out_addr = proc.vmem->allocate(persist_out.size());
+    assert(persist_out_addr != 0);
+    int64_t persist_read = os::syscall(os::SYS_READ, persist_fd,
+                                       persist_out_addr, sizeof(persist_payload) - 1);
+    assert(persist_read == static_cast<int64_t>(sizeof(persist_payload) - 1));
+    assert(proc.vmem->readUser(persist_out.data(), persist_out_addr, persist_out.size()));
+    assert(std::memcmp(persist_out.data(), persist_payload, sizeof(persist_payload) - 1) == 0);
+
+    uint64_t stat_addr = proc.vmem->allocate(sizeof(os::rse_stat));
+    assert(stat_addr != 0);
+    int64_t stat_rc = os::syscall(os::SYS_STAT, persist_addr, stat_addr);
+    assert(stat_rc == 0);
+    os::rse_stat st{};
+    assert(proc.vmem->readUser(&st, stat_addr, sizeof(st)));
+    assert(st.size == sizeof(persist_payload) - 1);
+    assert(st.type == os::RSE_STAT_FILE);
+
+    const char persist_root[] = "/persist";
+    uint64_t persist_root_addr = write_user_string(proc, persist_root);
+    std::array<char, 128> list_buf{};
+    uint64_t list_addr = proc.vmem->allocate(list_buf.size());
+    assert(list_addr != 0);
+    int64_t list_rc = os::syscall(os::SYS_LIST, persist_root_addr,
+                                  list_addr, list_buf.size());
+    assert(list_rc >= 0);
+    assert(proc.vmem->readUser(list_buf.data(), list_addr, list_buf.size()));
+    assert(std::strstr(list_buf.data(), "alpha.txt") != nullptr);
+
+    const char invalid_persist[] = "/persist/dir/name";
+    uint64_t invalid_addr = write_user_string(proc, invalid_persist);
+    int64_t invalid_rc = os::syscall(os::SYS_OPEN, invalid_addr,
+                                     os::O_CREAT | os::O_TRUNC | os::O_RDWR);
+    assert(invalid_rc == -os::EINVAL);
+
+    std::cout << "  ✓ all tests passed" << std::endl;
+    return 0;
+}

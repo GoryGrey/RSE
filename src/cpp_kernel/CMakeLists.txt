@@ -174,6 +174,12 @@ if(NOT MSVC)
     target_link_libraries(sys_stat_test atomic)
 endif()
 
+# sys_vfs_persist test
+add_executable(sys_vfs_persist_test tests/sys_vfs_persist_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(sys_vfs_persist_test atomic)
+endif()
+
 # sys_pipe test
 add_executable(sys_pipe_test tests/sys_pipe_test.cpp)
 if(NOT MSVC)

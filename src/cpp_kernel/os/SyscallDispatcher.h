@@ -137,6 +137,60 @@ inline bool require_absolute_path(OSProcess* proc, const char* path) {
     return path && path[0] == '/';
 }
 
+inline bool persist_prefix(const char* path) {
+    const char* prefix = "/persist";
+    uint32_t i = 0;
+    if (!path) {
+        return false;
+    }
+    for (; prefix[i] != '\0'; ++i) {
+        if (path[i] != prefix[i]) {
+            return false;
+        }
+    }
+    return path[i] == '\0' || path[i] == '/';
+}
+
+inline bool persist_root(const char* path) {
+    if (!persist_prefix(path)) {
+        return false;
+    }
+    const uint32_t len = 8;
+    return path[len] == '\0' || (path[len] == '/' && path[len + 1] == '\0');
+}
+
+inline bool persist_leaf(const char* path) {
+    if (!persist_prefix(path)) {
+        return false;
+    }
+    const uint32_t len = 8;
+    if (path[len] != '/' || path[len + 1] == '\0') {
+        return false;
+    }
+    for (const char* p = path + len + 1; *p; ++p) {
+        if (*p == '/' || *p == '\\') {
+            return false;
+        }
+    }
+    return true;
+}
+
+inline bool validate_user_path(OSProcess* proc, const char* path, bool allow_persist_root) {
+    if (!enforce_user_memory(proc)) {
+        return true;
+    }
+    if (!require_absolute_path(proc, path)) {
+        return false;
+    }
+    if (!persist_prefix(path)) {
+        return true;
+    }
+    if (persist_root(path)) {
+        return allow_persist_root;
+    }
+    return persist_leaf(path);
+}
+
 struct ExecStringTable {
     static constexpr uint32_t kMaxPtrs = 32;
     static constexpr uint32_t kStorageBytes = 4096;
@@ -548,7 +602,7 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
     if (!copy_user_string(current, path_ptr, path_buf, kMaxPath, nullptr)) {
         return -EFAULT;
     }
-    if (!require_absolute_path(current, path_buf)) {
+    if (!validate_user_path(current, path_buf, false)) {
         return -EINVAL;
     }
 
@@ -793,7 +847,7 @@ inline int64_t sys_open(uint64_t path_addr, uint64_t flags, uint64_t mode,
     if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
         return -EFAULT;
     }
-    if (!require_absolute_path(current, path_buf)) {
+    if (!validate_user_path(current, path_buf, false)) {
         return -EINVAL;
     }
     return current_torus_context->vfs->open(&current->fd_table, path_buf,
@@ -852,7 +906,7 @@ inline int64_t sys_unlink(uint64_t path_addr, uint64_t, uint64_t,
     if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
         return -EFAULT;
     }
-    if (!require_absolute_path(current, path_buf)) {
+    if (!validate_user_path(current, path_buf, false)) {
         return -EINVAL;
     }
     return current_torus_context->vfs->unlink(path_buf);
@@ -874,7 +928,7 @@ inline int64_t sys_list(uint64_t path_addr, uint64_t buf_addr, uint64_t count,
         if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
             return -EFAULT;
         }
-        if (!require_absolute_path(current, path_buf)) {
+        if (!validate_user_path(current, path_buf, true)) {
             return -EINVAL;
         }
         path = path_buf;
@@ -928,7 +982,7 @@ inline int64_t sys_stat(uint64_t path_addr, uint64_t stat_addr, uint64_t,
     if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
         return -EFAULT;
     }
-    if (!require_absolute_path(current, path_buf)) {
+    if (!validate_user_path(current, path_buf, true)) {
         return -EINVAL;
     }
     if (!validate_user_range(current, stat_addr, sizeof(rse_stat), true)) {

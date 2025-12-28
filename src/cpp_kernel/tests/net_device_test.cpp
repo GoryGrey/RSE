@@ -2,6 +2,7 @@
 #include "../os/MemFS.h"
 #include "../os/VFS.h"
 
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -34,6 +35,21 @@ int main() {
 
     int64_t empty = vfs.read(&fdt, fd, out, sizeof(out));
     assert(empty == 0);
+
+    std::array<uint8_t, os::NetLoopback::CAPACITY> bulk{};
+    for (size_t i = 0; i < bulk.size(); ++i) {
+        bulk[i] = static_cast<uint8_t>(i & 0xFF);
+    }
+    int64_t bulk_written = vfs.write(&fdt, fd, bulk.data(), bulk.size());
+    assert(bulk_written == static_cast<int64_t>(bulk.size()));
+
+    int64_t full = vfs.write(&fdt, fd, payload, sizeof(payload) - 1);
+    assert(full == -os::EAGAIN);
+
+    int64_t drained = vfs.read(&fdt, fd, out, sizeof(out));
+    assert(drained > 0);
+    int64_t resumed = vfs.write(&fdt, fd, payload, sizeof(payload) - 1);
+    assert(resumed == static_cast<int64_t>(sizeof(payload) - 1));
 
     vfs.close(&fdt, fd);
 

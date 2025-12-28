@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Device.h"
+#include "Syscall.h"
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
@@ -60,6 +61,9 @@ inline int rse_net_write(const void* buf, uint32_t len) {
         return state.online ? 0 : -1;
     }
     size_t space = NetLoopback::CAPACITY - state.size;
+    if (space == 0) {
+        return -EAGAIN;
+    }
     uint32_t to_write = len < space ? len : (uint32_t)space;
     const uint8_t* in = static_cast<const uint8_t*>(buf);
     for (uint32_t i = 0; i < to_write; ++i) {

@@ -130,6 +130,13 @@ inline bool copy_user_string(OSProcess* proc, uint64_t addr, char* dst,
     return true;
 }
 
+inline bool require_absolute_path(OSProcess* proc, const char* path) {
+    if (!enforce_user_memory(proc)) {
+        return true;
+    }
+    return path && path[0] == '/';
+}
+
 struct ExecStringTable {
     static constexpr uint32_t kMaxPtrs = 32;
     static constexpr uint32_t kStorageBytes = 4096;
@@ -541,6 +548,9 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
     if (!copy_user_string(current, path_ptr, path_buf, kMaxPath, nullptr)) {
         return -EFAULT;
     }
+    if (!require_absolute_path(current, path_buf)) {
+        return -EINVAL;
+    }
 
     ExecStringTable argv = {};
     ExecStringTable envp = {};
@@ -783,6 +793,9 @@ inline int64_t sys_open(uint64_t path_addr, uint64_t flags, uint64_t mode,
     if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
         return -EFAULT;
     }
+    if (!require_absolute_path(current, path_buf)) {
+        return -EINVAL;
+    }
     return current_torus_context->vfs->open(&current->fd_table, path_buf,
                                             static_cast<uint32_t>(flags),
                                             static_cast<uint32_t>(mode));
@@ -839,6 +852,9 @@ inline int64_t sys_unlink(uint64_t path_addr, uint64_t, uint64_t,
     if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
         return -EFAULT;
     }
+    if (!require_absolute_path(current, path_buf)) {
+        return -EINVAL;
+    }
     return current_torus_context->vfs->unlink(path_buf);
 }
 
@@ -857,6 +873,9 @@ inline int64_t sys_list(uint64_t path_addr, uint64_t buf_addr, uint64_t count,
     if (path_addr != 0) {
         if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
             return -EFAULT;
+        }
+        if (!require_absolute_path(current, path_buf)) {
+            return -EINVAL;
         }
         path = path_buf;
     }
@@ -908,6 +927,9 @@ inline int64_t sys_stat(uint64_t path_addr, uint64_t stat_addr, uint64_t,
     char path_buf[kMaxPath] = {};
     if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
         return -EFAULT;
+    }
+    if (!require_absolute_path(current, path_buf)) {
+        return -EINVAL;
     }
     if (!validate_user_range(current, stat_addr, sizeof(rse_stat), true)) {
         return -EFAULT;

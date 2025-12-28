@@ -213,6 +213,9 @@ public:
         if (!mounted_ || !name || name[0] == '\0') {
             return nullptr;
         }
+        if (!is_valid_name(name)) {
+            return nullptr;
+        }
         BlockFSEntry* entry = find_entry(name);
         if (entry) {
             return entry;
@@ -313,6 +316,9 @@ public:
 
     bool remove(const char* name) {
         if (!mounted_ || !name) {
+            return false;
+        }
+        if (!is_valid_name(name)) {
             return false;
         }
         BlockFSEntry* entry = find_entry(name);
@@ -500,6 +506,22 @@ private:
             dst[i] = src[i];
         }
         dst[i] = '\0';
+    }
+
+    static bool is_valid_name(const char* name) {
+        if (!name || name[0] == '\0') {
+            return false;
+        }
+        uint32_t len = 0;
+        for (const char* p = name; *p; ++p) {
+            if (*p == '/' || *p == '\\') {
+                return false;
+            }
+            if (++len > kNameMax) {
+                return false;
+            }
+        }
+        return true;
     }
 
     static bool name_equal(const char* a, const char* b) {

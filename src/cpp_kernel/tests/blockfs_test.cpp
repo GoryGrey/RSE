@@ -15,6 +15,20 @@ int main() {
     bool mounted = fs.mount(512, os::rse_block_total_blocks());
     assert(mounted);
 
+    const char bad_name[] = "bad/name";
+    os::BlockFSEntry* bad = fs.open(bad_name, true);
+    assert(bad == nullptr);
+    bool removed_bad = fs.remove(bad_name);
+    assert(!removed_bad);
+
+    std::array<char, os::BlockFS::kNameMax + 2> long_name{};
+    for (size_t i = 0; i < long_name.size() - 1; ++i) {
+        long_name[i] = 'a';
+    }
+    long_name[long_name.size() - 1] = '\0';
+    os::BlockFSEntry* too_long = fs.open(long_name.data(), true);
+    assert(too_long == nullptr);
+
     os::BlockFSEntry* entry = fs.open("alpha.txt", true);
     assert(entry != nullptr);
 

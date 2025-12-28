@@ -39,7 +39,7 @@ int main() {
     scheduler.tick();
     assert(scheduler.getCurrentProcess() == &proc);
 
-    int fd = vfs.open(&proc.fd_table, "hello.txt",
+    int fd = vfs.open(&proc.fd_table, "/hello.txt",
                       os::O_CREAT | os::O_TRUNC | os::O_RDWR);
     assert(fd >= 0);
     const char payload[] = "hello";
@@ -47,7 +47,7 @@ int main() {
     assert(wrote == 5);
     vfs.close(&proc.fd_table, fd);
 
-    const char path[] = "hello.txt";
+    const char path[] = "/hello.txt";
     uint64_t path_addr = proc.vmem->allocate(sizeof(path));
     assert(path_addr != 0);
     assert(proc.vmem->writeUser(path_addr, path, sizeof(path)));

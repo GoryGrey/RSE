@@ -46,7 +46,7 @@ int main() {
     scheduler.tick();
     assert(scheduler.getCurrentProcess() == &proc);
 
-    const char path[] = "dup.txt";
+    const char path[] = "/dup.txt";
     uint64_t path_addr = proc.vmem->allocate(sizeof(path));
     if (!require(path_addr != 0, "alloc path")) {
         return 1;

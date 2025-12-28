@@ -159,7 +159,7 @@ inline bool persist_root(const char* path) {
     return path[len] == '\0' || (path[len] == '/' && path[len + 1] == '\0');
 }
 
-inline bool persist_leaf(const char* path) {
+inline bool persist_path(const char* path) {
     if (!persist_prefix(path)) {
         return false;
     }
@@ -167,12 +167,25 @@ inline bool persist_leaf(const char* path) {
     if (path[len] != '/' || path[len + 1] == '\0') {
         return false;
     }
+    uint32_t used = 0;
+    bool in_segment = false;
     for (const char* p = path + len + 1; *p; ++p) {
-        if (*p == '/' || *p == '\\') {
+        if (*p == '\\') {
+            return false;
+        }
+        if (*p == '/') {
+            if (!in_segment) {
+                return false;
+            }
+            in_segment = false;
+        } else {
+            in_segment = true;
+        }
+        if (++used > BlockFS::kNameMax) {
             return false;
         }
     }
-    return true;
+    return in_segment;
 }
 
 inline bool validate_user_path(OSProcess* proc, const char* path, bool allow_persist_root) {
@@ -188,7 +201,7 @@ inline bool validate_user_path(OSProcess* proc, const char* path, bool allow_per
     if (persist_root(path)) {
         return allow_persist_root;
     }
-    return persist_leaf(path);
+    return persist_path(path);
 }
 
 struct ExecStringTable {
@@ -971,6 +984,26 @@ inline int64_t sys_list(uint64_t path_addr, uint64_t buf_addr, uint64_t count,
     return got;
 }
 
+inline int64_t sys_mkdir(uint64_t path_addr, uint64_t mode, uint64_t,
+                         uint64_t, uint64_t, uint64_t) {
+    if (!current_torus_context || !current_torus_context->vfs) {
+        return -ENOSYS;
+    }
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    static constexpr uint32_t kMaxPath = 256;
+    char path_buf[kMaxPath] = {};
+    if (!copy_user_string(current, path_addr, path_buf, kMaxPath, nullptr)) {
+        return -EFAULT;
+    }
+    if (!validate_user_path(current, path_buf, false)) {
+        return -EINVAL;
+    }
+    return current_torus_context->vfs->mkdir(path_buf, static_cast<uint32_t>(mode));
+}
+
 inline int64_t sys_stat(uint64_t path_addr, uint64_t stat_addr, uint64_t,
                         uint64_t, uint64_t, uint64_t) {
     if (!current_torus_context || !current_torus_context->vfs) {
@@ -1264,6 +1297,7 @@ public:
         register_handler(SYS_STAT, sys_stat);
         register_handler(SYS_UNLINK, sys_unlink);
         register_handler(SYS_LIST, sys_list);
+        register_handler(SYS_MKDIR, sys_mkdir);
         register_handler(SYS_BRK, sys_brk);
         register_handler(SYS_MMAP, sys_mmap);
         register_handler(SYS_MUNMAP, sys_munmap);

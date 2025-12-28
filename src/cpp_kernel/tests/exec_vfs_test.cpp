@@ -134,6 +134,16 @@ int main() {
   assert(written == static_cast<int64_t>(image.size()));
   vfs.close(&proc.fd_table, fd);
 
+  const char bad_path[] = "/bad.bin";
+  int32_t bad_fd = vfs.open(&proc.fd_table, bad_path,
+                            os::O_CREAT | os::O_TRUNC | os::O_WRONLY);
+  assert(bad_fd >= 0);
+  const char bad_payload[] = "NOT-ELF";
+  int64_t bad_written = vfs.write(&proc.fd_table, bad_fd, bad_payload,
+                                  static_cast<uint32_t>(sizeof(bad_payload) - 1));
+  assert(bad_written == static_cast<int64_t>(sizeof(bad_payload) - 1));
+  vfs.close(&proc.fd_table, bad_fd);
+
   int32_t cloexec_fd = vfs.open(&proc.fd_table, "/tmp.txt",
                                 os::O_CREAT | os::O_TRUNC | os::O_WRONLY | os::O_CLOEXEC);
   assert(cloexec_fd >= 0);
@@ -148,6 +158,7 @@ int main() {
   };
 
   uint64_t user_path = writeUserString(path);
+  uint64_t bad_user_path = writeUserString(bad_path);
   uint64_t arg0 = writeUserString("hello");
   uint64_t arg1 = writeUserString("world");
   uint64_t env0 = writeUserString("RSE=1");
@@ -161,6 +172,23 @@ int main() {
   uint64_t envp_ptrs[2] = {env0, 0};
   assert(proc.vmem->writeUser(argv_mem, argv_ptrs, sizeof(argv_ptrs)));
   assert(proc.vmem->writeUser(envp_mem, envp_ptrs, sizeof(envp_ptrs)));
+
+  uint64_t bad_ptr = proc.vmem->getStackEnd() + os::PAGE_SIZE;
+  int64_t bad_exec = os::syscall(os::SYS_EXEC,
+                                 bad_user_path,
+                                 argv_mem,
+                                 envp_mem);
+  assert(bad_exec == -os::EINVAL);
+  int64_t bad_argv = os::syscall(os::SYS_EXEC,
+                                 user_path,
+                                 bad_ptr,
+                                 envp_mem);
+  assert(bad_argv == -os::EFAULT);
+  int64_t bad_envp = os::syscall(os::SYS_EXEC,
+                                 user_path,
+                                 argv_mem,
+                                 bad_ptr);
+  assert(bad_envp == -os::EFAULT);
 
   int64_t rc = os::syscall(os::SYS_EXEC,
                            user_path,

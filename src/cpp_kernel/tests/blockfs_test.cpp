@@ -15,11 +15,16 @@ int main() {
     bool mounted = fs.mount(512, os::rse_block_total_blocks());
     assert(mounted);
 
-    const char bad_name[] = "bad/name";
-    os::BlockFSEntry* bad = fs.open(bad_name, true);
+    const char nested_name[] = "bad/name";
+    os::BlockFSEntry* bad = fs.open(nested_name, true);
     assert(bad == nullptr);
-    bool removed_bad = fs.remove(bad_name);
+    bool removed_bad = fs.remove(nested_name);
     assert(!removed_bad);
+
+    bool made_dir = fs.mkdir("bad", 0755);
+    assert(made_dir);
+    os::BlockFSEntry* nested = fs.open(nested_name, true);
+    assert(nested != nullptr);
 
     std::array<char, os::BlockFS::kNameMax + 2> long_name{};
     for (size_t i = 0; i < long_name.size() - 1; ++i) {
@@ -55,6 +60,13 @@ int main() {
 
     bool removed = fs.remove("alpha.txt");
     assert(removed);
+
+    bool removed_dir_fail = fs.remove("bad");
+    assert(!removed_dir_fail);
+    bool removed_nested = fs.remove(nested_name);
+    assert(removed_nested);
+    bool removed_dir = fs.remove("bad");
+    assert(removed_dir);
 
     std::cout << "  ✓ all tests passed" << std::endl;
     return 0;

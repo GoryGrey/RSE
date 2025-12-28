@@ -83,6 +83,21 @@ int main() {
     int64_t bad_read = os::syscall(os::SYS_READ, fd, bad_addr, 4);
     assert(bad_read == -os::EFAULT);
 
+    std::array<char, 32> list_buf{};
+    uint64_t list_addr = proc.vmem->allocate(list_buf.size());
+    assert(list_addr != 0);
+    int64_t bad_list = os::syscall(os::SYS_LIST, bad_addr, list_addr, list_buf.size());
+    assert(bad_list == -os::EFAULT);
+    int64_t bad_list_buf = os::syscall(os::SYS_LIST, path_addr, bad_addr, list_buf.size());
+    assert(bad_list_buf == -os::EFAULT);
+
+    uint64_t stat_addr = proc.vmem->allocate(sizeof(os::rse_stat));
+    assert(stat_addr != 0);
+    int64_t bad_stat = os::syscall(os::SYS_STAT, bad_addr, stat_addr);
+    assert(bad_stat == -os::EFAULT);
+    int64_t bad_mkdir = os::syscall(os::SYS_MKDIR, bad_addr, 0755);
+    assert(bad_mkdir == -os::EFAULT);
+
     os::PageTable* pt = proc.vmem->getPageTable();
     assert(pt != nullptr);
     uint64_t no_user = proc.vmem->getHeapEnd() - os::PAGE_SIZE * 4;

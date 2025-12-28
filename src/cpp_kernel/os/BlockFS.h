@@ -137,6 +137,10 @@ public:
     static constexpr uint32_t kSlotBytes = 16384u;
     static constexpr uint32_t kNameMax = 31u;
     static constexpr uint32_t kGptGuardBlocks = 34u;
+    enum EntryType : uint8_t {
+        kEntryFile = 0,
+        kEntryDir = 1
+    };
 
     BlockFS() : mounted_(false), block_size_(0), slot_size_(0),
                 slot_blocks_(0), table_blocks_(0), start_lba_(0),
@@ -209,18 +213,165 @@ public:
         return data_start_lba_;
     }
 
+    bool isDirectory(const BlockFSEntry* entry) const {
+        return entry && entry->in_use && entry_type(*entry) == kEntryDir;
+    }
+
+    uint16_t effectiveMode(const BlockFSEntry* entry) const {
+        if (!entry) {
+            return 0;
+        }
+        uint16_t mode = entry_mode(*entry);
+        if (mode != 0) {
+            return mode;
+        }
+        return default_mode(entry_type(*entry));
+    }
+
+    bool mkdir(const char* name, uint16_t mode) {
+        if (!mounted_ || !name || name[0] == '\0') {
+            return false;
+        }
+        if (!is_valid_path(name)) {
+            return false;
+        }
+        if (!parent_dir_exists(name)) {
+            return false;
+        }
+        BlockFSEntry* entry = find_entry(name);
+        if (entry) {
+            return false;
+        }
+        BlockFSEntry* free_slot = find_free();
+        if (!free_slot) {
+            return false;
+        }
+        write_name(free_slot->name, name);
+        free_slot->size = 0;
+        free_slot->checksum = 0;
+        free_slot->in_use = 1;
+        set_entry_type(*free_slot, kEntryDir);
+        set_entry_mode(*free_slot, mode != 0 ? mode : default_mode(kEntryDir));
+        uint32_t index = (uint32_t)(free_slot - entries_);
+        if (!commit_entry(index)) {
+            return false;
+        }
+        return true;
+    }
+
+    bool stat(const char* name, uint32_t* size, uint8_t* type, uint16_t* mode) const {
+        if (!mounted_ || !name || !size || !type || !mode) {
+            return false;
+        }
+        if (!is_valid_path(name)) {
+            return false;
+        }
+        const BlockFSEntry* entry = find_entry(name);
+        if (!entry || !entry->in_use) {
+            return false;
+        }
+        *size = entry->size;
+        *type = entry_type(*entry);
+        *mode = effectiveMode(entry);
+        return true;
+    }
+
+    int32_t listDirectory(const char* path, char* out, uint32_t max) const {
+        if (!mounted_ || !out || max == 0) {
+            return -EINVAL;
+        }
+        const char* prefix = (path && path[0] != '\0') ? path : nullptr;
+        uint32_t prefix_len = 0;
+        if (prefix) {
+            if (!is_valid_path(prefix)) {
+                return -EINVAL;
+            }
+            const BlockFSEntry* entry = find_entry(prefix);
+            if (!entry || entry_type(*entry) != kEntryDir) {
+                return -ENOENT;
+            }
+            prefix_len = cstr_len(prefix);
+        }
+        struct SeenEntry {
+            char name[kNameMax + 1];
+            bool is_dir;
+        };
+        SeenEntry seen[kMaxFiles];
+        uint32_t seen_count = 0;
+        for (uint32_t i = 0; i < kMaxFiles; ++i) {
+            if (!entries_[i].in_use) {
+                continue;
+            }
+            const char* name = entries_[i].name;
+            if (prefix) {
+                if (std::memcmp(name, prefix, prefix_len) != 0 || name[prefix_len] != '/') {
+                    continue;
+                }
+                name += prefix_len + 1;
+            }
+            if (name[0] == '\0') {
+                continue;
+            }
+            const char* slash = std::strchr(name, '/');
+            uint32_t seg_len = slash ? static_cast<uint32_t>(slash - name)
+                                     : static_cast<uint32_t>(cstr_len(name));
+            if (seg_len == 0) {
+                continue;
+            }
+            bool is_dir = slash != nullptr || entry_type(entries_[i]) == kEntryDir;
+            bool found = false;
+            for (uint32_t j = 0; j < seen_count; ++j) {
+                if (std::strncmp(seen[j].name, name, seg_len) == 0 &&
+                    seen[j].name[seg_len] == '\0') {
+                    seen[j].is_dir = seen[j].is_dir || is_dir;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found && seen_count < kMaxFiles) {
+                std::memset(seen[seen_count].name, 0, sizeof(seen[seen_count].name));
+                std::memcpy(seen[seen_count].name, name, seg_len);
+                seen[seen_count].name[seg_len] = '\0';
+                seen[seen_count].is_dir = is_dir;
+                ++seen_count;
+            }
+        }
+        uint32_t written = 0;
+        for (uint32_t i = 0; i < seen_count; ++i) {
+            const char* name = seen[i].name;
+            for (uint32_t j = 0; name[j] && written + 1 < max; ++j) {
+                out[written++] = name[j];
+            }
+            if (seen[i].is_dir && written + 1 < max) {
+                out[written++] = '/';
+            }
+            if (written + 1 >= max) {
+                break;
+            }
+            out[written++] = '\n';
+        }
+        out[written] = '\0';
+        return (int32_t)written;
+    }
+
     BlockFSEntry* open(const char* name, bool create) {
         if (!mounted_ || !name || name[0] == '\0') {
             return nullptr;
         }
-        if (!is_valid_name(name)) {
+        if (!is_valid_path(name)) {
             return nullptr;
         }
         BlockFSEntry* entry = find_entry(name);
         if (entry) {
+            if (entry_type(*entry) == kEntryDir) {
+                return nullptr;
+            }
             return entry;
         }
         if (!create) {
+            return nullptr;
+        }
+        if (!parent_dir_exists(name)) {
             return nullptr;
         }
         BlockFSEntry* free_slot = find_free();
@@ -231,6 +382,8 @@ public:
         free_slot->size = 0;
         free_slot->checksum = 0;
         free_slot->in_use = 1;
+        set_entry_type(*free_slot, kEntryFile);
+        set_entry_mode(*free_slot, default_mode(kEntryFile));
         uint32_t index = (uint32_t)(free_slot - entries_);
         if (!commit_entry(index)) {
             return nullptr;
@@ -318,11 +471,14 @@ public:
         if (!mounted_ || !name) {
             return false;
         }
-        if (!is_valid_name(name)) {
+        if (!is_valid_path(name)) {
             return false;
         }
         BlockFSEntry* entry = find_entry(name);
         if (!entry) {
+            return false;
+        }
+        if (entry_type(*entry) == kEntryDir && has_children(name)) {
             return false;
         }
         entry->name[0] = '\0';
@@ -356,26 +512,11 @@ public:
     }
 
     uint32_t list(char* out, uint32_t max) const {
-        if (!mounted_ || !out || max == 0) {
+        int32_t rc = listDirectory(nullptr, out, max);
+        if (rc < 0) {
             return 0;
         }
-        uint32_t written = 0;
-        for (uint32_t i = 0; i < kMaxFiles; ++i) {
-            if (!entries_[i].in_use) {
-                continue;
-            }
-            const char* name = entries_[i].name;
-            uint32_t j = 0;
-            while (name[j] && written + 1 < max) {
-                out[written++] = name[j++];
-            }
-            if (written + 1 >= max) {
-                break;
-            }
-            out[written++] = '\n';
-        }
-        out[written] = '\0';
-        return written;
+        return (uint32_t)rc;
     }
 
 private:
@@ -392,6 +533,75 @@ private:
 
     static uint32_t blocks_for_bytes(uint32_t bytes, uint32_t block_size) {
         return (bytes + block_size - 1u) / block_size;
+    }
+
+    static size_t cstr_len(const char* s) {
+        size_t len = 0;
+        if (!s) {
+            return 0;
+        }
+        while (s[len] != '\0') {
+            ++len;
+        }
+        return len;
+    }
+
+    static uint8_t entry_type(const BlockFSEntry& entry) {
+        return entry.reserved[0];
+    }
+
+    static uint16_t entry_mode(const BlockFSEntry& entry) {
+        return (uint16_t)entry.reserved[1] | ((uint16_t)entry.reserved[2] << 8);
+    }
+
+    static void set_entry_type(BlockFSEntry& entry, uint8_t type) {
+        entry.reserved[0] = type;
+    }
+
+    static void set_entry_mode(BlockFSEntry& entry, uint16_t mode) {
+        entry.reserved[1] = (uint8_t)(mode & 0xFFu);
+        entry.reserved[2] = (uint8_t)((mode >> 8) & 0xFFu);
+    }
+
+    static uint16_t default_mode(uint8_t type) {
+        return type == kEntryDir ? 0755 : 0644;
+    }
+
+    bool parent_dir_exists(const char* path) const {
+        const char* slash = std::strrchr(path, '/');
+        if (!slash) {
+            return true;
+        }
+        if (slash == path) {
+            return false;
+        }
+        char parent[kNameMax + 1];
+        size_t len = (size_t)(slash - path);
+        if (len == 0 || len > kNameMax) {
+            return false;
+        }
+        std::memset(parent, 0, sizeof(parent));
+        std::memcpy(parent, path, len);
+        parent[len] = '\0';
+        const BlockFSEntry* entry = find_entry(parent);
+        return entry && entry->in_use && entry_type(*entry) == kEntryDir;
+    }
+
+    bool has_children(const char* path) const {
+        size_t len = cstr_len(path);
+        if (len == 0) {
+            return false;
+        }
+        for (uint32_t i = 0; i < kMaxFiles; ++i) {
+            if (!entries_[i].in_use) {
+                continue;
+            }
+            const char* name = entries_[i].name;
+            if (std::memcmp(name, path, len) == 0 && name[len] == '/') {
+                return true;
+            }
+        }
+        return false;
     }
 
     bool is_valid_header(const BlockFSHeader& hdr) const {
@@ -489,6 +699,15 @@ private:
         return nullptr;
     }
 
+    const BlockFSEntry* find_entry(const char* name) const {
+        for (uint32_t i = 0; i < kMaxFiles; ++i) {
+            if (entries_[i].in_use && name_equal(entries_[i].name, name)) {
+                return &entries_[i];
+            }
+        }
+        return nullptr;
+    }
+
     BlockFSEntry* find_free() {
         for (uint32_t i = 0; i < kMaxFiles; ++i) {
             if (!entries_[i].in_use) {
@@ -508,20 +727,32 @@ private:
         dst[i] = '\0';
     }
 
-    static bool is_valid_name(const char* name) {
+    static bool is_valid_path(const char* name) {
         if (!name || name[0] == '\0') {
             return false;
         }
+        if (name[0] == '/') {
+            return false;
+        }
         uint32_t len = 0;
+        bool in_segment = false;
         for (const char* p = name; *p; ++p) {
-            if (*p == '/' || *p == '\\') {
+            if (*p == '\\') {
                 return false;
+            }
+            if (*p == '/') {
+                if (!in_segment) {
+                    return false;
+                }
+                in_segment = false;
+            } else {
+                in_segment = true;
             }
             if (++len > kNameMax) {
                 return false;
             }
         }
-        return true;
+        return in_segment;
     }
 
     static bool name_equal(const char* a, const char* b) {

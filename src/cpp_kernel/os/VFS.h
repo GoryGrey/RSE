@@ -61,6 +61,34 @@ private:
     bool isPersistRoot(const char* path) const {
         return path && (strcmp(path, "/persist") == 0 || strcmp(path, "/persist/") == 0);
     }
+
+    bool isValidPersistPath(const char* path) const {
+        if (!path || path[0] == '\0') {
+            return false;
+        }
+        if (path[0] == '/') {
+            return false;
+        }
+        uint32_t len = 0;
+        bool in_segment = false;
+        for (const char* p = path; *p; ++p) {
+            if (*p == '\\') {
+                return false;
+            }
+            if (*p == '/') {
+                if (!in_segment) {
+                    return false;
+                }
+                in_segment = false;
+            } else {
+                in_segment = true;
+            }
+            if (++len > BlockFS::kNameMax) {
+                return false;
+            }
+        }
+        return in_segment;
+    }
     
 public:
     VFS(MemFS* fs)
@@ -118,13 +146,8 @@ public:
             }
         }
         const char* name = path + 9;
-        if (name[0] == '\0') {
+        if (!isValidPersistPath(name)) {
             return nullptr;
-        }
-        for (const char* p = name; *p; ++p) {
-            if (*p == '/' || *p == '\\') {
-                return nullptr;
-            }
         }
         return name;
     }
@@ -185,6 +208,13 @@ public:
             if (!entry) {
                 std::cerr << "[VFS] BlockFS open failed: " << persist << std::endl;
                 return -1;
+            }
+            uint16_t mode_bits = blockfs_->effectiveMode(entry);
+            bool wants_write = (flags & (O_WRONLY | O_RDWR)) != 0;
+            bool wants_read = (flags & O_WRONLY) == 0;
+            if ((wants_write && (mode_bits & 0200) == 0) ||
+                (wants_read && (mode_bits & 0400) == 0)) {
+                return -EACCES;
             }
             if (flags & O_TRUNC) {
                 blockfs_->truncate(entry);
@@ -707,9 +737,6 @@ public:
         if (hasDevPrefix(target) && !isDevRoot(target)) {
             return -EINVAL;
         }
-        if (hasPersistPrefix(target) && !isPersistRoot(target)) {
-            return -EINVAL;
-        }
         if (strcmp(target, "/dev") == 0 || strcmp(target, "/dev/") == 0) {
             if (!device_mgr_) {
                 return -1;
@@ -720,7 +747,17 @@ public:
             if (!blockfs_ || !blockfs_->isMounted()) {
                 return -1;
             }
-            return (int32_t)blockfs_->list(buf, max);
+            return blockfs_->listDirectory(nullptr, buf, max);
+        }
+        if (hasPersistPrefix(target)) {
+            const char* persist = persistName(target);
+            if (!persist) {
+                return -EINVAL;
+            }
+            if (!blockfs_ || !blockfs_->isMounted()) {
+                return -1;
+            }
+            return blockfs_->listDirectory(persist, buf, max);
         }
         return (int32_t)fs_->list(buf, max);
     }
@@ -776,13 +813,15 @@ public:
             if (!blockfs_ || !blockfs_->isMounted()) {
                 return -ENOENT;
             }
-            BlockFSEntry* entry = blockfs_->open(persist, false);
-            if (!entry) {
+            uint32_t size = 0;
+            uint8_t type = 0;
+            uint16_t mode = 0;
+            if (!blockfs_->stat(persist, &size, &type, &mode)) {
                 return -ENOENT;
             }
-            out->size = entry->size;
-            out->mode = 0644;
-            out->type = RSE_STAT_FILE;
+            out->size = size;
+            out->mode = mode;
+            out->type = (type == BlockFS::kEntryDir) ? RSE_STAT_DIR : RSE_STAT_FILE;
             return 0;
         }
 
@@ -807,6 +846,26 @@ public:
         if (blockfs_) {
             blockfs_->printStats();
         }
+    }
+
+    int32_t mkdir(const char* path, uint32_t mode) {
+        if (!path) {
+            return -EINVAL;
+        }
+        if (hasPersistPrefix(path)) {
+            if (isPersistRoot(path)) {
+                return -EINVAL;
+            }
+            const char* persist = persistName(path);
+            if (!persist) {
+                return -EINVAL;
+            }
+            if (!blockfs_ || !blockfs_->isMounted()) {
+                return -1;
+            }
+            return blockfs_->mkdir(persist, (uint16_t)mode) ? 0 : -1;
+        }
+        return -ENOSYS;
     }
 };
 

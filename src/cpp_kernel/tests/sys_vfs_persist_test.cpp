@@ -120,7 +120,35 @@ int main() {
     assert(proc.vmem->readUser(list_buf.data(), list_addr, list_buf.size()));
     assert(std::strstr(list_buf.data(), "alpha.txt") != nullptr);
 
-    const char invalid_persist[] = "/persist/dir/name";
+    const char persist_dir[] = "/persist/dir";
+    uint64_t dir_addr = write_user_string(proc, persist_dir);
+    int64_t mkdir_rc = os::syscall(os::SYS_MKDIR, dir_addr, 0755);
+    assert(mkdir_rc == 0);
+
+    list_buf.fill(0);
+    uint64_t root_list_addr = proc.vmem->allocate(list_buf.size());
+    assert(root_list_addr != 0);
+    int64_t root_list_rc = os::syscall(os::SYS_LIST, persist_root_addr,
+                                       root_list_addr, list_buf.size());
+    assert(root_list_rc >= 0);
+    assert(proc.vmem->readUser(list_buf.data(), root_list_addr, list_buf.size()));
+    assert(std::strstr(list_buf.data(), "dir/") != nullptr);
+
+    uint64_t dir_stat_addr = proc.vmem->allocate(sizeof(os::rse_stat));
+    assert(dir_stat_addr != 0);
+    int64_t dir_stat_rc = os::syscall(os::SYS_STAT, dir_addr, dir_stat_addr);
+    assert(dir_stat_rc == 0);
+    os::rse_stat dir_stat{};
+    assert(proc.vmem->readUser(&dir_stat, dir_stat_addr, sizeof(dir_stat)));
+    assert(dir_stat.type == os::RSE_STAT_DIR);
+
+    const char persist_child[] = "/persist/dir/name.txt";
+    uint64_t child_addr = write_user_string(proc, persist_child);
+    int64_t child_fd = os::syscall(os::SYS_OPEN, child_addr,
+                                   os::O_CREAT | os::O_TRUNC | os::O_RDWR);
+    assert(child_fd >= 0);
+
+    const char invalid_persist[] = "/persist/dir//name";
     uint64_t invalid_addr = write_user_string(proc, invalid_persist);
     int64_t invalid_rc = os::syscall(os::SYS_OPEN, invalid_addr,
                                      os::O_CREAT | os::O_TRUNC | os::O_RDWR);
@@ -129,6 +157,22 @@ int main() {
     int32_t direct_invalid = vfs.open(&direct_fdt, invalid_persist,
                                       os::O_CREAT | os::O_TRUNC | os::O_RDWR);
     assert(direct_invalid == -os::EINVAL);
+
+    list_buf.fill(0);
+    uint64_t dir_list_addr = proc.vmem->allocate(list_buf.size());
+    assert(dir_list_addr != 0);
+    int64_t dir_list_rc = os::syscall(os::SYS_LIST, dir_addr,
+                                      dir_list_addr, list_buf.size());
+    assert(dir_list_rc >= 0);
+    assert(proc.vmem->readUser(list_buf.data(), dir_list_addr, list_buf.size()));
+    assert(std::strstr(list_buf.data(), "name.txt") != nullptr);
+
+    int64_t rm_dir_busy = os::syscall(os::SYS_UNLINK, dir_addr);
+    assert(rm_dir_busy == -1);
+    int64_t rm_child = os::syscall(os::SYS_UNLINK, child_addr);
+    assert(rm_child == 0);
+    int64_t rm_dir = os::syscall(os::SYS_UNLINK, dir_addr);
+    assert(rm_dir == 0);
 
     std::cout << "  ✓ all tests passed" << std::endl;
     return 0;

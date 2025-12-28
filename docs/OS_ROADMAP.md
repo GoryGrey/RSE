@@ -15,7 +15,7 @@ This roadmap tracks the path from the current prototype to a production-grade OS
 
 - Bootable UEFI kernel (serial + framebuffer) with dashboard.
 - Syscall dispatcher with user-pointer validation and per-torus dispatch.
-- MemFS + BlockFS with checksum journal; /persist mounted.
+- MemFS + BlockFS with checksum journal; /persist mounted with directory paths.
 - Minimal network stack (ARP/UDP parsing + loopback).
 - IVSHMEM projection exchange across 3 VMs.
 - Ring3 exec smoke path works (isolation still evolving).
@@ -45,7 +45,7 @@ Success criteria:
 - TCP handshake and simple request/response works.
 
 ### 3) Filesystem Growth
-- BlockFS directories + permissions.
+- BlockFS directories + permissions (basic directory entries now exist under /persist).
 - Stronger journaling and recovery.
 - Consistent stat/list semantics for /persist and root.
 

@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: December 28, 2025 (exec-only code pages + mmap guard pages + full-test log wrapper)
+Last Updated: December 28, 2025 (BlockFS directories + tcp-lite loopback + exec/path hardening)
 
 ---
 
@@ -25,8 +25,9 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 
 - Bootable UEFI kernel (serial + framebuffer) with dashboard and input.
 - In-kernel benchmarks (compute, memory, RAMFS, UEFI FS/block, fastio, HTTP loopback).
-- MemFS + BlockFS with per-process file descriptors.
-- BlockFS persistence with checksum + journal + corruption detection.
+- MemFS + BlockFS with per-process file descriptors and `/persist` directories.
+- BlockFS persistence with checksum + journal + corruption detection (flat table, directory paths).
+- TCP-lite framing over `/dev/net0` for loopback handshake/data tests.
 - Syscall dispatcher with user-range validation and per-torus dispatch.
 - User mmap rejects overlaps; mmap/mprotect/munmap validate zero/unaligned sizes; PROT_EXEC blocked for anonymous mmap and limited to code pages; stack guard pages widened; mmap uses guard pages by default; read/write reject oversized counts; mprotect refuses unmapped ranges; VFS reserves `/dev` and rejects invalid `/persist` subpaths; net loopback backpressure returns `-EAGAIN`.
 - Ring3 exec smoke (UEFI): exec path works; isolation still evolving.
@@ -47,8 +48,8 @@ Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal a
 ### Known Limitations
 
 - No full user-mode isolation/permissions yet; ring3 exec is a smoke path.
-- Network stack is minimal (ARP/UDP parsing + loopback); no TCP yet.
-- BlockFS is fixed-slot with flat namespace (no directories).
+- Network stack is minimal (ARP/UDP parsing + loopback); tcp-lite framing exists only for loopback tests.
+- BlockFS uses fixed slots; directory paths exist but hierarchy/permissions are still rudimentary (MemFS remains flat).
 - Workload init is one-shot per boot.
 
 ---

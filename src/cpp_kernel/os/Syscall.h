@@ -32,6 +32,7 @@ constexpr int SYS_LSEEK     = 14;
 constexpr int SYS_STAT      = 15;
 constexpr int SYS_UNLINK    = 16;
 constexpr int SYS_LIST      = 17;
+constexpr int SYS_MKDIR     = 18;
 
 // Memory management
 constexpr int SYS_BRK       = 20;
@@ -237,6 +238,10 @@ inline int64_t list(const char* path, void* buf, size_t count) {
 
 inline int64_t stat(const char* path, rse_stat* out) {
     return syscall(SYS_STAT, (uint64_t)path, (uint64_t)out);
+}
+
+inline int64_t mkdir(const char* path, uint32_t mode) {
+    return syscall(SYS_MKDIR, (uint64_t)path, (uint64_t)mode);
 }
 
 inline int64_t pipe(int* fds) {

@@ -6,6 +6,8 @@ LOG_DIR="${ROOT_DIR}/benchmarks/net_exchange"
 BUILD_BASE="${ROOT_DIR}/build/net_exchange"
 SHM_PATH="${SHM_PATH:-${BUILD_BASE}/ivshmem.bin}"
 
+cd "${ROOT_DIR}"
+
 NET_MODE="${NET_MODE:-none}"
 TORUS_IDS="${TORUS_IDS:-}"
 MCAST_ADDR="${MCAST_ADDR:-230.0.0.1:1234}"

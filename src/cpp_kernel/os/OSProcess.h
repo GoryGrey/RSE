@@ -125,6 +125,7 @@ public:
     uint64_t time_slice;        // Ticks remaining in current slice
     uint64_t total_runtime;     // Total ticks this process has run
     uint64_t last_scheduled;    // Last time this process was scheduled
+    uint64_t sleep_until_tick;  // Scheduler tick when sleep expires (0 = not sleeping)
     
     // ========== I/O ==========
     FileDescriptorTable fd_table;
@@ -156,6 +157,7 @@ public:
           time_slice(100),        // Default time slice
           total_runtime(0),
           last_scheduled(0),
+          sleep_until_tick(0),
           fd_table(),
           vmem(nullptr),
           user_step(nullptr),

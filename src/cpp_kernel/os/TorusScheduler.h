@@ -52,6 +52,27 @@ private:
     // Torus ID (for debugging)
     uint32_t torus_id_;
     
+    void wakeSleeping() {
+        if (blocked_queue_.empty()) {
+            return;
+        }
+        for (size_t i = 0; i < blocked_queue_.size();) {
+            OSProcess* proc = blocked_queue_[i];
+            if (!proc || proc->sleep_until_tick == 0 || proc->sleep_until_tick > total_ticks_) {
+                ++i;
+                continue;
+            }
+            proc->sleep_until_tick = 0;
+            proc->setReady();
+            blocked_queue_.erase_at(i);
+            if (!ready_queue_.push_back(proc)) {
+                proc->setBlocked();
+                (void)blocked_queue_.push_back(proc);
+                break;
+            }
+        }
+    }
+    
 public:
     TorusScheduler(uint32_t torus_id, Policy policy = Policy::FAIR)
         : policy_(policy),
@@ -318,6 +339,7 @@ public:
      */
     void tick() {
         total_ticks_++;
+        wakeSleeping();
         
         // Check if current process should be preempted
         if (current_process_) {
@@ -392,9 +414,30 @@ public:
     uint64_t getContextSwitches() const {
         return context_switches_;
     }
+
+    uint64_t getTicks() const {
+        return total_ticks_;
+    }
     
     OSProcess* getCurrentProcess() const {
         return current_process_;
+    }
+
+    bool sleepCurrent(uint64_t ticks) {
+        if (!current_process_) {
+            return false;
+        }
+        if (ticks == 0) {
+            return true;
+        }
+        if (!blocked_queue_.push_back(current_process_)) {
+            return false;
+        }
+        current_process_->sleep_until_tick = total_ticks_ + ticks;
+        current_process_->setBlocked();
+        current_process_ = nullptr;
+        context_switches_++;
+        return true;
     }
 
     template <typename Fn>

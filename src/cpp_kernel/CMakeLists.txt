@@ -192,6 +192,12 @@ if(NOT MSVC)
     target_link_libraries(sys_mmap_test atomic)
 endif()
 
+# sys_time/sleep/nanosleep test
+add_executable(sys_time_sleep_test tests/sys_time_sleep_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(sys_time_sleep_test atomic)
+endif()
+
 # Memory Telemetry Test
 add_executable(memory_telemetry_test tests/memory_telemetry_test.cpp)
 if(NOT MSVC)

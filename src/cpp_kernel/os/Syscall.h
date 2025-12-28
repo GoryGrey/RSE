@@ -117,6 +117,11 @@ struct rse_stat {
     uint32_t type;
 };
 
+struct rse_timespec {
+    uint64_t tv_sec;
+    uint64_t tv_nsec;
+};
+
 // ========== Memory Protection Flags ==========
 
 constexpr int PROT_NONE  = 0x00;
@@ -244,6 +249,18 @@ inline int64_t dup(int fd) {
 
 inline int64_t dup2(int old_fd, int new_fd) {
     return syscall(SYS_DUP2, old_fd, new_fd);
+}
+
+inline int64_t time(uint64_t* out) {
+    return syscall(SYS_TIME, (uint64_t)out);
+}
+
+inline int64_t sleep(uint64_t seconds) {
+    return syscall(SYS_SLEEP, seconds);
+}
+
+inline int64_t nanosleep(const rse_timespec* req, rse_timespec* rem) {
+    return syscall(SYS_NANOSLEEP, (uint64_t)req, (uint64_t)rem);
 }
 
 /**

@@ -176,6 +176,10 @@ inline bool collect_exec_strings(OSProcess* proc, uint64_t list_ptr,
     return false;
 }
 
+static constexpr uint64_t kNanosPerSecond = 1000000000ull;
+static constexpr uint64_t kTickNanos = 1000000ull;
+static constexpr uint64_t kTicksPerSecond = kNanosPerSecond / kTickNanos;
+
 // ========== System Call Handlers ==========
 
 /**
@@ -430,6 +434,92 @@ inline int64_t sys_dup2(uint64_t old_fd, uint64_t new_fd, uint64_t,
         return -EINVAL;
     }
     return duped;
+}
+
+inline int64_t sys_time(uint64_t out_ptr, uint64_t, uint64_t,
+                        uint64_t, uint64_t, uint64_t) {
+    TorusScheduler* scheduler = get_current_scheduler();
+    if (!scheduler) {
+        return -ESRCH;
+    }
+    uint64_t ticks = scheduler->getTicks();
+    uint64_t seconds = ticks / kTicksPerSecond;
+    if (out_ptr != 0) {
+        OSProcess* current = get_current_process();
+        if (!current) {
+            return -ESRCH;
+        }
+        if (!validate_user_range(current, out_ptr, sizeof(uint64_t), true)) {
+            return -EFAULT;
+        }
+        if (!write_user_bytes(current, out_ptr, &seconds, sizeof(seconds))) {
+            return -EFAULT;
+        }
+    }
+    return static_cast<int64_t>(seconds);
+}
+
+inline int64_t sys_sleep(uint64_t seconds, uint64_t, uint64_t,
+                         uint64_t, uint64_t, uint64_t) {
+    TorusScheduler* scheduler = get_current_scheduler();
+    if (!scheduler) {
+        return -ESRCH;
+    }
+    if (seconds == 0) {
+        return 0;
+    }
+    if (seconds > (UINT64_MAX / kTicksPerSecond)) {
+        return -EINVAL;
+    }
+    uint64_t ticks = seconds * kTicksPerSecond;
+    if (ticks == 0) {
+        ticks = 1;
+    }
+    return scheduler->sleepCurrent(ticks) ? 0 : -EAGAIN;
+}
+
+inline int64_t sys_nanosleep(uint64_t req_ptr, uint64_t rem_ptr, uint64_t,
+                             uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    TorusScheduler* scheduler = get_current_scheduler();
+    if (!scheduler) {
+        return -ESRCH;
+    }
+    if (req_ptr == 0) {
+        return -EINVAL;
+    }
+    rse_timespec req = {};
+    if (!read_user_bytes(current, req_ptr, &req, sizeof(req))) {
+        return -EFAULT;
+    }
+    if (req.tv_nsec >= kNanosPerSecond) {
+        req.tv_sec += req.tv_nsec / kNanosPerSecond;
+        req.tv_nsec = req.tv_nsec % kNanosPerSecond;
+    }
+    if (req.tv_sec > (UINT64_MAX / kNanosPerSecond)) {
+        return -EINVAL;
+    }
+    uint64_t nanos = req.tv_sec * kNanosPerSecond + req.tv_nsec;
+    if (nanos == 0) {
+        return 0;
+    }
+    uint64_t ticks = (nanos + kTickNanos - 1) / kTickNanos;
+    if (ticks == 0) {
+        ticks = 1;
+    }
+    if (rem_ptr != 0) {
+        rse_timespec rem = {};
+        if (!validate_user_range(current, rem_ptr, sizeof(rem), true)) {
+            return -EFAULT;
+        }
+        if (!write_user_bytes(current, rem_ptr, &rem, sizeof(rem))) {
+            return -EFAULT;
+        }
+    }
+    return scheduler->sleepCurrent(ticks) ? 0 : -EAGAIN;
 }
 
 /**
@@ -1053,6 +1143,9 @@ public:
         register_handler(SYS_MMAP, sys_mmap);
         register_handler(SYS_MUNMAP, sys_munmap);
         register_handler(SYS_MPROTECT, sys_mprotect);
+        register_handler(SYS_TIME, sys_time);
+        register_handler(SYS_SLEEP, sys_sleep);
+        register_handler(SYS_NANOSLEEP, sys_nanosleep);
     }
     
     /**

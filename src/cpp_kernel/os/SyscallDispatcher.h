@@ -1141,6 +1141,15 @@ inline int64_t sys_mmap(uint64_t addr, uint64_t size, uint64_t prot,
     if (!current || !current->vmem) {
         return -ESRCH;
     }
+    if (size == 0) {
+        return -EINVAL;
+    }
+    if (addr != 0 && (addr & (PAGE_SIZE - 1)) != 0) {
+        return -EINVAL;
+    }
+    if (addr > UINT64_MAX - size) {
+        return -EINVAL;
+    }
     if (enforce_user_memory(current) && addr != 0 &&
         !current->vmem->isUserRange(addr, size)) {
         return -EFAULT;
@@ -1158,6 +1167,15 @@ inline int64_t sys_munmap(uint64_t addr, uint64_t size, uint64_t,
     if (!current || !current->vmem) {
         return -ESRCH;
     }
+    if (size == 0) {
+        return -EINVAL;
+    }
+    if ((addr & (PAGE_SIZE - 1)) != 0 || (size & (PAGE_SIZE - 1)) != 0) {
+        return -EINVAL;
+    }
+    if (addr > UINT64_MAX - size) {
+        return -EINVAL;
+    }
     if (enforce_user_memory(current) &&
         !current->vmem->isUserRange(addr, size)) {
         return -EFAULT;
@@ -1171,6 +1189,15 @@ inline int64_t sys_mprotect(uint64_t addr, uint64_t size, uint64_t prot,
     OSProcess* current = get_current_process();
     if (!current || !current->vmem) {
         return -ESRCH;
+    }
+    if (size == 0) {
+        return -EINVAL;
+    }
+    if ((addr & (PAGE_SIZE - 1)) != 0 || (size & (PAGE_SIZE - 1)) != 0) {
+        return -EINVAL;
+    }
+    if (addr > UINT64_MAX - size) {
+        return -EINVAL;
     }
     if (enforce_user_memory(current) &&
         !current->vmem->isUserRange(addr, size)) {

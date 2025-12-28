@@ -36,6 +36,12 @@ int main() {
     assert(mapped > 0);
     assert(proc.vmem->isUserRange((uint64_t)mapped, os::PAGE_SIZE * 2));
 
+    int64_t invalid = os::syscall(os::SYS_MMAP, 0, 0, os::PROT_READ);
+    assert(invalid == -os::EINVAL);
+    invalid = os::syscall(os::SYS_MMAP, (uint64_t)mapped + 1, os::PAGE_SIZE,
+                          os::PROT_READ | os::PROT_WRITE);
+    assert(invalid == -os::EINVAL);
+
     int64_t overlap = os::syscall(os::SYS_MMAP, (uint64_t)mapped, os::PAGE_SIZE,
                                   os::PROT_READ | os::PROT_WRITE);
     assert(overlap == -os::ENOMEM);
@@ -43,6 +49,15 @@ int main() {
     int64_t rc = os::syscall(os::SYS_MPROTECT, (uint64_t)mapped, os::PAGE_SIZE,
                              os::PROT_READ);
     assert(rc == 0);
+
+    rc = os::syscall(os::SYS_MPROTECT, (uint64_t)mapped + 1, os::PAGE_SIZE,
+                     os::PROT_READ);
+    assert(rc == -os::EINVAL);
+    rc = os::syscall(os::SYS_MPROTECT, (uint64_t)mapped, os::PAGE_SIZE - 1,
+                     os::PROT_READ);
+    assert(rc == -os::EINVAL);
+    rc = os::syscall(os::SYS_MPROTECT, (uint64_t)mapped, 0, os::PROT_READ);
+    assert(rc == -os::EINVAL);
 
     rc = os::syscall(os::SYS_MUNMAP, (uint64_t)mapped + os::PAGE_SIZE, os::PAGE_SIZE);
     assert(rc == 0);
@@ -52,6 +67,11 @@ int main() {
     uint8_t value = 0x5a;
     bool write_ok = proc.vmem->writeUser((uint64_t)mapped, &value, sizeof(value));
     assert(write_ok);
+
+    rc = os::syscall(os::SYS_MUNMAP, (uint64_t)mapped + 1, os::PAGE_SIZE);
+    assert(rc == -os::EINVAL);
+    rc = os::syscall(os::SYS_MUNMAP, (uint64_t)mapped, 0);
+    assert(rc == -os::EINVAL);
 
     rc = os::syscall(os::SYS_MUNMAP, (uint64_t)mapped, os::PAGE_SIZE * 2);
     assert(rc == 0);

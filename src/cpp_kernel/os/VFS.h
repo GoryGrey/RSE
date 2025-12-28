@@ -25,6 +25,24 @@ private:
     MemFS* fs_;
     DeviceManager* device_mgr_;
     BlockFS* blockfs_;
+
+    bool hasPersistPrefix(const char* path) const {
+        if (!path) {
+            return false;
+        }
+        const char* prefix = "/persist";
+        for (int i = 0; prefix[i] != '\0'; ++i) {
+            if (path[i] != prefix[i]) {
+                return false;
+            }
+        }
+        char next = path[8];
+        return next == '\0' || next == '/';
+    }
+
+    bool isPersistRoot(const char* path) const {
+        return path && (strcmp(path, "/persist") == 0 || strcmp(path, "/persist/") == 0);
+    }
     
 public:
     VFS(MemFS* fs)
@@ -69,6 +87,11 @@ public:
         if (name[0] == '\0') {
             return nullptr;
         }
+        for (const char* p = name; *p; ++p) {
+            if (*p == '/' || *p == '\\') {
+                return nullptr;
+            }
+        }
         return name;
     }
     
@@ -99,8 +122,14 @@ public:
             return fd;
         }
 
-        const char* persist = persistName(path);
-        if (persist) {
+        if (hasPersistPrefix(path)) {
+            if (isPersistRoot(path)) {
+                return -EINVAL;
+            }
+            const char* persist = persistName(path);
+            if (!persist) {
+                return -EINVAL;
+            }
             if (!blockfs_ || !blockfs_->isMounted()) {
                 std::cerr << "[VFS] BlockFS not mounted" << std::endl;
                 return -1;
@@ -567,8 +596,14 @@ public:
      * @return 0 on success, -1 on error
      */
     int32_t unlink(const char* path) {
-        const char* persist = persistName(path);
-        if (persist) {
+        if (hasPersistPrefix(path)) {
+            if (isPersistRoot(path)) {
+                return -EINVAL;
+            }
+            const char* persist = persistName(path);
+            if (!persist) {
+                return -EINVAL;
+            }
             if (!blockfs_ || !blockfs_->isMounted()) {
                 return -1;
             }
@@ -618,6 +653,9 @@ public:
                 buf[written] = '\0';
             }
             return (int32_t)written;
+        }
+        if (hasPersistPrefix(target) && !isPersistRoot(target)) {
+            return -EINVAL;
         }
         if (strcmp(target, "/dev") == 0 || strcmp(target, "/dev/") == 0) {
             if (!device_mgr_) {
@@ -671,8 +709,14 @@ public:
             return 0;
         }
 
-        const char* persist = persistName(path);
-        if (persist) {
+        if (hasPersistPrefix(path)) {
+            if (isPersistRoot(path)) {
+                return -ENOENT;
+            }
+            const char* persist = persistName(path);
+            if (!persist) {
+                return -EINVAL;
+            }
             if (!blockfs_ || !blockfs_->isMounted()) {
                 return -ENOENT;
             }

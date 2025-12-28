@@ -125,6 +125,10 @@ int main() {
     int64_t invalid_rc = os::syscall(os::SYS_OPEN, invalid_addr,
                                      os::O_CREAT | os::O_TRUNC | os::O_RDWR);
     assert(invalid_rc == -os::EINVAL);
+    os::FileDescriptorTable direct_fdt;
+    int32_t direct_invalid = vfs.open(&direct_fdt, invalid_persist,
+                                      os::O_CREAT | os::O_TRUNC | os::O_RDWR);
+    assert(direct_invalid == -os::EINVAL);
 
     std::cout << "  ✓ all tests passed" << std::endl;
     return 0;

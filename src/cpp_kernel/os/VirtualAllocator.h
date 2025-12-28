@@ -172,6 +172,10 @@ public:
      */
     uint64_t mmap(uint64_t addr, uint64_t size, uint64_t prot) {
         if (size == 0) return 0;
+        if (size > UINT64_MAX - (PAGE_SIZE - 1)) {
+            std::cerr << "[VirtualAllocator] mmap size overflow!" << std::endl;
+            return 0;
+        }
         
         // Align size
         size = align_up(size);
@@ -185,9 +189,22 @@ public:
         addr = align_down(addr);
         
         // Check bounds
-        if (addr < heap_start_ || addr + size > heap_end_) {
+        if (addr < heap_start_ || addr > heap_end_) {
             std::cerr << "[VirtualAllocator] mmap address out of range!" << std::endl;
             return 0;
+        }
+        if (size > heap_end_ - addr) {
+            std::cerr << "[VirtualAllocator] mmap address out of range!" << std::endl;
+            return 0;
+        }
+
+        // Reject overlaps before allocating frames.
+        uint64_t end = addr + size;
+        for (uint64_t virt = addr; virt < end; virt += PAGE_SIZE) {
+            if (page_table_->isMapped(virt)) {
+                std::cerr << "[VirtualAllocator] mmap overlap!" << std::endl;
+                return 0;
+            }
         }
         
         // Convert protection flags to PTE flags
@@ -197,7 +214,7 @@ public:
         }
         
         // Allocate and map physical frames
-        for (uint64_t virt = addr; virt < addr + size; virt += PAGE_SIZE) {
+        for (uint64_t virt = addr; virt < end; virt += PAGE_SIZE) {
             // Allocate physical frame
             uint64_t phys = phys_alloc_->allocateFrame();
             if (phys == 0) {

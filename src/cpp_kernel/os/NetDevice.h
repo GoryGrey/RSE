@@ -43,7 +43,7 @@ inline int rse_net_read(void* buf, uint32_t len) {
         return state.online ? 0 : -1;
     }
     if (state.size == 0) {
-        return 0;
+        return -EAGAIN;
     }
     uint32_t to_read = len < state.size ? len : (uint32_t)state.size;
     uint8_t* out = static_cast<uint8_t*>(buf);
@@ -91,7 +91,7 @@ inline ssize_t net_read(Device* dev, void* buf, size_t count) {
         return 0;
     }
     int ret = rse_net_read(buf, (uint32_t)count);
-    return ret < 0 ? -1 : (ssize_t)ret;
+    return ret < 0 ? ret : (ssize_t)ret;
 }
 
 inline ssize_t net_write(Device* dev, const void* buf, size_t count) {
@@ -100,7 +100,7 @@ inline ssize_t net_write(Device* dev, const void* buf, size_t count) {
         return 0;
     }
     int ret = rse_net_write(buf, (uint32_t)count);
-    return ret < 0 ? -1 : (ssize_t)ret;
+    return ret < 0 ? ret : (ssize_t)ret;
 }
 
 inline int net_ioctl(Device* dev, unsigned long request, void* arg) {

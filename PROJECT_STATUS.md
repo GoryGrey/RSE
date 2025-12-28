@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: December 28, 2025 (user isolation hardening + syscall VFS/persist test + metrics snapshot)
+Last Updated: December 28, 2025 (mmap overlap guard + persist path validation + net loopback backpressure)
 
 ---
 
@@ -28,6 +28,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - MemFS + BlockFS with per-process file descriptors.
 - BlockFS persistence with checksum + journal + corruption detection.
 - Syscall dispatcher with user-range validation and per-torus dispatch.
+- User mmap rejects overlaps; VFS rejects invalid `/persist` subpaths; net loopback backpressure returns `-EAGAIN`.
 - Ring3 exec smoke (UEFI): exec path works; isolation still evolving.
 - Projection exchange across 3 VMs via IVSHMEM shared memory.
 - BraidShell demo with telemetry sourced from real logs.
@@ -118,6 +119,12 @@ Build kernel/tests:
 cmake -S src/cpp_kernel -B build/cpp_kernel
 cmake --build build/cpp_kernel
 ```
+
+---
+
+## Maintenance Note
+
+- After each commit, update `PROJECT_STATUS.md` (and any related status docs like `README.md` or `docs/OS_ROADMAP.md` if they reference the change).
 
 ---
 

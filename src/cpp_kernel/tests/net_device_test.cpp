@@ -34,7 +34,7 @@ int main() {
     assert(std::memcmp(out, payload, sizeof(payload) - 1) == 0);
 
     int64_t empty = vfs.read(&fdt, fd, out, sizeof(out));
-    assert(empty == 0);
+    assert(empty == -os::EAGAIN);
 
     std::array<uint8_t, os::NetLoopback::CAPACITY> bulk{};
     for (size_t i = 0; i < bulk.size(); ++i) {

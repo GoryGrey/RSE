@@ -1,24 +1,20 @@
 # RSE (Resilient Spatial Execution)
 
-**Last Updated**: December 28, 2025 (wall-clock benchmark snapshot + exchange diagnostics + full system test pass)  
-**Status**: Research prototype. Bootable UEFI kernel with an interactive dashboard (keyboard/mouse) and in-kernel workloads; braided projection exchange works in multi-VM via shared memory. Native fast-path I/O is now in-kernel (`/dev/fast0`), while UEFI/virtio remain compatibility paths; ring3 exec smoke now passes with the user-mode window remap.
+Last Updated: December 28, 2025 (user isolation hardening + syscall VFS/persist test + metrics snapshot)
 
-**Quick Links**: [Project Status](PROJECT_STATUS.md) | [Documentation](#documentation)
+Status: Research prototype. Bootable UEFI kernel with an interactive dashboard and in-kernel workloads; braided projection exchange works in multi-VM via shared memory.
+
+Quick Links: [Project Status](PROJECT_STATUS.md) | [Documentation](#documentation)
 
 ---
 
 ## Overview
 
-RSE explores a braided-torus execution model for coordinating computation without a global scheduler. The core idea is to run multiple toroidal lattices (tori) in parallel and periodically exchange **fixed-size projections** of state to apply constraints cyclically (A -> B -> C -> A). This keeps coordination overhead constant (O(1) projection size) while preserving autonomy across tori.
+RSE explores a braided-torus execution model for coordinating computation without a global scheduler. Multiple tori exchange fixed-size projections cyclically (A -> B -> C -> A), keeping coordination overhead constant while preserving autonomy.
 
-This repo contains both layers:
-- **Runtime**: the Betti-RDL single-torus + braided execution engine (standalone library/runtime).
-- **OS**: a bootable UEFI kernel scaffold with syscalls, VFS, devices, and userspace runner.
-
-This repo contains:
-- Bootable UEFI kernel with an OS scaffold and in-kernel workload harness.
-- Single-torus and braided runtime implementations.
-- Design and theory documents that specify the projection model and constraints.
+This repo includes both layers:
+- Runtime: Betti-RDL single-torus + braided execution engine.
+- OS: bootable UEFI kernel scaffold with syscalls, VFS, devices, and userspace runner.
 
 ---
 
@@ -26,51 +22,65 @@ This repo contains:
 
 ```
 Torus A (32^3 lattice) ⟲
-    ↓ projection      ↑
+    ↓ projection (fixed size)
 Torus B (32^3 lattice) ⟲
-    ↓ projection      ↑
+    ↓ projection (fixed size)
 Torus C (32^3 lattice) ⟲
-    ↓ projection      ↑
-(cycle repeats)
+    ↓ projection (fixed size)
+(cycle repeats A→B→C→A)
 ```
 
 Key properties:
-- **Fixed-size projections** (~4.2 KB) independent of workload size.
-- **Cyclic constraint exchange** instead of a global controller.
-- **O(1) coordination overhead** by design.
+- Fixed-size projections independent of workload size.
+- Cyclic constraint exchange instead of a global controller.
+- O(1) coordination overhead by design.
 
 ---
 
 ## What Works Today
 
-- **Bootable UEFI kernel** in QEMU (serial + framebuffer).
-- **In-kernel workloads**: compute, memory, RAMFS I/O, UEFI FS I/O, raw block I/O, HTTP loopback.
-- **/dev/net0 UDP loopback** with simple RX/echo path (no full IP stack yet).
-- **Init shell demo** (stdout + cat + device probes).
-- **Cooperative userspace tasks** (in-kernel runner using syscalls).
-- **Ring3 smoke + exec path** in UEFI (user-mode window + page-table refresh on brk/mmap; exec smoke passes).
-- **Fast-path I/O device** (`/dev/fast0`) using a native ring buffer (in-kernel).
-- **Framebuffer dashboard** (boot + benchmark summary panels, keyboard/mouse input, on-screen console).
-- **Braided runtime** (single-node, in-kernel projections + constraint application).
-- **Projection exchange across 3 VMs** via IVSHMEM shared memory transport.
-- **Block-backed persistence** via a minimal fixed-slot BlockFS mounted at `/persist`.
+- Bootable UEFI kernel in QEMU (serial + framebuffer).
+- In-kernel workloads: compute, memory, RAMFS I/O, UEFI FS/block I/O, HTTP loopback.
+- /dev/net0 UDP loopback (minimal stack; no full IP/TCP yet).
+- Cooperative userspace tasks + ring3 exec smoke (UEFI).
+- Fast-path I/O device (/dev/fast0) using a native ring buffer.
+- Framebuffer dashboard with keyboard/mouse input.
+- Braided runtime (single-node projections + constraint application).
+- Projection exchange across 3 VMs via IVSHMEM shared memory.
+- Block-backed persistence via BlockFS mounted at /persist.
 
 ## Known Limitations
 
-- No full user-mode isolation yet; ring3 exec smoke passes but process isolation/permissions are still minimal.
-- Network RX is working for basic ARP/UDP, but needs stress and driver hardening.
-- No full IP/TCP stack (only minimal IPv4/UDP parsing + echo).
-  - Raw frame mode can be enabled at build time: `RSE_NET_RAW=1`.
-- BlockFS is minimal (flat namespace, fixed slots, no directories or journaling).
-- Workload init is currently **one-shot** per boot; dashboard benchmarks rerun compute/I/O without re-initializing the OS layer.
+- User-mode isolation and permissions are still evolving.
+- Network RX/TX needs hardening; no TCP yet.
+- BlockFS is fixed-slot and flat (no directories).
+- Workload init is one-shot per boot.
 
 ---
 
-## Benchmarks (QEMU, TSC cycles + calibrated ns)
+## Production-Grade Priorities
+
+1) User-mode isolation
+- Stronger address-space boundaries and permission model.
+- Expanded syscall surface with strict pointer validation.
+- Signals and robust process lifecycle.
+
+2) Network stack
+- Stable RX/TX under load.
+- Minimal TCP support.
+- Driver hardening (virtio-net).
+
+3) Filesystem
+- BlockFS directories + permissions.
+- Stronger journaling and recovery.
+
+---
+
+## Benchmarks (Real Logs Only)
 
 Metrics are captured per run. Use logs to inspect real values:
 
-- Kernel + UEFI benchmarks: `./scripts/run_full_system_test.sh` (see `build/boot/boot.log` or `/tmp` log overrides).
+- Kernel + UEFI benchmarks: `./scripts/run_full_system_test.sh` (see `build/boot/boot.log` or `/tmp` overrides).
 - Host baseline: `./scripts/run_linux_baseline.sh`.
 
 Latest snapshot (Dec 28, 2025):
@@ -83,59 +93,39 @@ Latest snapshot (Dec 28, 2025):
 | HTTP loopback | 434 ns/req | blocked (permission denied) | Network sandbox blocks host HTTP |
 
 Notes:
-- RSE logs include cycles plus **TSC-calibrated ns** (UEFI `Stall`); treat ns as approximate.
-- Parsed benchmark files live in `benchmarks/uefi_bench.json` (raw log: `benchmarks/uefi_serial.log`); refresh via scripts when needed.
-- Linux baseline results live in `benchmarks/linux_baseline.json`.
-- External UDP/HTTP RX proof log is saved at `build/boot/proof.log` when captured.
+- RSE ns values are derived from TSC calibration via UEFI Stall; treat as approximate.
+- Source logs: `build/boot/boot.log` (RSE) and `benchmarks/linux_baseline.json` (Linux).
 
 ---
 
 ## Build and Run
 
-### UEFI Kernel (QEMU)
+UEFI kernel (QEMU):
 ```bash
 make -f boot/Makefile.uefi run-iso
 ```
 
-To view the framebuffer dashboard, run the disk target:
+Framebuffer dashboard:
 ```bash
 make -f boot/Makefile.uefi run
 ```
 
-Optional raw frame mode for `/dev/net0`:
+Raw frame mode for /dev/net0:
 ```bash
 make -f boot/Makefile.uefi RSE_NET_RAW=1 run-iso
 ```
 
-### External RX Test (UDP/HTTP)
-Run with UDP host-forwarding enabled:
-```bash
-NETDEV_HOSTFWD=,hostfwd=udp::8080-:8080,hostfwd=udp::40001-:40000 \
-make -f boot/Makefile.uefi run
-```
-Send UDP payloads from the host:
-```bash
-scripts/send_udp_http.py --mode http --count 200 --port 8080
-scripts/send_udp_http.py --mode udp --count 200 --port 40001
-```
-
-### Proof Run (build + boot + external RX)
-```bash
-scripts/run_proof.sh
-```
-
-### Dashboard Controls
-- Arrow keys or A/D: change selection
-- Tab: next icon
-- Space/Enter: run selected action
-- B/N/R: run Bench / Net / Reset directly
-
-### Projection Exchange (3 VMs, IVSHMEM)
+Projection exchange (3 VMs, IVSHMEM):
 ```bash
 scripts/run_projection_exchange.sh
 ```
 
-### Braided Runtime Demo (Userspace)
+Proof run (build + boot + external RX):
+```bash
+scripts/run_proof.sh
+```
+
+Braided runtime demo:
 ```bash
 cd src/cpp_kernel/braided
 mkdir -p build && cd build
@@ -149,12 +139,10 @@ make
 ## Documentation
 
 - `PROJECT_STATUS.md` - current implementation status and benchmark logs
-- `docs/phase_reports/` and `docs/status/` - legacy phase docs (historical, not current status)
-- `docs/design/BRAIDED_TORUS_DESIGN.md` - projection model and braid coordinator
-- `docs/design/RSE_PROJECTION_EXCHANGE_SPEC.md` - projection exchange wire spec
-- `docs/design/RSE_PROJECTION_TASK_MAP.md` - implementation steps
-- `docs/OS_ROADMAP.md` - OS roadmap and milestones
-- `docs/RSE_Whitepaper.md` - theory and motivation
+- `docs/ARCHITECTURE.md` - system design
+- `docs/OS_ROADMAP.md` - long-term plan
+- `docs/design/` - design specs
+- `docs/phase_reports/` and `docs/status/` - historical status docs
 
 ---
 

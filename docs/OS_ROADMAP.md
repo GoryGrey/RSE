@@ -16,7 +16,7 @@ This roadmap tracks the path from the current prototype to a production-grade OS
 - Bootable UEFI kernel (serial + framebuffer) with dashboard.
 - Syscall dispatcher with user-pointer validation and per-torus dispatch.
 - MemFS + BlockFS with checksum journal; /persist mounted with directory paths; MemFS supports nested paths and basic permission checks; BlockFS sanitizes invalid entries on mount.
-- Minimal network stack (ARP/UDP parsing + loopback) with loopback-only socket syscalls.
+- Minimal network stack (ARP/UDP parsing + loopback) with NET_LITE socket syscalls over the net device path.
 - IVSHMEM projection exchange across 3 VMs.
 - Ring3 exec smoke path works (isolation still evolving).
 
@@ -37,7 +37,7 @@ Success criteria:
 
 ### 2) Network Stack Hardening
 - Stable RX/TX under load (virtio-net).
-- Wire socket syscalls to real TCP (connect/listen/accept/close) beyond loopback.
+- Wire socket syscalls to real TCP (connect/listen/accept/close) beyond NET_LITE framing.
 - Better packet validation + timeouts.
 
 Success criteria:

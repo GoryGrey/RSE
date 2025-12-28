@@ -524,8 +524,17 @@ inline int64_t sys_socket(uint64_t domain, uint64_t type, uint64_t protocol,
     if (type != 0 && type != RSE_SOCK_STREAM) {
         return -EOPNOTSUPP;
     }
-    (void)protocol;
-    SocketLite* sock = socket_manager().allocate();
+    SocketLite::Backend backend = SocketLite::Backend::LOOPBACK;
+    if (protocol == RSE_PROTO_NET) {
+        backend = SocketLite::Backend::NET_LITE;
+        socket_manager().ensure_net_online();
+        if (!socket_manager().net_online()) {
+            return -EIO;
+        }
+    } else if (protocol != 0) {
+        return -EOPNOTSUPP;
+    }
+    SocketLite* sock = socket_manager().allocate(backend);
     if (!sock) {
         return -ENOMEM;
     }
@@ -570,12 +579,12 @@ inline int64_t sys_bind(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
     }
     uint16_t port = addr.port;
     if (port == 0) {
-        port = socket_manager().allocate_ephemeral_port();
+        port = socket_manager().allocate_ephemeral_port(sock->backend);
         if (port == 0) {
             return -EAGAIN;
         }
     }
-    if (socket_manager().port_in_use(port)) {
+    if (socket_manager().port_in_use(port, sock->backend)) {
         return -EADDRINUSE;
     }
     sock->port = port;
@@ -614,6 +623,9 @@ inline int64_t sys_accept(uint64_t fd, uint64_t addr_ptr, uint64_t addrlen_ptr,
     }
     if (listener->state != SocketLite::State::LISTENING) {
         return -EINVAL;
+    }
+    if (listener->backend == SocketLite::Backend::NET_LITE) {
+        socket_poll_net();
     }
     SocketLite* server_sock = listener->pending;
     if (!server_sock) {
@@ -701,6 +713,11 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
     if (sock->state == SocketLite::State::CONNECTED) {
         return -EISCONN;
     }
+    if (sock->state == SocketLite::State::CONNECTING &&
+        sock->backend == SocketLite::Backend::NET_LITE) {
+        socket_poll_net();
+        return sock->state == SocketLite::State::CONNECTED ? 0 : -EAGAIN;
+    }
     if (sock->state == SocketLite::State::LISTENING) {
         return -EOPNOTSUPP;
     }
@@ -708,7 +725,33 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
         sock->state != SocketLite::State::BOUND) {
         return -EINVAL;
     }
-    SocketLite* listener = socket_manager().find_listener(addr.port);
+    if (sock->backend == SocketLite::Backend::NET_LITE) {
+        if (sock->port == 0) {
+            uint16_t port = socket_manager().allocate_ephemeral_port(sock->backend);
+            if (port == 0) {
+                return -EAGAIN;
+            }
+            sock->port = port;
+        }
+        if (sock->conn_id == 0) {
+            sock->conn_id = socket_manager().allocate_conn_id();
+            if (sock->conn_id == 0) {
+                return -EAGAIN;
+            }
+        }
+        TcpLiteSynPayload syn{ addr.port, sock->port };
+        int rc = net_send_frame(sock->conn_id, kTcpLiteSyn,
+                                &syn, sizeof(syn));
+        if (rc < 0) {
+            return rc;
+        }
+        sock->peer_port = addr.port;
+        sock->state = SocketLite::State::CONNECTING;
+        socket_poll_net();
+        return sock->state == SocketLite::State::CONNECTED ? 0 : -EAGAIN;
+    }
+
+    SocketLite* listener = socket_manager().find_listener(addr.port, sock->backend);
     if (!listener) {
         return -ECONNREFUSED;
     }
@@ -716,13 +759,13 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
         return -EAGAIN;
     }
     if (sock->port == 0) {
-        uint16_t port = socket_manager().allocate_ephemeral_port();
+        uint16_t port = socket_manager().allocate_ephemeral_port(sock->backend);
         if (port == 0) {
             return -EAGAIN;
         }
         sock->port = port;
     }
-    SocketLite* server_sock = socket_manager().allocate();
+    SocketLite* server_sock = socket_manager().allocate(sock->backend);
     if (!server_sock) {
         return -ENOMEM;
     }

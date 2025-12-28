@@ -155,6 +155,7 @@ struct rse_timespec {
 
 constexpr uint16_t RSE_AF_LOOP = 1;
 constexpr uint16_t RSE_SOCK_STREAM = 1;
+constexpr uint16_t RSE_PROTO_NET = 1;
 
 struct rse_sockaddr {
     uint16_t family;

@@ -198,6 +198,12 @@ if(NOT MSVC)
     target_link_libraries(sys_socket_test atomic)
 endif()
 
+# sys_socket_net test
+add_executable(sys_socket_net_test tests/sys_socket_net_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(sys_socket_net_test atomic)
+endif()
+
 # sys_pipe test
 add_executable(sys_pipe_test tests/sys_pipe_test.cpp)
 if(NOT MSVC)

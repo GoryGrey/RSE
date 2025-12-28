@@ -28,7 +28,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - MemFS + BlockFS with per-process file descriptors, `/persist` directories, MemFS nested paths, and permission checks on open/list/mkdir/unlink (including parent exec/write).
 - BlockFS persistence with checksum + journal + corruption detection (flat table, directory paths), with mount-time sanitize for duplicates/invalid entries.
 - TCP-lite framing over `/dev/net0` for loopback handshake/data tests.
-- In-kernel socket syscalls (`socket/bind/listen/accept/connect`) with loopback device-backed buffers.
+- In-kernel socket syscalls (`socket/bind/listen/accept/connect`) with loopback buffers and NET_LITE framing over the net device path.
 - Syscall dispatcher with user-range validation (including nanosleep/pipe/time pointers) and per-torus dispatch.
 - User mmap rejects overlaps; mmap/mprotect/munmap validate zero/unaligned sizes; PROT_EXEC blocked for anonymous mmap and limited to code pages; stack guard pages widened; mmap uses guard pages by default; read/write reject oversized counts; mprotect refuses unmapped ranges; VFS reserves `/dev` and rejects invalid `/persist` subpaths; net loopback backpressure returns `-EAGAIN`.
 - Ring3 exec smoke (UEFI): exec path works; isolation still evolving.
@@ -40,8 +40,8 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - `./scripts/run_full_system_test.sh` (build + native tests + UEFI boot + IVSHMEM exchange).
 - `./scripts/run_linux_baseline.sh` (host baseline).
 - Syscall + OS tests: `sys_wait_test`, `sys_ps_test`, `sys_stat_test`, `sys_memfs_dir_test`,
-  `sys_user_isolation_test`, `sys_vfs_persist_test`, `sys_socket_test`, `sys_pipe_test`,
-  `sys_dup_test`, `sys_mmap_test`, `exec_vfs_test`.
+  `sys_user_isolation_test`, `sys_vfs_persist_test`, `sys_socket_test`, `sys_socket_net_test`,
+  `sys_pipe_test`, `sys_dup_test`, `sys_mmap_test`, `exec_vfs_test`.
 - Devices: `blockfs_test`, `net_device_test`.
 
 Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal and redirect logs outside the repo:
@@ -50,7 +50,7 @@ Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal a
 ### Known Limitations
 
 - No full user-mode isolation/permissions yet; ring3 exec is a smoke path.
-- Network stack is minimal (ARP/UDP parsing + loopback); socket syscalls are loopback-only.
+- Network stack is minimal (ARP/UDP parsing + loopback); NET_LITE framing is not full TCP.
 - BlockFS uses fixed slots; permissions are basic (no user ownership model yet).
 - Workload init is one-shot per boot.
 

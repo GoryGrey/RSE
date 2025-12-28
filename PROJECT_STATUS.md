@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: December 28, 2025 (exec-only code pages + mmap guard pages + read/write count validation)
+Last Updated: December 28, 2025 (exec-only code pages + mmap guard pages + full-test log wrapper)
 
 ---
 
@@ -110,6 +110,7 @@ Notes:
 ## How to Run
 
 - Full system verification: `./scripts/run_full_system_test.sh`
+- Full system verification (logged): `LOG_PATH=/tmp/rse_full_test.log ./scripts/run_full_system_test_logged.sh`
 - Projection exchange only: `./scripts/run_projection_exchange.sh`
 - Host baseline: `./scripts/run_linux_baseline.sh`
 - BraidShell telemetry: set `RSE_METRICS_PATH` to a real metrics log.

@@ -12,7 +12,7 @@
 
 ## Overview
 
-This document presents the complete results of a comprehensive assessment of the Betti-RDL RSE (Research Software Engineering) project. The review encompasses all major components, validates performance claims, identifies gaps, and provides recommendations for Phase 3.
+Metrics captured per run; see logs.
 
 ---
 
@@ -22,13 +22,7 @@ This document presents the complete results of a comprehensive assessment of the
 
 The Betti-RDL kernel is **ready for production use** on single-node systems. All core guarantees have been validated:
 
-| Guarantee | Status | Evidence |
-|-----------|--------|----------|
-| O(1) Memory (Constant Recursion) | ✅ Verified | 100,000+ event chains show 0 bytes growth |
-| Thread-Safe Event Injection | ✅ Verified | Multi-threaded stress tests pass deterministically |
-| Peak Throughput | ✅ Verified | 16.8M events/second on single instance |
-| Parallel Scaling | ✅ Verified | 285.7M aggregate EPS with 16 isolated kernels |
-| Killer App Demos | ✅ Verified | All 3 scenarios execute successfully |
+Metrics captured per run; see logs.
 
 ### What This Means
 
@@ -36,7 +30,8 @@ The Betti-RDL kernel is **ready for production use** on single-node systems. All
 - ✅ Deploy Betti-RDL in production for single-node workloads
 - ✅ Use it for massive agent simulations (1M+ agents)
 - ✅ Solve deep recursion without stack overflow
-- ✅ Process 16+ million events per second
+- Metrics captured per run; see logs.
+
 - ✅ Guarantee O(1) memory regardless of input size
 
 **You cannot yet:**
@@ -115,7 +110,8 @@ The Betti-RDL kernel is **ready for production use** on single-node systems. All
 ✅ Zero-overhead abstraction
 
 Build Command: cargo test --lib
-Result: Compilation successful in 7.38s
+Metrics captured per run; see logs.
+
 ```
 
 **Production Ready**: YES - Recommended for Phase 3 launches
@@ -213,7 +209,7 @@ Validation: Requires `go run example/main.go`
 #### Test Results
 
 ```
-Compilation: ✅ All crates compile (43.76s)
+Metrics captured per run; see logs.
 
 Unit Tests: ✅ 6/6 PASS
 ├── Backend creation ✅
@@ -241,7 +237,7 @@ Integration: ⚠️ Parser issues
 
 ---
 
-### 2.4 COG Orchestration
+Metrics captured per run; see logs.
 
 **Location**: `COG/`  
 **Status**: 🔴 SCAFFOLD ONLY
@@ -303,9 +299,8 @@ Vite + React 18 + Three.js
 #### What Was Validated
 
 1. **O(1) Memory Guarantee**
-   - ✅ 100,000 event chain: 0 bytes growth
-   - ✅ 1,000,000 event chain: 0 bytes growth
-   - ✅ Contagion demo (1M): 0 bytes growth
+   - Metrics captured per run; see logs.
+
    - **Conclusion**: Memory truly O(1)
 
 2. **Thread Safety**
@@ -321,10 +316,8 @@ Vite + React 18 + Three.js
    - ✅ `getCurrentTime()` tracks logical time
    - **Conclusion**: API semantics correct
 
-4. **Performance**
-   - ✅ 16.8M events/sec (single kernel)
-   - ✅ 285.7M aggregate (16 parallel)
-   - ✅ Latency ~59.5 ns per event
+4. Metrics captured per run; see logs.
+
    - **Conclusion**: Performance exceeds design goals
 
 5. **Killer Demos**
@@ -397,10 +390,11 @@ Debug parser to understand syntax issues. Estimated 1-2 days.
 **Scenario**: 1,000,000 autonomous drones routing packages
 
 ```
-Grid: 32×32×32 city nodes
+Metrics captured per run; see logs.
+
 Packages: 1,000,000
-Delivery Time: 73ms
-Throughput: 13,698,600 deliveries/second
+Metrics captured per run; see logs.
+
 Memory: Stable (O(1) maintained)
 Status: ✅ SUCCESS
 ```
@@ -418,8 +412,8 @@ Status: ✅ SUCCESS
 ```
 Neurons: 32,768 (full 32³ lattice)
 Spikes: 500,000
-Processing Time: 36ms
-Throughput: 13,888,900 spikes/second
+Metrics captured per run; see logs.
+
 Memory: Stable (O(1) maintained)
 Status: ✅ SUCCESS
 ```
@@ -437,8 +431,8 @@ Status: ✅ SUCCESS
 ```
 Population: 1,000,000
 Spread Pattern: Recursive chains
-Time: <1ms
-Memory Delta: 0 bytes
+Metrics captured per run; see logs.
+
 Status: ✅ SUCCESS
 ```
 
@@ -464,7 +458,8 @@ Status: ✅ SUCCESS
 
 2. **Premature Optimization Risk**
    - No production workloads yet
-   - Current limits (32³ grid, 8K events) not hit
+   - Metrics captured per run; see logs.
+
    - Distributed features unclear on requirements
 
 3. **Opportunity Cost**
@@ -561,7 +556,7 @@ Status: ✅ SUCCESS
 ✅ **Thread safety**: Concurrent injection proven safe  
 ✅ **Rust binding**: Validated, auto-builds, production-ready  
 ✅ **Killer demos**: All scenarios execute successfully  
-✅ **Performance**: 16.8M EPS single, 285.7M aggregate (16 parallel)
+Metrics captured per run; see logs.
 
 ### What Needs Work
 
@@ -608,8 +603,8 @@ Status: ✅ SUCCESS
 - Good use of C++ idioms
 
 **Performance**: EXCELLENT ✅
-- 16.8M events/sec is exceptional
-- 59.5 ns per event is cache-friendly
+- Metrics captured per run; see logs.
+
 - Thread-safe without locks (FixedVector)
 - Scales linearly with cores
 
@@ -671,7 +666,7 @@ First target: "Constant-memory optimization for AI hyperparameter search" → $9
 
 ---
 
-## Part 11: Next Steps
+Metrics captured per run; see logs.
 
 ### Immediate (Today)
 
@@ -708,24 +703,17 @@ First target: "Constant-memory optimization for AI hyperparameter search" → $9
 ### Appendix A: Test Evidence
 
 **Thread-Safe Scheduler Test**: 6/6 tests passed  
-**Stress Test Suite**: 5/5 tests passed (50M events processed)  
+Metrics captured per run; see logs.
+
 **Mega Demo**: 3/3 demos executed successfully  
 **Grey Compiler**: 6/6 unit tests passed  
-**Rust Binding**: Successful compilation in 7.38s  
+Metrics captured per run; see logs.
 
 All tests run on x86_64 Linux with GCC -O3 optimization.
 
 ### Appendix B: Performance Benchmarks
 
-| Benchmark | Result | Target | Status |
-|-----------|--------|--------|--------|
-| Peak throughput | 16.8M EPS | 1M EPS | ✅ 16.8x |
-| Memory (100k depth) | 0B | O(1) | ✅ Verified |
-| Parallel scaling | 17x | Linear | ✅ Achieved |
-| Latency (avg) | 59.5ns | <100ns | ✅ Met |
-| Logistics demo | 13.7M deliv/s | >1M | ✅ 13.7x |
-| Cortex demo | 13.9M spikes/s | >1M | ✅ 13.9x |
-| Contagion demo | 1M in <1ms | Stable | ✅ O(1) |
+Metrics captured per run; see logs.
 
 ### Appendix C: Component Checklist
 
@@ -746,7 +734,7 @@ All tests run on x86_64 Linux with GCC -O3 optimization.
 1. **For stakeholders**: Part 1 (Executive Summary)
 2. **For developers**: Part 2 (Codebase Inventory) + Part 7 (Key Findings)
 3. **For product**: Part 6 (Phase 3 Recommendation) + Part 9 (Risk Assessment)
-4. **For launch**: Part 8 (Honest Assessment) + Next Steps
+4. Metrics captured per run; see logs.
 
 ---
 

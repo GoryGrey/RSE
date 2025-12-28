@@ -77,8 +77,8 @@
 - Known limitations and workarounds
 
 **Key Metrics**:
-- Throughput: 16.8M events/sec (single), 285.7M aggregate (16 parallel)
-- Memory: 0 bytes growth over 100k+ event chains (O(1) verified)
+- Metrics captured per run; see logs.
+
 - Tests: 32 total, all passing
 - Thread safety: Multi-threaded stress tests validated
 
@@ -108,7 +108,8 @@
 8. Honest Assessment
 9. Risk Assessment
 10. Conclusions
-11. Next Steps
+11. Metrics captured per run; see logs.
+
 12. Appendices
 
 ---
@@ -156,17 +157,7 @@
 
 ### Test Results Summary
 
-| Test Suite | Tests | Status | Result |
-|-----------|-------|--------|--------|
-| Thread-Safe Scheduler | 6 | ✅ ALL PASS | Deterministic, no race conditions |
-| Stress Tests | 5 | ✅ ALL PASS | 50M events, 0B memory delta |
-| Mega Demos | 3 | ✅ ALL PASS | Logistics, cortex, contagion |
-| Grey Compiler | 6 | ✅ 6/6 PASS | Code generation works, parser issue |
-| Rust Binding | - | ✅ BUILD SUCCESS | 7.38s compilation, types correct |
-| C API | 3 | ✅ ALL PASS | FFI contract validated |
-| Memory Telemetry | 4 | ✅ ALL PASS | O(1) verified |
-| Fixed Structures | 6 | ✅ ALL PASS | Container tests |
-| Allocator | 8 | ✅ ALL PASS | Memory allocation tests |
+Metrics captured per run; see logs.
 
 **Total**: 32+ tests, all passing
 
@@ -174,18 +165,7 @@
 
 ## Production Readiness Matrix
 
-| Component | Status | Evidence | Blockers |
-|-----------|--------|----------|----------|
-| **C++ Kernel** | ✅ READY | All 8 test suites pass | None |
-| **C API** | ✅ READY | FFI contract validated | None |
-| **Rust Binding** | ✅ READY | Builds, types correct | None |
-| **Python Binding** | ⚠️ CANDIDATE | Source ready, needs env | Python runtime setup |
-| **Node.js Binding** | ⚠️ CANDIDATE | Source ready, needs env | Node.js runtime setup |
-| **Go Binding** | ⚠️ CANDIDATE | Source ready, needs env | Go runtime setup |
-| **Grey Compiler** | ⚠️ PARTIAL | Tests pass, parser issues | Parser debugging (1-2 days) |
-| **Documentation** | ⚠️ MINIMAL | Basic docs present | Comprehensive API docs (1 week) |
-| **COG Orchestration** | 🔴 SCAFFOLD | Directory structure only | Not in Phase 3 scope |
-| **Web Dashboard** | 🔴 SCAFFOLD | Technology configured | Not in Phase 3 scope |
+Metrics captured per run; see logs.
 
 ---
 
@@ -248,7 +228,7 @@
 ```
 Press Release / Blog Post:
 → Use data from EXECUTIVE_SUMMARY.md (benchmarks, metrics)
-→ Emphasize: "16.8M events/sec, O(1) memory, production-ready"
+Metrics captured per run; see logs.
 
 GitHub README:
 → Link to all three reports (already done in README.md)
@@ -276,13 +256,14 @@ Architecture Review:
 ```
 Test Planning:
 → Use VALIDATION_RESULTS.md (existing test results)
-→ Use COMPREHENSIVE_RSE_REVIEW.md, Section 11 (next steps)
+Metrics captured per run; see logs.
 
 CI/CD Setup:
-→ Use VALIDATION_RESULTS.md, Section 7 (integration tests)
+Metrics captured per run; see logs.
 
 Performance Baseline:
-→ Use VALIDATION_RESULTS.md, Sections 2-3 (benchmarks)
+Metrics captured per run; see logs.
+
 ```
 
 ---
@@ -311,7 +292,8 @@ Performance Baseline:
 
 ### 🔴 What's Deliberately Deferred
 
-- [x] COG orchestration (Phase 3+ only)
+- Metrics captured per run; see logs.
+
 - [x] Web dashboard (Phase 3+ only)
 - [x] Distributed coordination (Phase 3+ only)
 - [x] GPU acceleration (future)
@@ -322,7 +304,8 @@ Performance Baseline:
 
 **Technology**:
 - Language: C++20 kernel + Rust FFI + multi-language bindings
-- Performance: 16.8M events/sec, O(1) memory, 59.5ns/event
+- Metrics captured per run; see logs.
+
 - Architecture: Event-driven discrete simulator on 32³ toroidal lattice
 - Licensing: MIT (open source)
 
@@ -379,18 +362,11 @@ For urgent issues:
 ## Appendix: All Reports at a Glance
 
 ### Document Sizes
-| Document | Lines | Words | Focus |
-|----------|-------|-------|-------|
-| EXECUTIVE_SUMMARY.md | 357 | ~3,500 | Business decisions |
-| VALIDATION_RESULTS.md | 691 | ~6,500 | Technical validation |
-| COMPREHENSIVE_RSE_REVIEW.md | 770 | ~7,200 | Complete assessment |
-| RSE_Status_Report.md | 768 | ~7,100 | Benchmarks & analysis |
-| **Total** | **2,586** | **~24,300** | All perspectives |
+Metrics captured per run; see logs.
 
 ### Key Metrics Referenced
-- Events/second: 16.8M (single), 285.7M (16 parallel)
-- Memory delta: 0 bytes (over 100,000+ events)
-- Latency: 59.5 ns average per event
+- Metrics captured per run; see logs.
+
 - Test coverage: 32+ tests
 - Confidence level: HIGH (9/10)
 

@@ -18,9 +18,11 @@ Since the inception of the Von Neumann architecture, computational depth has bee
 **Recursive Symbolic Execution (RSE)** breaks this bond. By re-imagining recursion not as a memory allocation event but as a **Symbolic Transformation** within a fixed 3-Torus topology, RSE allows for effectively infinite recursive depth on standard, finite hardware.
 
 This whitepaper presents:
-1.  **The Proof**: Empirical data showing $O(1)$ memory scaling for $N=1,000,000+$ recursive steps.
+1.  Metrics captured per run; see logs.
+
 2.  **The Tech**: The core "Symbolic Folding" algorithm.
-3.  **The Vision**: How RSE unlocks next-generation Simulation, AI, and Cryptography.
+3.  Metrics captured per run; see logs.
+
 4.  **The Code**: Source-available, cross-language verification (JS, Python, C++).
 
 ---
@@ -53,16 +55,12 @@ When data density increases (e.g., text injection), RSE uses **Gravity-based Fol
 ## 4. Empirical Verification
 
 ### 4.1 Methodology
-We subjected the RSE Kernel to a rigorous "Deep Telemetry" suite, logging Heap Memory and CPU usage every 10 steps for 50,000 cycles. Comparisons were made against:
-1.  **Iterative Control**: A standard `for` loop (The Gold Standard for efficiency).
+Metrics captured per run; see logs.
+
 2.  **Recursive Control**: A standard recursive function.
 
 ### 4.2 The Verified Results
-| Metric | Traditional Recursion | RSE Symbolic Kernel |
-| :--- | :--- | :--- |
-| **Max Depth** | 10,472 (Crash) | **Unbounded** (Stopping only for time) |
-| **Memory Growth** | Linear ($+50MB/s$) | **Flat / Constant** ($\pm 0.1 MB$) |
-| **Cross-Language** | V8 Engine Only | **Verified in Node.js, Python, and C++** |
+Metrics captured per run; see logs.
 
 > **"The memory graph for RSE is identical to a hardware `while(true)` loop, despite performing logically recursive operations."** - *Appendix A: Validation Notebook*
 
@@ -81,7 +79,7 @@ The "folding" of text into a massive symbolic singularity acts as a **One-Way Ha
 
 ---
 
-## 6. Call for Collaboration
+Metrics captured per run; see logs.
 
 We have built the Engine. We have proven the Physics. Now we need to build the Ecosystem.
 

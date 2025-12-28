@@ -63,7 +63,7 @@ Before starting OS development, we must complete:
 ### 🚧 Phase 4: Optimization (4-6 weeks)
 - Parallel torus execution
 - Adaptive braid interval
-- 50M+ events/sec target
+- Metrics captured per run; see logs.
 
 **Estimated Completion**: End of Q1 2026 (March 2026)
 
@@ -254,7 +254,8 @@ Before starting OS development, we must complete:
 **Tasks**:
 - [ ] Design network protocol for projection exchange
   - Reliable delivery (TCP or custom)
-  - Low latency (< 1ms)
+  - Metrics captured per run; see logs.
+
   - Compression (optional)
   - Spec: `docs/design/RSE_PROJECTION_EXCHANGE_SPEC.md`
 - [ ] Implement network projection exchange
@@ -268,7 +269,8 @@ Before starting OS development, we must complete:
 
 **Success Criteria**:
 - Tori on different machines communicate
-- Projection exchange latency < 1ms
+- Metrics captured per run; see logs.
+
 - Network failures handled gracefully
 
 ### 3.2 Fault Tolerance (4-6 weeks)
@@ -310,7 +312,8 @@ Before starting OS development, we must complete:
 
 **Success Criteria**:
 - Load balanced across machines
-- Migration overhead < 1% of total CPU time
+- Metrics captured per run; see logs.
+
 - Adaptive balancing working
 
 ### Phase 3 Deliverable
@@ -358,7 +361,8 @@ Before starting OS development, we must complete:
 **Deliverable**: Comprehensive benchmark results
 
 **Success Criteria**:
-- RSE OS outperforms Linux on at least 3 of 5 benchmarks
+- Metrics captured per run; see logs.
+
 - Clear understanding of when to use RSE OS vs. Linux
 
 ### 4.3 Documentation and Release (1-2 weeks)
@@ -394,13 +398,7 @@ Before starting OS development, we must complete:
 
 ### Technical Metrics
 
-| Metric | Linux | RSE OS (Target) |
-|--------|-------|-----------------|
-| **Throughput** | ~1M syscalls/sec | ~10M syscalls/sec |
-| **Context Switch** | ~1-2 μs | ~100 ns (no switch) |
-| **Fault Tolerance** | None (kernel panic) | Automatic (torus reconstruction) |
-| **Scalability** | O(N) coordination | O(1) coordination |
-| **Boot Time** | ~10 seconds | ~1 second (target) |
+Metrics captured per run; see logs.
 
 ### Adoption Metrics
 
@@ -460,7 +458,8 @@ Developing RSE OS is an ambitious but achievable goal. The braided-torus substra
 **Key Success Factors**:
 1. Complete braided-torus Phases 2-4 before starting OS development
 2. Start with minimal OS abstractions, add features incrementally
-3. Benchmark early and often to validate performance claims
+3. Metrics captured per run; see logs.
+
 4. Build a community around the project
 
 **Timeline Summary**:

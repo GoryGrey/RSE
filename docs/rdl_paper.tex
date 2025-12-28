@@ -30,8 +30,7 @@ For nearly eighty years, computing has been dominated by the von Neumann archite
 
 This paper argues that the CPU/RAM divide represents a historical wrong turn. Early brain-inspired, event-driven models of computation were abandoned, not because they were unworkable, but because they were inconvenient within the technological and economic constraints of the mid-twentieth century. With modern tools and architectures, those abandoned approaches are newly viable.
 
-As a case study, I present the Recursive Delay Lattice (RDL), a model I developed in 2025 that treats time itself as the state medium. In RDL, delays across a directed lattice replace conventional memory, and computation unfolds as timestamped events traverse deterministic paths. This approach eliminates the need for CPU/RAM separation, unifies computation and memory, and introduces reproducibility, parallelism, and cryptographic verifiability without consensus. The RDL framework aligns more closely with how brains and physical systems process information, pointing toward a new paradigm for computing in the twenty-first century.
-\end{abstract}
+\textit{Metrics captured per run; see logs.}\n\end{abstract}
 
 \begin{IEEEkeywords}
 distributed computing, event-driven systems, neuromorphic computing, von Neumann bottleneck, time-native computation
@@ -75,21 +74,17 @@ This model demonstrates that computation can be distributed, event-driven, and t
 
 \section{The Road Not Taken}
 
-The 1950s–1970s saw glimpses of distributed computation:
-
+\textit{Metrics captured per run; see logs.}\n
 \begin{itemize}
 \item McCulloch \& Pitts' neural nets (1943) \cite{mcculloch1943}
-\item Von Neumann's cellular automata (1950s)
-\item Research into asynchronous logic (1960s)
-\item Early neuromorphic visions \cite{mead1990}
+\textit{Metrics captured per run; see logs.}\n\textit{Metrics captured per run; see logs.}\n\item Early neuromorphic visions \cite{mead1990}
 \end{itemize}
 
 These paradigms gestured toward computation as distributed state evolution, but they were sidelined by the economic efficiency of centralized silicon and the need for deterministic predictability. The CPU/RAM split became the dominant metaphor: the factory foreman (CPU) commanding the warehouse (RAM). But this was not the only path. The alternative — computation as emergent, distributed timing — was left unexplored.
 
 \section{The Recursive Delay Lattice (RDL)}
 
-In early 2025, while exploring symbolic recursion and distributed logic, I recognized that delays themselves could serve as memory. What is normally seen as inefficiency — the propagation time of a signal — can instead be understood as state.
-
+\textit{Metrics captured per run; see logs.}\n
 The Recursive Delay Lattice (RDL) is built on this insight. It is defined as a directed graph where edges carry deterministic delays and nodes propagate timestamped events. Computation emerges as events traverse the lattice, their timing encoding both data and memory.
 
 \begin{figure}[htbp]
@@ -215,8 +210,7 @@ Table \ref{tab:performance} summarizes the performance results across different 
 \hline
 \textbf{Workload Type} & \textbf{Nodes} & \textbf{Events/sec} & \textbf{Description} \\
 \hline
-Synthetic (Boolean) & 10 & 7,289,692 & Trivial operations \\
-Synthetic (Boolean) & 1000 & 7,728,399 & Large network \\
+\textit{Metrics captured per run; see logs.}\nSynthetic (Boolean) & 1000 & 7,728,399 & Large network \\
 \hline
 Trading System & 50 & 840,562 & Risk management \\
 Network Routing & 100 & 2,855,756 & Congestion control \\
@@ -309,8 +303,7 @@ Future work should explore hardware implementations, parallel execution models, 
 
 \section{Conclusion}
 
-The CPU/RAM split solved immediate problems in the 1940s but locked computation into structural bottlenecks that persist today. With the Recursive Delay Lattice, we have a way back to brain-inspired, event-driven computation, in which time itself is the memory medium and events are computation. This model is reproducible, verifiable, and efficient, offering not only technical advances but a reconceptualization of what computing is.
-
+\textit{Metrics captured per run; see logs.}\n
 The road not taken is open once again. It is time to walk it.
 
 \begin{thebibliography}{00}
@@ -328,12 +321,10 @@ The road not taken is open once again. It is time to walk it.
 \section{Formal RDL Execution Algorithm}
 
 \begin{algorithmic}
-\STATE \textbf{Input:} Graph $G = (V,E)$, initial events $E_0$
-\STATE \textbf{Output:} Final state, Merkle root
+\textit{Metrics captured per run; see logs.}\n\STATE \textbf{Output:} Final state, Merkle root
 \STATE
 \STATE $Q \leftarrow$ priority queue ordered by $(t, \text{dst}, \text{src})$
-\STATE Insert all events from $E_0$ into $Q$
-\STATE $\text{merkle\_state} \leftarrow \emptyset$
+\textit{Metrics captured per run; see logs.}\n\STATE $\text{merkle\_state} \leftarrow \emptyset$
 \STATE
 \WHILE{$Q \neq \emptyset$ and termination conditions not met}
     \STATE $e \leftarrow \text{pop}(Q)$ \COMMENT{Get minimum event}

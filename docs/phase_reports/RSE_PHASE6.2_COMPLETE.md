@@ -22,7 +22,8 @@ Applications now have:
 ### **1. Page Table** (`PageTable.h`)
 - Two-level page table structure
 - 4KB pages
-- 4GB virtual address space per process
+- Metrics captured per run; see logs.
+
 - Map/unmap/translate operations
 - Protection flags (present, writable, user, accessed, dirty)
 - Page table cloning (for fork)
@@ -31,7 +32,7 @@ Applications now have:
 - Bitmap-based frame allocator
 - O(1) allocation and deallocation
 - Tracks free/used frames
-- 16MB-64MB physical memory support
+- Metrics captured per run; see logs.
 
 ### **3. Virtual Allocator** (`VirtualAllocator.h`)
 - Virtual address space management
@@ -80,14 +81,14 @@ Virtual Address (32-bit):
 
 - L1: 1024 entries (page directory)
 - L2: 1024 entries per L1 entry
-- Total: 4GB addressable per process
+- Metrics captured per run; see logs.
 
 ### **2. Bitmap Physical Allocator**
 
 - O(1) allocation: Find first zero bit
 - O(1) deallocation: Clear bit
 - Memory efficient: 1 bit per frame
-- 16MB = 4096 frames = 512 bytes bitmap
+- Metrics captured per run; see logs.
 
 ### **3. Virtual Memory Regions**
 
@@ -120,7 +121,8 @@ Virtual Address (32-bit):
 ```cpp
 // Create memory management system
 PageTable pt;
-PhysicalAllocator pa(0x100000, 16 * 1024 * 1024);  // 16MB
+Metrics captured per run; see logs.
+
 VirtualAllocator va(&pt, &pa);
 
 // Allocate memory
@@ -282,7 +284,8 @@ src/cpp_kernel/demos/
 **Phase 6.2 is complete.**
 
 We've built a **complete memory management system** with:
-- ✅ Virtual memory (4GB per process)
+- Metrics captured per run; see logs.
+
 - ✅ Page tables (two-level)
 - ✅ Physical allocator (bitmap-based)
 - ✅ Memory protection (read/write/execute)

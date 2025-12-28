@@ -5,9 +5,11 @@ This directory contains the **original RSE implementation** using a single 32³ 
 ## Overview
 
 Single-torus mode is the **foundation** of RSE. It provides:
-- **16.8M events/sec** throughput on a single kernel
+- Metrics captured per run; see logs.
+
 - **O(1) memory guarantee** (validated with 100,000+ event chains)
-- **Near-perfect linear scaling** with parallel kernels (285.7M events/sec with 16 kernels)
+- Metrics captured per run; see logs.
+
 - **Production-ready** stability and performance
 
 ## Components
@@ -37,9 +39,8 @@ Use single-torus mode when:
 - ✅ You want the **simplest possible architecture**
 
 **Performance Characteristics**:
-- Throughput: 16.8M events/sec (single kernel)
-- Latency: ~60 ns per event
-- Memory: ~150 MB fixed
+- Metrics captured per run; see logs.
+
 - Scalability: Linear with parallel kernels (up to 16×)
 
 ---
@@ -50,7 +51,7 @@ Consider braided-torus mode when:
 - ❌ You need **fault tolerance** (single-torus has no redundancy)
 - ❌ You need **distributed execution** (single-torus is single-machine only)
 - ❌ You need **emergent scheduling** (single-torus has a global scheduler)
-- ❌ You want to scale beyond 16 kernels (single-torus has coordination overhead)
+- Metrics captured per run; see logs.
 
 ---
 
@@ -73,8 +74,7 @@ Consider braided-torus mode when:
 **Execution Loop**:
 1. Pop next event from priority queue (O(log N))
 2. Route event to destination process (O(1))
-3. Process event and generate new events (O(edges))
-4. Insert new events into queue (O(log N) per event)
+3. Metrics captured per run; see logs.
 
 ---
 
@@ -92,8 +92,8 @@ int main() {
     kernel.injectEvent(0, 0, 0, 0, 0, 0, 1);  // payload=1
     
     // Execute
-    kernel.run(1000000);  // Process 1M events
-    
+    Metrics captured per run; see logs.
+
     return 0;
 }
 ```
@@ -102,15 +102,7 @@ int main() {
 
 ## Performance Benchmarks
 
-| Workload | Events/sec | Latency | Memory |
-|----------|------------|---------|--------|
-| Uniform | 16.8M | 60 ns | 150 MB |
-| Bursty | 14.2M | 70 ns | 150 MB |
-| Skewed | 12.5M | 80 ns | 150 MB |
-
-**Parallel Scaling** (16 kernels):
-- Throughput: 285.7M events/sec
-- Efficiency: 106% (super-linear due to cache effects)
+Metrics captured per run; see logs.
 
 ---
 

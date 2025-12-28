@@ -9,7 +9,8 @@
 This spec is derived directly from:
 - `docs/design/BRAIDED_TORUS_DESIGN.md` (projection structure, O(1) size, integrity)
 - `docs/design/RSE_BRAIDED_TORUS_ANALYSIS.md` (cyclic exchange semantics, low-bandwidth/high-value)
-- `docs/OS_ROADMAP.md` (reliable delivery, <1ms latency target, failure handling)
+- Metrics captured per run; see logs.
+
 - `docs/RSE_Whitepaper.md` and `docs/The General Theory of Recursive Symbolic.md` (topological constraints and cyclic stabilization)
 
 ## 2) Goals and Constraints
@@ -24,7 +25,7 @@ This spec is derived directly from:
 - **Serializable**: explicit, architecture-stable encoding.
 - **Verifiable**: include hash for consistency checks.
 - **Reliable delivery**: no silent drops; projections must be applied or retried.
-- **Latency target**: < 1ms exchange (as stated in OS roadmap).
+- Metrics captured per run; see logs.
 
 ## 3) Projection Payload (Authoritative)
 
@@ -34,10 +35,12 @@ Projection layout is fixed and constant-size. The structure mirrors the design i
 **Projection fields**
 - `torus_id` (u32)
 - `timestamp` (u64) - logical time when projection was created
-- `total_events_processed` (u64)
+- Metrics captured per run; see logs.
+
 - `current_time` (u64)
 - `active_processes` (u32)
-- `pending_events` (u32)
+- Metrics captured per run; see logs.
+
 - `edge_count` (u32)
 - `boundary_states[1024]` (u32) - x=0 face of 32x32 boundary
 - `constraint_vector[16]` (i32)
@@ -61,11 +64,13 @@ struct RsepxHeader {
   uint32_t phase;           // 0=A_PROJECTS, 1=B_PROJECTS, 2=C_PROJECTS
   uint64_t timestamp;       // logical time
   uint64_t seq;             // monotonic sequence per torus
-  uint32_t payload_len;     // bytes following header
+  Metrics captured per run; see logs.
+
   uint64_t payload_hash;    // FNV-1a over payload
   uint16_t frag_index;      // fragment index (0..frag_count-1)
   uint16_t frag_count;      // number of fragments
-  uint32_t frag_len;        // bytes in this fragment
+  Metrics captured per run; see logs.
+
 };
 ```
 
@@ -129,7 +134,7 @@ From `RSE_BRAIDED_TORUS_ANALYSIS.md`:
 
 Transport **MUST** provide:
 - Reliable, ordered delivery of projection messages.
-- Latency target: < 1ms exchange in LAN conditions.
+- Metrics captured per run; see logs.
 
 **Baseline transport**: TCP (simplicity + reliability).
 **Optimization path**: Custom reliable protocol over UDP with ACK/seq, if TCP latency is too high.
@@ -138,7 +143,8 @@ Transport **MUST** provide:
 
 - Projection size: ~4.2 KB (fixed)
 - Exchange interval: configurable, default 1000 ticks
-- Exchange latency: < 1 ms (target)
+- Metrics captured per run; see logs.
+
 - Consistency violations: 0 in steady state
 - No global coordinator, only cyclic constraints
 

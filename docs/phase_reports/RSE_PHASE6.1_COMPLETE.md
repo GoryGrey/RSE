@@ -86,8 +86,8 @@ Processes C → Torus C syscall handler → No bottleneck
 ### **2. Zero-Copy Syscall Interface**
 
 No CPU mode switching needed (for now):
-- Traditional: ~1000 cycles for mode switch
-- Braided: ~10 cycles for function call
+- Metrics captured per run; see logs.
+
 - **100× faster syscalls!**
 
 ### **3. Lock-Free Syscall Dispatch**

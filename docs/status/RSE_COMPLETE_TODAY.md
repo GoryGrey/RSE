@@ -47,7 +47,8 @@ In one day, we went from **"interesting idea"** to **"production-ready operating
 ### **Phase 6: Emergent Scheduler**
 - Per-torus independent scheduling
 - 3 policies (RR, Priority, CFS)
-- Perfect fairness (1.0 ratio)
+- Metrics captured per run; see logs.
+
 - **4/4 tests passing** ✅
 
 ### **Phase 6.1: System Calls**
@@ -93,10 +94,8 @@ In one day, we went from **"interesting idea"** to **"production-ready operating
 - System calls (43 defined, 9 implemented)
 
 ### **Performance**
-- **16.8M events/sec** (single-torus)
-- **285.7M events/sec** (parallel)
-- **Perfect fairness** (1.0 ratio)
-- **100% CPU utilization**
+- Metrics captured per run; see logs.
+
 - **O(1) complexity** (everywhere)
 - **100× faster syscalls** (per-torus dispatch)
 
@@ -118,7 +117,7 @@ In one day, we went from **"interesting idea"** to **"production-ready operating
 
 **Solution**: Per-torus independent schedulers, emergent coordination
 
-**Result**: Perfect fairness, 100% CPU, no overhead
+Metrics captured per run; see logs.
 
 ### **3. Per-Torus Everything**
 
@@ -155,8 +154,7 @@ In one day, we went from **"interesting idea"** to **"production-ready operating
 1. **Eliminate bottlenecks** - No global controller, scheduler, VFS, or device manager
 2. **Emergent coordination** - Work distributes naturally, no central control
 3. **Fault tolerance** - Self-healing, automatic recovery
-4. **O(1) complexity** - Constant-time operations everywhere
-5. **Perfect scaling** - Linear scaling to N cores
+4. Metrics captured per run; see logs.
 
 ### **Result?**
 
@@ -195,7 +193,8 @@ To get to a **bootable OS**:
 ### **Technical Insights**
 
 1. **Braided architecture works** - Cyclic coordination is stable
-2. **Emergent scheduling works** - Perfect fairness without global scheduler
+2. Metrics captured per run; see logs.
+
 3. **Per-torus design scales** - No bottlenecks anywhere
 4. **O(1) is achievable** - Bounded allocators, fixed structures
 5. **Self-healing is practical** - 2-of-3 redundancy works
@@ -220,17 +219,7 @@ To get to a **bootable OS**:
 
 ## 🎓 Comparison: Traditional OS vs Braided OS
 
-| Feature | Traditional OS | Braided OS |
-|---------|---------------|------------|
-| **Scheduler** | Global (bottleneck) | Per-torus (emergent) |
-| **Memory** | Global allocator | Per-torus allocator |
-| **VFS** | Global (locks) | Per-torus (lock-free) |
-| **Devices** | Global manager | Per-torus manager |
-| **Syscalls** | Global handler | Per-torus dispatcher |
-| **Fault Tolerance** | None | 2-of-3 redundancy |
-| **Scaling** | Sub-linear | Linear |
-| **Overhead** | 10-15% | <2% |
-| **Complexity** | O(n) | O(1) |
+Metrics captured per run; see logs.
 
 **Result**: **10-20% faster** on same hardware
 

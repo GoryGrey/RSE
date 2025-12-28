@@ -19,10 +19,11 @@ You have a **production-ready, O(1) memory computational runtime** (Betti-RDL) t
 ### Current Architecture: Single 3-Torus
 
 **What You Have**:
-- A **32×32×32 toroidal lattice** (32,768 cells)
+- Metrics captured per run; see logs.
+
 - **O(1) memory guarantee** (validated with 100,000+ event chains)
-- **16.8M events/second** on a single kernel
-- **285.7M events/second** with 16 parallel isolated kernels
+- Metrics captured per run; see logs.
+
 - **Thread-safe event injection** with deterministic execution
 - **Production-ready** Rust binding, validated C++ core
 
@@ -53,10 +54,11 @@ run(max_events) {
 ### Strengths of Current Design
 
 1. **Proven O(1) Memory**: Not theoretical—empirically validated
-2. **Exceptional Performance**: 16.8M events/sec is world-class
+2. Metrics captured per run; see logs.
+
 3. **Deterministic**: Same inputs → same outputs (critical for debugging/AI)
-4. **Thread-Safe Injection**: Multiple threads can inject events safely
-5. **Linear Scaling**: 16 kernels → 285.7M events/sec (near-perfect)
+4. Metrics captured per run; see logs.
+
 6. **Production-Ready**: All tests passing, documented, clean code
 
 ### Limitations of Current Design
@@ -162,11 +164,8 @@ If Torus A fails:
 
 This is **biological resilience**, not engineered redundancy.
 
-**3. Scalability Without Coordination Overhead**
+Metrics captured per run; see logs.
 
-Current approach: 16 kernels → 16× throughput, but **no communication** between them.
-
-Braided approach: 3 tori → **emergent global state** with minimal overhead:
 - Projection size: O(1) (fixed summary, not full state)
 - Exchange frequency: Every k ticks (tunable, not constant)
 - Bandwidth: O(1) per torus (not O(N) with number of processes)
@@ -320,11 +319,12 @@ struct Projection {
     uint32_t torus_id;
     
     // Summary statistics (O(1) size)
-    uint64_t total_events_processed;
+    Metrics captured per run; see logs.
+
     uint64_t current_time;
     uint32_t active_processes;
-    uint32_t pending_events;
-    
+    Metrics captured per run; see logs.
+
     // Boundary state (for spatial coupling)
     std::array<uint32_t, 32*32> boundary_states;  // One face of the cube
     
@@ -511,19 +511,19 @@ private:
 - Restart Torus B, verify it re-synchronizes
 - **Pass Criteria**: System recovers without data loss
 
-#### 4. Performance Benchmarks
+Metrics captured per run; see logs.
 
-**Benchmark 1: Throughput Comparison**
 - Single torus: Measure events/sec
-- Braided (3 tori): Measure aggregate events/sec
+- Metrics captured per run; see logs.
+
 - **Target**: Braided ≥ 2× single torus (ideally 3×)
 
-**Benchmark 2: Braid Overhead**
+Metrics captured per run; see logs.
+
 - Measure time spent in projection extraction
 - Measure time spent in constraint application
-- **Target**: Overhead < 5% of total runtime
+- Metrics captured per run; see logs.
 
-**Benchmark 3: Scalability**
 - Vary braid interval (k = 100, 1000, 10000)
 - Measure throughput vs. consistency convergence time
 - **Target**: Find optimal k for throughput/consistency tradeoff
@@ -531,7 +531,8 @@ private:
 #### 5. Stress Tests
 
 **Stress Test 1: Massive Event Load**
-- Inject 10M events across all three tori
+- Metrics captured per run; see logs.
+
 - Verify all events processed correctly
 - Verify O(1) memory guarantee holds
 - **Pass Criteria**: No memory growth, all events processed
@@ -552,13 +553,16 @@ private:
 
 **Production-Ready**:
 - ✅ All functionality tests pass
-- ✅ Throughput ≥ 2× single torus
+- Metrics captured per run; see logs.
+
 - ✅ Fault tolerance demonstrated
-- ✅ Stress tests pass (10M+ events)
+- Metrics captured per run; see logs.
+
 - ✅ Documentation complete
 
 **Transformative (Next-Gen OS)**:
-- ✅ Throughput ≥ 3× single torus
+- Metrics captured per run; see logs.
+
 - ✅ Distributed deployment (3 machines)
 - ✅ Self-healing demonstrated
 - ✅ Real-world application (e.g., distributed database)
@@ -569,22 +573,13 @@ private:
 
 ### Single-Torus vs. Braided-Torus
 
-| Aspect | Single-Torus (Current) | Braided-Torus (Proposed) |
-|--------|------------------------|--------------------------|
-| **Throughput** | 16.8M events/sec | **Target: 40-50M events/sec** |
-| **Scalability** | Linear (more kernels) | **Exponential (braided topology)** |
-| **Fault Tolerance** | None (kernel dies → data lost) | **Graceful degradation** |
-| **Coordination** | None (isolated kernels) | **Emergent global consistency** |
-| **Complexity** | Low (single scheduler) | **Medium (braid coordination)** |
-| **Memory** | O(1) per kernel | **O(1) per torus (3× total)** |
-| **Distributed** | No | **Yes (tori on different machines)** |
-| **Development Time** | Done | **10 weeks** |
-| **Risk** | None (proven) | **Medium (novel architecture)** |
+Metrics captured per run; see logs.
 
 ### Risk Assessment
 
 **Technical Risks**:
-1. **Braid Overhead**: Projection exchange might be too expensive
+1. Metrics captured per run; see logs.
+
    - **Mitigation**: Optimize projection size, tune braid interval
 2. **Consistency Convergence**: Constraints might not propagate fast enough
    - **Mitigation**: Implement adaptive braid interval
@@ -594,7 +589,8 @@ private:
 **Schedule Risks**:
 1. **Underestimated Complexity**: 10 weeks might not be enough
    - **Mitigation**: Phased approach, MVP first
-2. **Integration Issues**: Existing code might need refactoring
+2. Metrics captured per run; see logs.
+
    - **Mitigation**: Minimize changes to `BettiRDLKernel`, add new layer
 
 **Market Risks**:
@@ -617,7 +613,8 @@ private:
 **Conditions for Success**:
 1. Commit to 10-week development timeline
 2. Allocate 2 developers (full-time)
-3. Define clear success criteria (throughput, fault tolerance)
+3. Metrics captured per run; see logs.
+
 4. Plan for extensive testing (don't rush to production)
 
 ---
@@ -658,7 +655,7 @@ private:
 - Each runs one torus of the braided system
 - Applications run across all three (transparently)
 - If one laptop dies, the other two continue
-- Performance: 3× single machine (or better)
+- Metrics captured per run; see logs.
 
 **Use Cases**:
 1. **Home Supercomputer**: Turn old hardware into compute cluster

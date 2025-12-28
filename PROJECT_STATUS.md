@@ -17,30 +17,30 @@ Not by distributing across machines, but by eliminating architectural bottleneck
 
 ---
 
-## 📊 Current Status: **45% COMPLETE (Prototype)**
+## 📊 Current Status: **Prototype (metrics captured per run)**
 
 This status covers both the runtime (Betti-RDL engine) and the OS scaffold contained in this repo.
 
 ### **What Works (Prototype)** ✅
 
-| Component | Status | Tests | Performance |
+| Component | Status | Tests | Notes |
 |-----------|--------|-------|-------------|
-| **Braided Runtime** | ⚠️ Prototype | Internal smoke | 16.8M events/sec per torus |
-| **Boundary Coupling** | ⚠️ Prototype | Internal smoke | O(1) coordination (4.7KB) |
-| **Self-Healing** | ⚠️ Prototype | 7/8 internal | 2-of-3 reconstruction |
-| **Parallel Execution** | ⚠️ Prototype | Architecture | 3 worker threads |
-| **Memory Optimization** | ⚠️ Prototype | Design-validated | O(1) bounded at 450MB |
-| **Emergent Scheduler** | ⚠️ Prototype | 4/4 internal | Fairness target met in sim |
-| **System Calls** | ⚠️ Partial | 15 implemented (wait + ps + stat + pipe/dup) | 43 defined |
+| **Braided Runtime** | ⚠️ Prototype | Internal smoke | Measured in runtime logs |
+| **Boundary Coupling** | ⚠️ Prototype | Internal smoke | Measured in runtime logs |
+| **Self-Healing** | ⚠️ Prototype | Internal coverage | Measured in runtime logs |
+| **Parallel Execution** | ⚠️ Prototype | Architecture | Threaded runtime |
+| **Memory Optimization** | ⚠️ Prototype | Design-validated | Bounded memory (see logs) |
+| **Emergent Scheduler** | ⚠️ Prototype | Simulation coverage | Fairness tracked in logs |
+| **System Calls** | ⚠️ Partial | Partial coverage | Subset implemented; see `src/cpp_kernel/os/SyscallDispatcher.h` |
 | **Memory Management** | ⚠️ Partial | Basic | Page tables + ring3 map + user heap/stack window + brk/mmap remap |
 | **Virtual File System** | ⚠️ Partial | Basic | MemFS + BlockFS + per-process FD tables |
 | **BlockFS Persistence** | ⚠️ Prototype | Checksum + journal + corruption test | `/persist` fixed-slot store + checksum journal |
 | **I/O System** | ⚠️ Partial | Console + block + net loopback test | Console + block + net baseline + fast0 + IRQ EOI |
-| **Fast-Path I/O (fast0)** | ⚠️ Prototype | fastio bench | 33 cycles/byte (2MB loopback) |
+| **Fast-Path I/O (fast0)** | ⚠️ Prototype | fastio bench | Bench results in logs |
 | **FD Isolation** | ⚠️ Prototype | exec_vfs_test | Per-process file descriptor tables |
 | **Userspace Runner** | ⚠️ Prototype | Cooperative | In-kernel user tasks |
 | **Ring3 Smoke (UEFI)** | ⚠️ Prototype | UEFI smoke + exec | Exec smoke passes after user page-table rebuild |
-| **BraidShell** | ⚠️ Demo | Visual demo | Not integrated in kernel |
+| **BraidShell** | ⚠️ Demo | Visual demo | Telemetry only via metrics logs |
 | **UEFI Boot** | ✅ Working | Serial + framebuffer | Kernel + benchmarks |
 | **Framebuffer Dashboard** | ✅ Working | Visual | Panels + console + input |
 | **UI Input (Keyboard/Mouse)** | ✅ Working | Interactive | Dashboard selection + actions |
@@ -53,14 +53,14 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 
 ### **What's Left** 🚧
 
-| Component | Priority | Estimated Time | Dependencies |
-|-----------|----------|----------------|--------------|
-| More Utilities (ls, cat, ps) | High | 1-2 days | VFS, Scheduler |
-| User-Mode + ELF Loader | High | 1-2 weeks | Syscalls, scheduler (ring3 exec passes; expand isolation + syscall surface) |
-| Real Hardware Drivers | Medium | 1-2 weeks | Boot process |
-| Distributed Mode | Low | 2-4 weeks | Network layer |
-| Full IP/TCP Stack | Medium | 1-2 weeks | Network RX stability |
-| Network Transport (virtio-net RX/TX) | Medium | 1-2 weeks | RX online, TX stalls under load |
+| Component | Priority | Dependencies |
+|-----------|----------|--------------|
+| More Utilities (ls, cat, ps) | High | VFS, Scheduler |
+| User-Mode + ELF Loader | High | Syscalls, scheduler (ring3 exec passes; expand isolation + syscall surface) |
+| Real Hardware Drivers | Medium | Boot process |
+| Distributed Mode | Low | Network layer |
+| Full IP/TCP Stack | Medium | Network RX stability |
+| Network Transport (virtio-net RX/TX) | Medium | RX online, TX stalls under load |
 
 ---
 
@@ -70,11 +70,11 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 
 ```
 Torus A (32³ lattice) ⟲
-    ↓ projection (4.7KB)
+    ↓ projection (fixed size)
 Torus B (32³ lattice) ⟲
-    ↓ projection (4.7KB)
+    ↓ projection (fixed size)
 Torus C (32³ lattice) ⟲
-    ↓ projection (4.7KB)
+    ↓ projection (fixed size)
 (cycle repeats A→B→C→A)
 ```
 
@@ -124,60 +124,13 @@ RSE/
 
 ## 📈 Performance Metrics
 
-### **Achieved**
+No static performance numbers are kept here. Capture real metrics per run and store logs:
 
-| Metric | Single-Torus | Braided (Current) | Target |
-|--------|--------------|-------------------|--------|
-| **Throughput** | 16.8M events/sec | 16.8M/torus | 50M+ events/sec |
-| **Memory** | 150MB (O(1)) | 450MB (3×O(1)) | 450MB |
-| **Scheduler Fairness** | N/A | 1.0 (perfect) | 1.0 |
-| **CPU Utilization** | N/A | 100% | 100% |
-| **Fault Tolerance** | None | 2-of-3 | 2-of-3 |
-| **Context Switches** | N/A | 49 per 5000 ticks | <100 |
+- Kernel + UEFI benchmarks: `./scripts/run_full_system_test.sh` (use `NET_LOG_DIR` or `BOOT_LOG_DIR` to redirect logs).
+- Host baseline: `./scripts/run_linux_baseline.sh`.
+- BraidShell telemetry: set `RSE_METRICS_PATH` to a real metrics log.
 
-### **UEFI Kernel Benchmarks (QEMU, serial output)**
-
-Cycle-counted benchmarks averaged across 3 headless QEMU runs (TSC cycles):
-
-- **Compute**: 400,000 ops, 27,630,748 cycles (69 cycles/op)
-- **Memory**: 67,108,864 bytes, 2,301,450,865 cycles (34 cycles/byte)
-- **RAMFS File I/O**: 288 ops, 9,904,718 cycles (34,391 cycles/op)
-- **Fast-Path I/O (`/dev/fast0`)**: 2,097,152 bytes, 72,452,785 cycles (34 cycles/byte)
-- **UEFI FAT File I/O (USB disk)**: 144 ops, 2,119,454,926 cycles (14,718,437 cycles/op)
-- **UEFI Raw Block I/O (USB disk)**: 524,288 bytes, write 40,468,877 cycles (77 cycles/byte), read 39,997,075 cycles (76 cycles/byte)
-- **Virtio-Block I/O (disk)**: 512 bytes, write 11,673,098 cycles (22,798 cycles/byte), read 2,962,657 cycles (5,786 cycles/byte)
-- **Net ARP Probe (virtio-net RX)**: 64 bytes, 4,071,957 cycles
-- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 45,667,664 cycles
-- **HTTP Loopback**: 50,000 requests, 100,639,261 cycles (2,012 cycles/req)
-- **Init Device Smoke Tests**: /dev/blk0 (512B, 256 ops, 131,072 bytes, 0 mismatches, 1,913,877,922 cycles), /dev/loopback (13B echo, 13B read), /dev/net0 (16,384B tx, 16,384B rx, 37,313,274 cycles)
-
-Notes:
-- RAMFS is in-kernel (real ops, in-memory).
-- UEFI FAT I/O uses firmware Block I/O + Simple FS on a USB disk image.
-- UEFI Raw Block I/O uses firmware Block I/O on a raw USB disk image.
-- HTTP benchmark is loopback-only (no full IP stack yet). `/dev/net0` uses a minimal UDP echo path with virtio-net when present (UEFI SNP fallback).
-- Raw UDP/HTTP server uses actual RX path; proof runs are logged when an external sender is attached.
-- virtio-net RX is online (ARP probe receives 64-byte reply).
-- Proof log saved at `build/boot/proof.log` when captured.
-- Raw frame mode is available via `RSE_NET_RAW=1` for debugging.
-
-### **Linux Baseline (Host, Ubuntu 24.04.3 LTS)**
-
-Baseline captured with `scripts/run_linux_baseline.sh` (Python harness, single-threaded):
-
-- **Compute**: 5,000,000 ops in 3.80s (~1.32M ops/sec)
-- **Memory**: 268,435,456 bytes in 65.89s (~4.07 MB/sec)
-- **File I/O**: 512 ops in 0.018s (~29.1k ops/sec), 1,048,576 bytes (~59.6 MB/sec)
-- **HTTP Loopback**: permission denied (sandbox blocks sockets)
-
-### **vs Traditional OS**
-
-| Metric | Traditional OS | BraidedOS | Improvement |
-|--------|----------------|-----------|-------------|
-| **Scheduler Overhead** | 10-15% | <2% | **5-7× faster** |
-| **Syscall Overhead** | CPU mode switch | Per-torus dispatch | **100× faster** |
-| **Memory Bloat** | Unbounded | O(1) bounded | **Predictable** |
-| **Fault Recovery** | Manual restart | Automatic (2-of-3) | **Self-healing** |
+Comparative claims are deferred until benchmarks are captured and reviewed.
 
 ---
 
@@ -185,30 +138,30 @@ Baseline captured with `scripts/run_linux_baseline.sh` (Python harness, single-t
 
 ### **Phase 1: Braided Three-Torus System**
 - **Status**: ✅ Complete
-- **Tests**: 5/5 passing
+- **Tests**: Internal coverage
 - **Key Features**:
   - Three independent tori
-  - Projection exchange (4.2KB)
+  - Projection exchange (O(1))
   - Cyclic rotation (A→B→C→A)
-  - Zero consistency violations
+  - Consistency checks in tests
 
 ### **Phase 2: Boundary Coupling**
 - **Status**: ✅ Complete
-- **Tests**: 6/6 passing
+- **Tests**: Internal coverage
 - **Key Features**:
-  - 32 boundary constraints
-  - 4 global constraints
+  - Boundary constraints
+  - Global constraints
   - Corrective event generation
-  - Projection size: 4.7KB (O(1))
+  - Projection size: O(1)
 
 ### **Phase 3: Self-Healing**
 - **Status**: ✅ Complete
-- **Tests**: 7/8 passing
+- **Tests**: Internal coverage
 - **Key Features**:
   - Heartbeat failure detection
   - Automatic torus reconstruction
   - Process migration
-  - 2-of-3 redundancy
+  - Redundancy across tori
 
 ## 🗂️ Legacy Phase Plan (Historical)
 
@@ -219,9 +172,9 @@ current implementation status. Use the tables above for reality.
 - **Status**: ✅ Architecture Validated
 - **Tests**: Architecture complete
 - **Key Features**:
-  - 3 worker threads
+  - Threaded runtime
   - Lock-free projection exchange
-  - Adaptive braid interval (100-10,000 ticks)
+  - Adaptive braid interval
   - Performance monitoring
 
 ### **Legacy Phase 5: Memory Optimization**
@@ -230,47 +183,46 @@ current implementation status. Use the tables above for reality.
   - Allocator reuse (not recreation)
   - O(1) memory guarantee
   - Reset() method for kernel cleanup
-  - Fixed 450MB footprint
+  - Fixed footprint
 
 ### **Legacy Phase 6: Emergent Scheduler**
 - **Status**: ✅ Complete
-- **Tests**: 4/4 passing
+- **Tests**: Internal coverage
 - **Key Features**:
   - Per-torus independent scheduling
-  - CFS algorithm (perfect fairness)
+  - CFS algorithm (fairness tracked in logs)
   - Load balancing across tori
   - Process migration support
 
 ### **Legacy Phase 6.1: System Calls**
 - **Status**: ✅ Core Complete
-- **Tests**: 6/7 passing (exec/vfs + sys_wait + sys_ps + sys_stat + sys_pipe + sys_dup)
+- **Tests**: Partial coverage (exec/vfs + sys_wait + sys_ps + sys_stat + sys_pipe + sys_dup)
 - **Key Features**:
-  - 43 syscalls defined (POSIX-compatible)
-  - 15 syscalls implemented (wait reaping + ps snapshot + stat + pipe/dup)
+  - Syscall set defined (POSIX-compatible)
+  - Subset implemented (wait reaping + ps snapshot + stat + pipe/dup)
   - Per-torus dispatch (no global handler)
-  - 100× faster than traditional OS
 
 ### **Legacy Phase 6.2: Memory Management**
 - **Status**: ✅ Complete
-- **Tests**: 8/8 passing
+- **Tests**: Internal coverage
 - **Key Features**:
-  - Virtual memory (4GB address space)
+  - Virtual memory address space
   - Two-level page tables
   - Memory protection (R/W/X)
   - Physical frame allocator
 
 ### **Legacy Phase 6.3: Virtual File System**
 - **Status**: ✅ Complete
-- **Tests**: 8/8 passing
+- **Tests**: Internal coverage
 - **Key Features**:
   - POSIX-compatible file operations
   - In-memory filesystem (MemFS)
-  - File descriptors (1024 per process)
+  - File descriptors per process
   - Dynamic file growth
 
 ### **Legacy Phase 6.4: I/O System**
 - **Status**: ✅ Complete
-- **Tests**: 4/4 passing
+- **Tests**: Internal coverage
 - **Key Features**:
   - Device abstraction layer
   - Console driver (stdin/stdout/stderr)
@@ -281,7 +233,7 @@ current implementation status. Use the tables above for reality.
 - **Status**: ✅ Part 1 Complete
 - **Key Features**:
   - Cyberpunk aesthetic (neon colors, ASCII art)
-  - Real-time system stats
+  - Telemetry display (no static metrics)
   - Commands: info, torus, perf, matrix
   - Visual demos (HTML screenshots)
 
@@ -292,7 +244,7 @@ current implementation status. Use the tables above for reality.
 This roadmap is preserved from early planning and does not reflect current
 execution reality.
 
-### **Immediate (1-2 weeks)**
+### **Immediate**
 1. **Phase 6.5 Part 2**: More utilities
    - `ls` - File browser with visual flair
    - `cat` - File viewer
@@ -305,14 +257,14 @@ execution reality.
    - Mount root filesystem
    - Start BraidShell
 
-### **Short-Term (2-4 weeks)**
+### **Short-Term**
 3. **Phase 7**: Real Hardware
    - Keyboard/VGA drivers
    - Disk drivers (ATA, AHCI)
    - Interrupt handling (IRQs)
    - Hardware MMU integration
 
-### **Medium-Term (1-3 months)**
+### **Medium-Term**
 4. **Phase 8**: Optimization
    - Benchmark on real hardware
    - Profile and optimize hot paths
@@ -324,7 +276,7 @@ execution reality.
    - Geographic distribution
    - Multi-machine fault tolerance
 
-### **Long-Term (3-6 months)**
+### **Long-Term**
 6. **Phase 10**: Production Hardening
    - Security audit
    - Stress testing
@@ -422,15 +374,15 @@ make
 
 ### **Technical**
 - ✅ Eliminated global scheduler bottleneck
-- ✅ Achieved perfect scheduler fairness (1.0)
-- ✅ Implemented automatic fault tolerance (2-of-3)
-- ✅ Maintained O(1) memory usage (450MB)
-- ✅ Built 100× faster syscalls (per-torus dispatch)
-- ✅ Created self-healing system (automatic reconstruction)
+- ✅ Scheduler fairness tracked in logs
+- ✅ Automatic fault tolerance (multi-torus redundancy)
+- ✅ Bounded memory usage (O(1))
+- ✅ Per-torus syscall dispatch
+- ✅ Self-healing reconstruction path
 
 ### **Code Quality**
-- ✅ ~13,500 lines of production C++
-- ✅ 90% test pass rate (45/50 tests)
+- ✅ Line count tracked in repo
+- ✅ Test coverage tracked in logs
 - ✅ Comprehensive documentation
 - ✅ Clean architecture (modular, testable)
 
@@ -444,7 +396,7 @@ make
 
 ## 🎯 Success Criteria
 
-### **Minimum Viable OS** (85% Complete ✅)
+### **Minimum Viable OS** (in progress)
 - [x] Process scheduler
 - [x] Memory management
 - [x] File system
@@ -453,7 +405,7 @@ make
 - [ ] Boot process
 - [ ] Basic utilities
 
-### **Production-Ready OS** (Target: Q1 2026)
+### **Production-Ready OS**
 - [ ] Real hardware support
 - [ ] Full POSIX compatibility
 - [ ] Security hardening
@@ -461,7 +413,7 @@ make
 - [ ] Comprehensive testing
 - [ ] Documentation
 
-### **Revolutionary OS** (Target: Q2 2026)
+### **Revolutionary OS**
 - [ ] Distributed mode
 - [ ] Heterogeneous tori (CPU, GPU, I/O)
 - [ ] Automatic scaling
@@ -500,7 +452,7 @@ This OS is not built on traditional hierarchies. It's built on:
 
 ---
 
-**Status**: 45% Complete (Prototype) | **Next Milestone**: User-mode isolation + ELF loader
+**Status**: Prototype | **Next Milestone**: User-mode isolation + ELF loader
 
 **Last Updated**: December 27, 2025 (user guard tests + BlockFS checksum journal + net loopback + full system test pass)
 

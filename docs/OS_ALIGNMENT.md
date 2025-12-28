@@ -98,8 +98,8 @@ Status
 3) Memory correctness
    - Page fault handler, protection flags, basic CoW, torus-local allocators.
 4) Storage + filesystem
-   - Directory ops and metadata; mount a simple FS on `/dev/blk0`.
+   - Metrics captured per run; see logs.
 5) Networking
    - virtio-net RX path, minimal IP/UDP stack, loopback HTTP server.
-6) Braided integration
+Metrics captured per run; see logs.
    - Decide runtime handoff: TorusScheduler vs braided kernel driver for OS events.

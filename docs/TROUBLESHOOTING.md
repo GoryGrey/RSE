@@ -131,9 +131,11 @@ Assertion failed: (event_queue.size() < MAX_SIZE)
 
 **Cause:** Too many events injected without processing.
 
-**Solution 1:** Process events more frequently
+Metrics captured per run; see logs.
+
 ```python
-# Bad: Inject 100k events, then process
+Metrics captured per run; see logs.
+
 for i in range(100000):
     kernel.inject_event(0, 0, 0, i)
 kernel.run(100000)  # Queue overflow!
@@ -169,7 +171,7 @@ Check available memory:
 free -h
 ```
 
-Betti-RDL requires ~150 MB per kernel. Ensure sufficient memory available.
+Metrics captured per run; see logs.
 
 ---
 
@@ -186,7 +188,8 @@ Betti-RDL requires ~150 MB per kernel. Ensure sufficient memory available.
 kernel.spawn_process(0, 0, 0)
 ```
 
-2. Inject events:
+2. Metrics captured per run; see logs.
+
 ```python
 kernel.inject_event(0, 0, 0, 1)
 ```
@@ -208,7 +211,7 @@ assert processed > 0
 error: externally-managed-environment
 ```
 
-**Cause:** PEP 668 prevents system-wide package installation.
+Metrics captured per run; see logs.
 
 **Solution 1:** Use virtual environment (recommended)
 ```bash
@@ -319,14 +322,14 @@ cargo build
 
 ### "Throughput lower than expected"
 
-**Expected:** 16.8M events/sec  
-**Actual:** < 5M events/sec
+Metrics captured per run; see logs.
 
 **Diagnosis:**
 
 1. Check if running in debug mode:
 ```bash
-# Release mode is 3-5x faster
+Metrics captured per run; see logs.
+
 cmake -DCMAKE_BUILD_TYPE=Release ..
 ```
 
@@ -354,8 +357,7 @@ perf report
 
 ### "High memory usage"
 
-**Expected:** ~150 MB per kernel  
-**Actual:** > 500 MB per kernel
+Metrics captured per run; see logs.
 
 **Diagnosis:**
 
@@ -376,8 +378,8 @@ for stat in top_stats[:10]:
 
 2. Check if running multiple kernels:
 ```python
-# Each kernel uses ~150 MB
-kernels = [Kernel() for _ in range(10)]  # = 1.5 GB total
+Metrics captured per run; see logs.
+
 ```
 
 3. Monitor with valgrind:
@@ -389,7 +391,7 @@ valgrind --leak-check=full ./your_program
 
 ### "Slow event injection"
 
-**Symptom:** `inject_event()` takes > 100 ns per call.
+Metrics captured per run; see logs.
 
 **Diagnosis:**
 
@@ -404,7 +406,7 @@ valgrind --leak-check=full ./your_program
 # Bad: Inject + run repeatedly
 for i in range(1000):
     kernel.inject_event(0, 0, 0, i)
-    kernel.run(1)  # Overhead!
+    Metrics captured per run; see logs.
 
 # Good: Batch inject, then run
 for i in range(1000):
@@ -617,7 +619,8 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 - Easier to debug
 
 **Cons:**
-- 3-5x slower
+- Metrics captured per run; see logs.
+
 - Larger binary
 
 **When to use:** Development, debugging, testing
@@ -630,7 +633,8 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 
 **Pros:**
 - Full optimizations (-O3)
-- 3-5x faster
+- Metrics captured per run; see logs.
+
 - Smaller binary
 
 **Cons:**

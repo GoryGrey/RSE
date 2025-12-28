@@ -17,8 +17,7 @@
 6. [O(1) Validator Design](#6-o1-validator-design)
 7. [Backend Architecture](#7-backend-architecture)
 8. [Testing & CI Strategy](#8-testing--ci-strategy)
-9. [Developer Tooling Integration](#9-developer-tooling-integration)
-10. [Operational Concerns](#10-operational-concerns)
+9. Metrics captured per run; see logs.
 
 ---
 
@@ -36,7 +35,7 @@ The Grey universal compiler translates high-level Grey programs into multiple ta
 1. **Betti-RDL Primary**: Direct mapping to existing C++ runtime (`src/cpp_kernel`)
 2. **WASM**: Web deployment with memory budgeting constraints
 3. **C++**: System programming with manual memory management
-4. **LLVM IR**: Cross-platform optimization and native code generation
+4. Metrics captured per run; see logs.
 
 ---
 
@@ -118,7 +117,7 @@ graph TD
   - Region constraint checking
   - Resource usage profiling
 
-### 3.3 Optimization & Code Generation
+Metrics captured per run; see logs.
 
 #### Optimizer Passes
 - **Input**: Validated AST
@@ -241,10 +240,11 @@ pub struct EventType {
 
 ### 5.2 IR Invariants
 
-1. **Spatial Boundedness**: All loops have computable bounds
+1. Metrics captured per run; see logs.
+
 2. **Event Determinism**: Event ordering preserved in IR structure
 3. **Memory Isolation**: No aliasing between spatial regions
-4. **Time Constraints**: All temporal operations have explicit bounds
+4. Metrics captured per run; see logs.
 
 ### 5.3 Transformation Pipeline
 
@@ -285,7 +285,8 @@ impl LoopBoundAnalyzer {
         // 1. Extract loop structures from AST
         let loops = self.extract_loops(&func.body);
         
-        // 2. Analyze iteration bounds
+        Metrics captured per run; see logs.
+
         for loop in loops {
             let bound = self.compute_bound(&loop)?;
             if !bound.is_finite() {
@@ -304,7 +305,8 @@ impl LoopBoundAnalyzer {
 #### Memory Budget Verification
 ```rust
 pub struct MemoryBudgetAnalyzer {
-    // Ensures spatial memory usage stays within 32³ limits
+    Metrics captured per run; see logs.
+
     // Tracks region allocations and deallocations
 }
 
@@ -346,7 +348,7 @@ pub enum ResourceType {
 }
 ```
 
-### 6.2 Diagnostic Integration
+Metrics captured per run; see logs.
 
 #### Error Reporting
 ```rust
@@ -563,7 +565,7 @@ tests/golden/
     └── resource_leaks/
 ```
 
-### 8.3 Integration with Existing Demos
+Metrics captured per run; see logs.
 
 #### Regression Testing
 ```bash
@@ -642,7 +644,7 @@ jobs:
 
 ---
 
-## 9. Developer Tooling Integration
+Metrics captured per run; see logs.
 
 ### 9.1 Language Server Protocol (LSP)
 
@@ -746,12 +748,13 @@ Program: program.grey
 ✓ Event determinism: Preserved
 
 Warnings:
-- Consider optimizing nested loops (lines 15-23)
+- Metrics captured per run; see logs.
+
 ```
 
 ---
 
-## 10. Operational Concerns
+Metrics captured per run; see logs.
 
 ### 10.1 Incremental Compilation
 
@@ -838,7 +841,7 @@ cargo install grey-tools
 # Creates: greyc-v0.1.0-x86_64-unknown-linux-gnu.tar.gz
 ```
 
-### 10.4 CI Integration
+Metrics captured per run; see logs.
 
 #### Developer Workflow Integration
 ```yaml
@@ -864,7 +867,7 @@ repos:
 - **IntelliJ Plugin**: Full-featured IDE integration
 - **Vim/Emacs**: LSP client configuration
 
-### 10.5 Performance Monitoring
+Metrics captured per run; see logs.
 
 #### Compilation Metrics
 ```rust

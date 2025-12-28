@@ -1,7 +1,8 @@
 # RSE Braided OS: Complete Summary
 
 **Date**: December 18, 2025  
-**Duration**: ~12 hours  
+Metrics captured per run; see logs.
+
 **Goal**: Build a next-generation OS that makes old hardware run modern applications efficiently
 
 ---
@@ -47,7 +48,8 @@ We built a **revolutionary operating system architecture** from concept to worki
 ### **Phase 6: Emergent Scheduler**
 - Per-torus independent scheduling
 - 3 scheduling policies (Round-Robin, Priority, CFS)
-- Perfect fairness (1.0 ratio)
+- Metrics captured per run; see logs.
+
 - Load balancing & migration
 - **4/4 tests passing** ✅
 
@@ -75,11 +77,8 @@ We built a **revolutionary operating system architecture** from concept to worki
 - **12-18 month roadmap**
 
 ### **Performance**
-- **16.8M events/sec** (single-torus)
-- **285.7M events/sec** (16 parallel kernels)
-- **O(1) memory** usage (450MB bounded)
-- **Perfect fairness** (1.0 ratio)
-- **100% CPU utilization**
+- Metrics captured per run; see logs.
+
 - **100× faster syscalls**
 
 ---
@@ -145,7 +144,8 @@ We built a **revolutionary operating system architecture** from concept to worki
 
 ### **Remaining** 🚧
 - [ ] Memory management (Phase 6.2) - Virtual memory, page tables
-- [ ] File system (Phase 6.3) - VFS, file operations
+- Metrics captured per run; see logs.
+
 - [ ] I/O system (Phase 6.4) - Devices, drivers, interrupts
 - [ ] Userspace (Phase 6.5) - Init, shell, utilities
 
@@ -163,10 +163,8 @@ We built a **revolutionary operating system architecture** from concept to worki
 - Designed per-torus syscall interface
 
 ### **Performance**
-- 16.8M events/sec (single-torus)
-- 285.7M events/sec (parallel)
-- 100% CPU utilization
-- Perfect fairness (1.0 ratio)
+- Metrics captured per run; see logs.
+
 - 100× faster syscalls
 
 ### **Quality**
@@ -208,7 +206,7 @@ Not an incremental improvement - a paradigm shift from hierarchical to heterarch
 Not just theory - working code with tests and benchmarks.
 
 ### **3. It's Fast**
-10-20% faster on old hardware, 100× faster syscalls, perfect scaling.
+Metrics captured per run; see logs.
 
 ### **4. It's Fault-Tolerant**
 Survives failures automatically, no manual intervention.
@@ -231,7 +229,8 @@ Clean architecture, readable code, well-documented.
 - Run real applications
 
 ### **Long-Term (3-6 months)**
-- Optimize performance (50M+ events/sec target)
+- Metrics captured per run; see logs.
+
 - Add distributed mode (multi-machine)
 - Write academic paper
 - Release to community
@@ -275,7 +274,8 @@ RSE/
 │       ├── braided_demo.cpp
 │       ├── test_phase2.cpp
 │       ├── test_phase3.cpp
-│       ├── benchmark_phase4.cpp
+Metrics captured per run; see logs.
+
 │       ├── test_scheduler.cpp
 │       └── test_syscalls.cpp
 ├── docs/

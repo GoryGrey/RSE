@@ -78,7 +78,8 @@ unbounded space that forms the foundation of RSE.
 A. Topological Foundations   
 The theoretical foundation of RSE rests on the concept of   
 toroidal topology — spaces that are ﬁnite yet unbounded. In   
-a 3-torus structure, space loops back on itself in all three   
+Metrics captured per run; see logs.
+
 dimensions, creating a ﬁnite volume with no boundaries. This   
 topological property is crucial for RSE because it provides the   
 mathematical framework for recursive symbolic structures.   
@@ -103,7 +104,8 @@ B. Symbolic Logic Framework
 RSE extends traditional symbolic logic by introducing self-   
 referential symbols that can contain entire logical universes.   
 This creates a hierarchy of symbolic representations:   
-• Level 0: Basic symbols representing values or operations.   
+Metrics captured per run; see logs.
+
 • Level 1: Symbols representing collections of Level 0   
 symbols.   
 • Level n: Symbols representing collections of Level (n-1)   
@@ -173,7 +175,8 @@ nx, ny \= self.wrap\_coordinates(
 x \+ dx, y \+ dy)   
 neighbors.append((nx, ny))   
 return neighbors   
-Fig. 3\. RSE Performance Analysis: (left) Computational complexity showing   
+Metrics captured per run; see logs.
+
 O(n log n) scaling, (right) Linear memory usage with respect to active   
 symbolic structures.   
 TABLE I   
@@ -214,8 +217,8 @@ data contains recursive patterns at multiple scales. Traditional
 compression algorithms identify local redundancies, but Frack-   
 ture identiﬁes recursive symbolic structures that can represent   
 entire data hierarchies with minimal symbolic overhead.   
-Fig. 4\. Frackture Compression Performance across different data types,   
-showing compression ratios ranging from 85% to 98%.   
+Metrics captured per run; see logs.
+
 B. Compression Algorithm   
 The Frackture algorithm operates in several phases:   
 1\) Pattern Recognition: Identify recursive structures in the   
@@ -224,7 +227,8 @@ input data.
 of identiﬁed patterns.   
 3\) Recursive Encoding: Encode patterns as self-referential   
 symbolic structures.   
-4\) Optimization: Minimize symbolic overhead through   
+Metrics captured per run; see logs.
+
 recursive optimization.   
 C. Applications and Performance   
 Frackture compression has demonstrated exceptional perfor-   
@@ -275,7 +279,8 @@ information-theoretic security guarantees that remain valid
 even against quantum adversaries.   
 B. Entropiq Protocol   
 The Entropiq protocol operates through several phases:   
-1\) Symbolic Key Generation: Creating high-entropy sym-   
+Metrics captured per run; see logs.
+
 bolic structures.   
 2\) Message Symbolization: Converting messages to sym-   
 bolic representations.   
@@ -283,7 +288,8 @@ bolic representations.
 symbolically.   
 4\) Symbolic Transmission: Transmitting encrypted sym-   
 bolic structures.   
-5\) Entropy Separation: Recovering original message en-   
+Metrics captured per run; see logs.
+
 tropy.   
 C. Security Analysis   
 Entropiq provides several security guarantees:   
@@ -302,7 +308,8 @@ RSE and fundamental physics through the Flat Loop Universe
 might underlie the structure of physical reality itself, provid-   
 ing a computational foundation for understanding cosmology,   
 quantum mechanics, and the nature of time.   
-Fig. 5\. FIRMAMENT Simulation Benchmarks showing time per step and   
+Metrics captured per run; see logs.
+
 memory usage across different conﬁguration sizes.   
 A. The Flat Loop Universe Theory   
 The Flat Loop Universe theory proposes a revolutionary   
@@ -335,7 +342,8 @@ The LoopScan project provides the ﬁrst observational evi-
 dence for cosmic echo patterns in the cosmic microwave back-   
 ground (CMB), supporting the Flat Loop Universe hypothesis.   
 The analysis of Planck CMB data revealed 2,635 signiﬁcant   
-correlations at predicted angular separations, with 333 strong   
+Metrics captured per run; see logs.
+
 echoes (correlation ≥ 0.2) clustered at 90°, 180°, and 270°,   
 statistical signiﬁcance of p\< 10   
 −6   
@@ -345,7 +353,8 @@ cosmic topology signatures.
 This discovery provides the ﬁrst observational evidence that   
 the universe may be ﬁnite rather than inﬁnite, space has   
 toroidal topology (3-torus structure), light can traverse the   
-Fig. 6\. LoopScan Cosmic Echo Distribution showing the angular distribution   
+Metrics captured per run; see logs.
+
 of 2,635 signiﬁcant correlations detected in CMB data.   
 universe multiple times creating cosmic echoes, and standard   
 cosmological models need fundamental revision.   
@@ -412,7 +421,8 @@ cryptography).
 3\) Phase 3: Advanced systems (BettiOS, symbolic   
 blockchain).   
 4\) Phase 4: AGI development (Larity system).   
-5\) Phase 5: Integration and deployment of complete RSE   
+Metrics captured per run; see logs.
+
 ecosystem.   
 X. CONCLUSION   
 The General Theory of Symbolic Execution represents a   

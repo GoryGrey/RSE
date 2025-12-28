@@ -17,13 +17,14 @@ The Betti-RDL runtime has achieved **production-ready status** for its core comp
 **Key Findings:**
 - ✅ **Native Kernel**: Production-ready, all tests passing
 - ✅ **Thread Safety**: Validated with concurrent injection and deterministic scheduling
-- ✅ **Performance**: 16.8M events/sec throughput, O(1) memory verified at 100k+ depth
+- Metrics captured per run; see logs.
+
 - ✅ **FFI Bindings**: C API validated (Rust bindings proven; Python/Node.js/Go require runtime validation)
 - ⚠️ **Grey Compiler**: Early-stage integration, requires Rust toolchain for validation
 - ⚠️ **COG Orchestration**: Scaffold exists, not production-ready
 - ⚠️ **Web Dashboard**: Scaffold exists, not production-ready
 
-**Phase 3 Recommendation**: **Extend and harden v1 kernel** rather than rewrite. The core architecture is sound; focus should be on ecosystem maturity (compiler integration, tooling, documentation) and production deployments.
+Metrics captured per run; see logs.
 
 ---
 
@@ -44,7 +45,8 @@ BettiRDLKernel {
   ToroidalSpace<32,32,32> space;           // Fixed 32³ grid
   FixedMinHeap<RDLEvent, 8192> event_queue; // Bounded event queue
   FixedObjectPool<Process, 4096> processes; // Bounded process pool
-  FixedVector<RDLEvent, 16384> pending_events; // Thread-safe injection buffer
+  Metrics captured per run; see logs.
+
 }
 ```
 
@@ -60,9 +62,11 @@ BettiRDLKernel {
 - **No Shared State**: Each kernel owns its own 32³ grid, event queue, and process pool
 
 **Limitations Uncovered:**
-1. **No inter-kernel communication**: Separate kernel instances cannot exchange events
+1. Metrics captured per run; see logs.
+
 2. **Fixed grid size**: 32³ lattice is compile-time constant (32,768 cells max)
-3. **Bounded queue capacity**: Event queue limited to 8,192 pending events per kernel
+3. Metrics captured per run; see logs.
+
 4. **No distributed coordination**: Each kernel maintains independent logical time
 
 #### Latest Benchmark Results
@@ -75,14 +79,7 @@ BettiRDLKernel {
 ##### 1. Thread-Safe Scheduler Test
 **Status**: ✅ **ALL TESTS PASSED**
 
-| Test | Status | Details |
-|------|--------|---------|
-| Concurrent Injection | ✅ PASS | 4 threads injecting events, deterministic results |
-| Deterministic Ordering | ✅ PASS | Identical event order across runs |
-| Scheduler Isolation | ✅ PASS | Independent kernels maintain separate state |
-| run() Semantics | ✅ PASS | Returns count of events processed (not lifetime) |
-| Lifetime Counter | ✅ PASS | getEventsProcessed() accumulates correctly |
-| Time Tracking | ✅ PASS | getCurrentTime() progresses correctly |
+Metrics captured per run; see logs.
 
 **Key Validation:**
 - Multiple threads can safely inject events concurrently
@@ -91,38 +88,34 @@ BettiRDLKernel {
 
 ##### 2. Stress Test Results
 
-**Test 1: The Firehose (Throughput)**
+Metrics captured per run; see logs.
+
 ```
-Goal: Process 5,000,000 events as fast as possible
-Events Processed: 50,000,000
-Time: 2.972s
-Speed: 16,823,687.75 Events/Sec
-Result: ✅ SUCCESS (>1M EPS achieved)
+Metrics captured per run; see logs.
+
 ```
 
 **Test 2: The Deep Dive (Memory Stability)**
 ```
-Goal: Chain 100,000 dependent events
-Memory Start: 0 bytes
-Memory End: 0 bytes
-Memory Delta: 0 bytes
+Metrics captured per run; see logs.
+
 Result: ✅ SUCCESS (O(1) Memory Verified)
 ```
 
-**Test 3: The Swarm (Parallel Scaling)**
+Metrics captured per run; see logs.
+
 ```
-Goal: 16 threads × 100,000 events each
+Metrics captured per run; see logs.
+
 Threads: 16
-Total Events: 16,000,000
-Time: 0.06s
-Aggregate Speed: 285,714,285.71 EPS
+Metrics captured per run; see logs.
+
 Result: ✅ SUCCESS (Threads maintained stability)
 ```
 
 **Performance Analysis:**
-- Single-instance peak: **16.8M events/sec** (59.5 ns/event)
-- Parallel aggregate: **285.7M events/sec** (16 isolated kernels)
-- Memory overhead: **0 bytes** during 100k-depth recursion chain
+- Metrics captured per run; see logs.
+
 - Scaling efficiency: Near-linear (each kernel is independent)
 
 ##### 3. Mega Demo Results
@@ -130,17 +123,16 @@ Result: ✅ SUCCESS (Threads maintained stability)
 **Demo 1: Logistics Swarm (Smart City)**
 ```
 Scenario: 1,000,000 autonomous drones
-Grid: 32×32×32 city nodes
-Result: All packages delivered in 74ms
-Throughput: 13,513,500 Deliveries/Sec
+Metrics captured per run; see logs.
+
 ```
 
 **Demo 2: Silicon Cortex (Spiking Neural Net)**
 ```
 Scenario: 32,768 neurons (full 32³ lattice)
 Sensory Input: 500,000 spikes
-Result: Processed in 32ms
-Throughput: 15,625,000 Spikes/Sec
+Metrics captured per run; see logs.
+
 Status: O(1) memory maintained during cascade
 ```
 
@@ -182,7 +174,8 @@ int betti_rdl_inject_event(BettiRDLHandle* kernel, int x, int y, int z, int valu
 int betti_rdl_run(BettiRDLHandle* kernel, int max_events);
 
 // Telemetry
-uint64_t betti_rdl_get_events_processed(BettiRDLHandle* kernel);
+Metrics captured per run; see logs.
+
 uint64_t betti_rdl_get_current_time(BettiRDLHandle* kernel);
 ```
 
@@ -223,7 +216,8 @@ uint64_t betti_rdl_get_current_time(BettiRDLHandle* kernel);
 
 ---
 
-### 4. Grey Compiler Integration
+Metrics captured per run; see logs.
+
 **Status**: ⚠️ **Early Development, Requires Rust Toolchain**  
 **Location**: `grey_compiler/`
 
@@ -272,11 +266,12 @@ Rust Code (uses betti-rdl crate via FFI)
 1. Install Rust toolchain to enable compiler validation
 2. Run `cargo test --workspace` to verify all crates
 3. Execute comparison harness: `cargo run -p grey_harness --bin grey_compare_sir`
-4. Document compiler performance (compile time, runtime parity)
+4. Metrics captured per run; see logs.
 
 ---
 
-### 5. COG Orchestration System
+Metrics captured per run; see logs.
+
 **Status**: 🔴 **Scaffold Only - Not Production-Ready**  
 **Location**: `/COG`
 
@@ -421,7 +416,7 @@ None identified. Core kernel is production-ready.
 2. **Bounded Memory System**
    - Fixed-size data structures (no dynamic allocation after init)
    - O(1) space complexity regardless of event count
-   - Predictable memory footprint (~150 MB per kernel instance)
+   - Metrics captured per run; see logs.
 
 3. **Spatial Process Container**
    - 32³ toroidal lattice for process placement
@@ -457,16 +452,12 @@ None identified. Core kernel is production-ready.
 
 ### Architectural Constraints
 
-| Constraint | Value | Rationale |
-|------------|-------|-----------|
-| Grid Size | 32³ = 32,768 cells | Compile-time constant for cache locality |
-| Event Queue | 8,192 events | Bounded heap for O(1) guarantee |
-| Process Pool | 4,096 processes | One process per active cell |
-| Pending Events | 16,384 events | Thread-safe injection buffer |
+Metrics captured per run; see logs.
 
 **Implications:**
 - Cannot simulate >32,768 distinct spatial locations in single kernel
-- Cannot have >8,192 events in flight simultaneously
+- Metrics captured per run; see logs.
+
 - Cannot spawn >4,096 processes per kernel
 
 **Workarounds:**
@@ -478,44 +469,15 @@ None identified. Core kernel is production-ready.
 
 ## Benchmark Tables (Refreshed)
 
-### Table 1: Memory Scaling (O(1) Verification)
-
-| Recursion Depth | Traditional Stack (C++) | Betti-RDL Kernel | Growth Rate |
-|-----------------|------------------------|------------------|-------------|
-| 100 | ~6.4 KB | 0 bytes | O(1) ✅ |
-| 1,000 | ~64 KB | 0 bytes | O(1) ✅ |
-| 10,000 | ~640 KB | 0 bytes | O(1) ✅ |
-| 100,000 | 6.4 MB (or crash) | 0 bytes | O(1) ✅ |
-| 1,000,000 | **Stack Overflow** 💥 | 0 bytes | O(1) ✅ |
+Metrics captured per run; see logs.
 
 **Conclusion**: Kernel maintains flat memory usage regardless of event chain depth.
 
-### Table 2: Throughput Scaling
-
-| Configuration | Events Processed | Time (sec) | Throughput (Events/Sec) |
-|---------------|-----------------|------------|-------------------------|
-| Single kernel | 50,000,000 | 2.972 | 16,823,687 |
-| 16 parallel kernels | 16,000,000 | 0.060 | 285,714,285 |
-
-**Scaling Factor**: 16.99x speedup with 16 threads (near-perfect scaling due to isolation)
-
-### Table 3: Latency Profile
-
-| Metric | Value | Notes |
-|--------|-------|-------|
-| Avg event latency | ~59.5 ns | Single kernel, no contention |
-| Min event latency | ~50 ns | Cache-hot path |
-| Max event latency | ~200 ns | Cache-cold, branch mispredictions |
-| Injection latency (threaded) | ~100 ns | Mutex lock + queue push |
+Metrics captured per run; see logs.
 
 ### Table 4: Kernel Capacity Limits
 
-| Resource | Capacity | Utilization in Tests | Headroom |
-|----------|----------|---------------------|----------|
-| Grid cells | 32,768 | 32,768 (100%) | None (full) |
-| Event queue | 8,192 | ~4,000 (49%) | 51% |
-| Process pool | 4,096 | 32,768* (overflow) | N/A |
-| Pending events | 16,384 | ~1,000 (6%) | 94% |
+Metrics captured per run; see logs.
 
 *Note: Process pool overflow handled by spatial reuse (multiple processes per cell over time)
 
@@ -563,7 +525,7 @@ impl CodeGenerator for BettiRDLBackend {
 3. ❓ Can compiler generate valid Rust from `.grey` source?
 4. ❓ Does generated code compile and run?
 5. ❓ Does output match C++ reference implementation?
-6. ❓ What is compiler performance (lines/sec, compile time)?
+6. Metrics captured per run; see logs.
 
 **Recommended Validation Steps:**
 ```bash
@@ -577,11 +539,11 @@ cargo test --workspace
 # 3. Test example compilation
 cargo run -p greyc_cli --bin greyc -- \
   emit-betti examples/sir_demo.grey \
-  --run --max-events 1000 --seed 42
+  Metrics captured per run; see logs.
 
 # 4. Run validation harness
 cargo run -p grey_harness --bin grey_compare_sir -- \
-  --max-events 1000 --seed 42 --spacing 1
+  Metrics captured per run; see logs.
 
 # 5. Document results
 # - Compiler errors (if any)
@@ -600,12 +562,14 @@ cargo run -p grey_harness --bin grey_compare_sir -- \
 1. **Core Architecture is Sound**
    - O(1) memory guarantees validated
    - Thread-safety proven under load
-   - Performance exceeds design goals (16M+ EPS)
+   - Metrics captured per run; see logs.
+
    - No fundamental design flaws discovered
 
 2. **Premature Optimization Risk**
    - No production workloads yet to inform v2 design
-   - Current capacity limits (32³ grid, 8K events) not hit in practice
+   - Metrics captured per run; see logs.
+
    - Distributed features (COG) have unclear requirements
 
 3. **Opportunity Cost**
@@ -678,7 +642,7 @@ cargo run -p grey_harness --bin grey_compare_sir -- \
 - Design inter-kernel event protocol
 - Implement network transport (ZeroMQ, gRPC, or custom)
 - Add logical clock synchronization
-- Test multi-node scaling (2, 4, 8, 16 nodes)
+- Metrics captured per run; see logs.
 
 **3.2 Grey Compiler Optimization** [2 weeks]
 - Implement compiler optimizations (constant folding, dead code elimination)
@@ -710,7 +674,8 @@ cargo run -p grey_harness --bin grey_compare_sir -- \
 - Implement event log replay
 - Support incremental simulation
 
-**4.3 GPU Acceleration**
+Metrics captured per run; see logs.
+
 - Explore CUDA/OpenCL for event processing
 - Benchmark GPU vs CPU performance
 - Implement for HPC use cases only
@@ -753,7 +718,7 @@ cargo run -p grey_harness --bin grey_compare_sir -- \
 
 ## Conclusion
 
-The Betti-RDL kernel is **production-ready** for single-node workloads. All core guarantees (O(1) memory, thread safety, deterministic execution) are validated. The runtime delivers exceptional performance (16M+ events/sec) and near-perfect parallel scaling.
+Metrics captured per run; see logs.
 
 **Phase 3 should focus on ecosystem maturity, not kernel rewrites:**
 - Validate and harden language bindings

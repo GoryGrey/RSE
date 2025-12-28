@@ -2,7 +2,7 @@
 
 **Date**: December 18, 2025
 
-**Duration**: ~12 hours of intensive development
+Metrics captured per run; see logs.
 
 ---
 
@@ -20,7 +20,8 @@ In just one day, we went from concept to a production-ready, fault-tolerant, par
 **Goal**: Prove the concept works
 
 **Implemented**:
-- Three independent toroidal lattices (32×32×32 each)
+- Metrics captured per run; see logs.
+
 - Projection exchange system (4.2KB constant-size projections)
 - Cyclic constraint rotation (A→B→C→A)
 - Braid coordinator
@@ -60,13 +61,14 @@ In just one day, we went from concept to a production-ready, fault-tolerant, par
 
 **Critical Fix**: Implemented allocator reuse to maintain O(1) memory usage
 - Added `reset()` methods to BettiRDLKernel, FixedObjectPool, ToroidalSpace
-- Memory stays constant at ~450MB (3 kernels × 150MB)
+- Metrics captured per run; see logs.
+
 - Test 8 now survives 6+ failures (was 0 before fix)
 
 ---
 
 ### Phase 4: Parallel Execution (Complete)
-**Goal**: Unlock multi-core performance (50M+ events/sec)
+Metrics captured per run; see logs.
 
 **Implemented**:
 - Parallel torus execution (3 worker threads)
@@ -83,21 +85,18 @@ In just one day, we went from concept to a production-ready, fault-tolerant, par
 ## 📊 Performance Achievements
 
 ### Single-Torus Baseline
-- **Throughput**: 16.8M events/sec
-- **Memory**: 150MB per kernel
-- **Latency**: ~60ns per event
+- Metrics captured per run; see logs.
 
 ### Braided-Torus (Phase 1-3)
-- **Throughput**: ~16M events/sec (similar to single-torus)
-- **Overhead**: <2% from braid coordination
-- **Memory**: O(1) - stays constant at 450MB
+- Metrics captured per run; see logs.
+
 - **Fault Tolerance**: Survives 6+ consecutive failures
 
 ### Braided-Torus V4 (Phase 4 - Parallel)
 - **Architecture**: 3 worker threads + 1 coordinator
 - **Coordination**: Lock-free atomic operations
 - **Adaptive**: Braid interval adjusts from 100 to 10,000 ticks
-- **Target**: 50M+ events/sec (3× single-torus)
+- Metrics captured per run; see logs.
 
 ---
 
@@ -138,7 +137,8 @@ Not a hierarchy (OSI layers), but a braid (DNA-like):
 ### 2. **O(1) Coordination**
 Projections are constant-size (4.7KB), not proportional to system size:
 - 32 boundary states (x=0 face)
-- 4 global constraints (time, events, processes, edges)
+- Metrics captured per run; see logs.
+
 - Hash verification for integrity
 
 ### 3. **Self-Correction**
@@ -180,7 +180,8 @@ You have a **production-ready computational runtime** that:
 ### Medium-Term (3-6 months)
 Foundation for a **distributed computing platform**:
 - Deploy each torus on a different machine
-- Geographic distribution with <10ms latency tolerance
+- Metrics captured per run; see logs.
+
 - Turn a cluster of old laptops into a fault-tolerant supercomputer
 
 ### Long-Term (1-2 years)
@@ -241,10 +242,10 @@ Foundation for a **distributed computing platform**:
    - Projection exchange, cyclic rotation, 5/5 tests passing
 
 2. **feat: Implement boundary coupling (Phase 2)**
-   - Constraint propagation, corrective events, 6/6 tests passing
+   - Metrics captured per run; see logs.
 
 3. **feat: Implement self-healing (Phase 3)**
-   - Failure detection, reconstruction, migration, 7/8 tests passing
+   - Metrics captured per run; see logs.
 
 4. **fix: Implement allocator reuse for O(1) memory**
    - Added reset() methods, Test 8 now survives 6+ failures
@@ -262,8 +263,8 @@ Foundation for a **distributed computing platform**:
 ## 🔮 Next Steps
 
 ### Immediate (This Week)
-- Run full Phase 4 benchmark on dedicated hardware
-- Validate 50M+ events/sec target
+- Metrics captured per run; see logs.
+
 - Document performance characteristics
 
 ### Short-Term (Next Month)
@@ -292,7 +293,8 @@ Foundation for a **distributed computing platform**:
 - **Documentation**: Kept pace with implementation
 
 ### What Was Challenging
-- **Memory management**: Took 3 iterations to get allocator reuse right
+- Metrics captured per run; see logs.
+
 - **Parallel execution**: Lock-free coordination is tricky
 - **Performance testing**: Sandbox environment is resource-constrained
 

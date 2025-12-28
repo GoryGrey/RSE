@@ -21,7 +21,8 @@ We have successfully designed and implemented a **three-torus braided system** f
 1. **Projection System** (`Projection.h`)
    - Compact state summary (4.2KB constant size)
    - Hash-based integrity verification
-   - Boundary state capture (32×32 grid)
+   - Metrics captured per run; see logs.
+
    - Constraint vector for global invariants
 
 2. **Braid Coordinator** (`BraidCoordinator.h`)
@@ -63,7 +64,7 @@ We have successfully designed and implemented a **three-torus braided system** f
 ✓ Test 2: Projection Extraction and Verification
   - Projection extracted with correct ID
   - Projection hash verified
-  - Projection size: 4216 bytes (constant)
+  - Metrics captured per run; see logs.
 
 ✓ Test 3: Cyclic Rotation (A→B→C→A)
   - Completed 1 full braid cycle (3 exchanges)
@@ -86,9 +87,11 @@ We have successfully designed and implemented a **three-torus braided system** f
 ### Current State (Single-Torus RSE)
 
 **Strengths**:
-- Production-ready, world-class performance (16.8M events/sec)
+- Metrics captured per run; see logs.
+
 - O(1) memory guarantee (validated with 100,000+ event chains)
-- Near-perfect linear scaling with parallel kernels (285.7M events/sec with 16 kernels)
+- Metrics captured per run; see logs.
+
 - Clean, well-tested C++ core with Rust bindings
 
 **Limitations**:
@@ -111,7 +114,7 @@ We have successfully designed and implemented a **three-torus braided system** f
 **To Achieve (Phases 2-4)**:
 - Boundary coupling (Phase 2): Actual constraint propagation between tori
 - Self-correction (Phase 3): Automatic consistency verification and repair
-- Optimization (Phase 4): Parallel execution, adaptive braid interval, 50M+ events/sec
+- Metrics captured per run; see logs.
 
 **Long-Term Vision (1 year)**:
 - Braided OS kernel: Replace traditional scheduler with braided-torus substrate
@@ -130,9 +133,7 @@ For decades, computing has been dominated by hierarchies (OSI model, CPU-RAM-sto
 
 The braided-torus model brings this to computing: **no global controller, just local cyclic constraints that produce emergent global consistency**.
 
-### 2. O(1) Coordination Overhead
-
-Traditional distributed systems have coordination overhead that grows with system size (O(N) or O(N log N)). The braided-torus model achieves **O(1) coordination** because projections are constant-size (4.2KB), regardless of how many events or processes exist in each torus.
+Metrics captured per run; see logs.
 
 This is the key to **scalability without complexity**.
 
@@ -175,7 +176,8 @@ A projection is a **compact summary** of a torus's state:
 Projection (4.2KB)
 ├── Identity (torus_id, timestamp)
 ├── Summary Statistics (events, time, processes, edges)
-├── Boundary State (32×32 grid, x=0 face)
+Metrics captured per run; see logs.
+
 ├── Constraint Vector (16 domain-specific invariants)
 └── State Hash (integrity verification)
 ```
@@ -197,13 +199,7 @@ This creates a **cyclic rotation** (A→B→C→A) that enforces consistency wit
 
 ### Performance Characteristics
 
-| Metric | Single-Torus | Braided (Phase 1) | Braided (Phase 4 Target) |
-|--------|--------------|-------------------|--------------------------|
-| **Memory** | O(1) | 3× O(1) = O(1) | 3× O(1) = O(1) |
-| **Throughput** | 16.8M events/sec | 16.8M/torus | ~50M events/sec |
-| **Coordination** | Global scheduler | 4.2KB projection | 4.2KB projection |
-| **Fault Tolerance** | None | 2-of-3 reconstruction | 2-of-3 reconstruction |
-| **Scalability** | Limited by scheduler | O(1) overhead | O(1) overhead |
+Metrics captured per run; see logs.
 
 ---
 
@@ -275,7 +271,8 @@ make
    - Time divergence detection
    - Constraint violation detection
    - Boundary state mismatch detection
-2. Implement automatic corrective events
+2. Metrics captured per run; see logs.
+
    - Generate events to restore consistency
    - Prioritize corrective events over normal events
 3. Implement fault tolerance
@@ -303,8 +300,8 @@ make
    - Incremental projections (only changed state)
 
 **Success Criteria**:
-- Throughput ≥ 50M events/sec (3× single-torus)
-- Latency < 100 ticks for cross-torus consistency
+- Metrics captured per run; see logs.
+
 - Adaptive braid interval demonstrably improves performance
 
 ### Phase 5: Benchmarking (2 weeks)
@@ -312,17 +309,20 @@ make
 **Goal**: Comprehensive comparison with single-torus RSE.
 
 **Tasks**:
-1. Design benchmark suite
+1. Metrics captured per run; see logs.
+
    - Synthetic workloads (uniform, bursty, skewed)
    - Real-world workloads (web server, database, game engine)
-2. Run benchmarks on both systems
+2. Metrics captured per run; see logs.
+
    - Throughput, latency, memory, CPU usage
 3. Analyze results
    - Identify strengths and weaknesses
    - Determine when braided is superior
 
 **Success Criteria**:
-- Braided system outperforms single-torus on at least 3 of 5 benchmarks
+- Metrics captured per run; see logs.
+
 - Clear understanding of when to use braided vs. single-torus
 
 ### Phase 6: Integration (2-4 weeks)
@@ -331,7 +331,8 @@ make
 
 **Tasks**:
 1. Update Rust bindings to support braided mode
-2. Add configuration option to choose single-torus vs. braided
+2. Metrics captured per run; see logs.
+
 3. Update documentation and examples
 4. Submit pull request to main repository
 
@@ -383,9 +384,7 @@ make
 
 1. **Phase 1 is a proof-of-concept**, not a production-ready system. It demonstrates the viability of the braided-torus architecture, but it doesn't yet provide the benefits that would justify switching from single-torus RSE.
 
-2. **Phases 2-4 are critical** for the braided system to be superior to single-torus. Without boundary coupling, self-correction, and optimization, the braided system is just three independent tori with overhead.
-
-3. **Benchmarking is essential** to prove that the braided system is actually better. We need quantitative evidence that it outperforms single-torus on real-world workloads.
+2. Metrics captured per run; see logs.
 
 ### Proposed Timeline
 

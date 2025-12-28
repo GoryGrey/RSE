@@ -9,7 +9,7 @@
 BraidShell features a stunning cyberpunk/hacker aesthetic with:
 - **Neon colors** - Cyan, magenta, green on black
 - **ASCII art** - Beautiful logo and UI elements
-- **Real-time stats** - Animated system information
+- **Telemetry display** - Shows real metrics when provided
 - **Visual flair** - Every command looks amazing
 
 ---
@@ -28,8 +28,7 @@ The iconic BraidShell banner and welcome message.
 
 Complete system status with:
 - OS and kernel information
-- Torus status (all 3 tori with load bars)
-- Performance metrics (285.7M events/sec!)
+- Telemetry status (real metrics only)
 - Feature list
 
 ### 3. Torus Visualization
@@ -37,19 +36,13 @@ Complete system status with:
 
 Beautiful ASCII visualization of the braided-torus architecture showing:
 - Three tori connected in a braid
-- Process counts per torus
-- Events per second per torus
-- Braid exchange statistics
+- Telemetry only when a real metrics log is provided
 
 ### 4. Performance Metrics
 **File**: `perf.html`
 
 Detailed performance dashboard:
-- Events/sec (single vs parallel)
-- Scheduler fairness
-- CPU utilization
-- Memory overhead
-- Comparison vs traditional OS
+- Telemetry view for real performance logs
 
 ---
 
@@ -79,7 +72,7 @@ BraidShell isn't just a shell - it's a **visual experience** that shows the futu
 
 Every command is designed to be:
 - **Beautiful** - Cyberpunk aesthetic
-- **Informative** - Real system data
+- **Informative** - Real system data when available
 - **Fast** - No lag, smooth animations
 - **Futuristic** - Feels like 2035
 

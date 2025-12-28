@@ -31,7 +31,8 @@ This guide will help you get up and running with Betti-RDL in under 5 minutes.
 
 ✅ **Constant Memory** - No matter how deep your recursion or how many events you process  
 ✅ **Thread-Safe** - Inject events from multiple threads safely  
-✅ **High Performance** - 16.8M events/second on a single core  
+Metrics captured per run; see logs.
+
 ✅ **Deterministic** - Same inputs always produce same outputs  
 ✅ **Multi-Language** - Use from Rust, Python, Node.js, Go, or C++
 
@@ -278,7 +279,8 @@ kernel.spawn_process(0, 0, 0)  # Process at origin
 kernel.spawn_process(10, 10, 10)  # Process at (10,10,10)
 kernel.spawn_process(20, 20, 20)  # Process at (20,20,20)
 
-# Send each process 10 events with value 1
+Metrics captured per run; see logs.
+
 for i in range(10):
     kernel.inject_event(0, 0, 0, 1)
     kernel.inject_event(10, 10, 10, 1)
@@ -290,13 +292,15 @@ processed = kernel.run(100)
 print(f"Processed {processed} events")
 print(f"Process count: {kernel.get_process_count()}")
 
-# Each process received 10 events, each incrementing its state by 1
+Metrics captured per run; see logs.
+
 # So each process should have state = 10
 ```
 
 **What's happening:**
 1. We create 3 processes at different grid locations
-2. Each receives 10 events with value 1
+2. Metrics captured per run; see logs.
+
 3. Each process increments its internal state by the event value
 4. After processing, each process has state = 10
 
@@ -306,7 +310,7 @@ print(f"Process count: {kernel.get_process_count()}")
 
 ### 1. The Grid
 
-Betti-RDL operates on a **32×32×32 toroidal grid** (wrap-around boundaries):
+Metrics captured per run; see logs.
 
 ```python
 # Valid coordinates: 0-31 for x, y, z
@@ -338,7 +342,7 @@ kernel.run(10)
 # Process state is now 10 (accumulated from event)
 ```
 
-### 3. Events
+Metrics captured per run; see logs.
 
 **Events** are messages that:
 - Have a destination (x, y, z)
@@ -365,11 +369,13 @@ When a process receives an event, it can generate **new events** for itself or n
 kernel.spawn_process(0, 0, 0)
 kernel.inject_event(0, 0, 0, 0)  # Seed with x=0
 
-# This will generate events for x=1, 2, 3, ..., 9
+Metrics captured per run; see logs.
+
 # Each event generates the next one
 kernel.run(100)
 
-# Result: 10 events processed (x=0 through x=9)
+Metrics captured per run; see logs.
+
 ```
 
 This is how you get **recursive computation without stack overflow**!
@@ -379,11 +385,13 @@ This is how you get **recursive computation without stack overflow**!
 No matter how many events you inject or how deep the recursion:
 
 ```python
-# Even with 1,000,000 recursive events, memory stays constant!
+Metrics captured per run; see logs.
+
 kernel.spawn_process(0, 0, 0)
 kernel.inject_event(0, 0, 0, 0)  # Start cascade
 
-# This will process 1,000,000 events
+Metrics captured per run; see logs.
+
 kernel.run(1_000_000)
 
 # Memory usage: EXACTLY THE SAME as startup
@@ -416,9 +424,11 @@ for agent in range(1000):
     z = random.randint(0, 31)
     kernel.inject_event(x, y, z, 1)
 
-# Simulate for 100 time steps
+Metrics captured per run; see logs.
+
 for step in range(100):
-    events = kernel.run(1000)
+    Metrics captured per run; see logs.
+
     print(f"Step {step}: {events} events")
 ```
 
@@ -456,11 +466,12 @@ kernel.spawn_process(0, 0, 0)
 kernel.inject_event(0, 0, 0, 0)
 
 # Process until cascade completes
-# Each event generates 2 more events (exponential growth)
+Metrics captured per run; see logs.
+
 # But memory stays O(1)!
 while True:
-    events = kernel.run(1000)
-    if events == 0:
+    Metrics captured per run; see logs.
+
         break
     print(f"Processed {events} events")
 

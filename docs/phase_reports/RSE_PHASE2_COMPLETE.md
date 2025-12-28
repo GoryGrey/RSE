@@ -2,7 +2,7 @@
 
 **Date**: December 18, 2025  
 **Status**: All tests passing  
-**Duration**: ~4 hours (design + implementation + testing)
+Metrics captured per run; see logs.
 
 ---
 
@@ -33,7 +33,8 @@ Phase 2 of the braided-torus system is **complete and validated**. We have succe
 void initializeBoundaryConstraints(int32_t tolerance);
 void initializeGlobalConstraints();
 int countBoundaryViolations(const std::array<uint32_t, BOUNDARY_SIZE>& actual_states);
-int countGlobalViolations(uint64_t actual_events, uint64_t actual_time);
+Metrics captured per run; see logs.
+
 ```
 
 ### 2. BraidedKernelV2 (Enhanced Kernel with Constraint Application)
@@ -66,7 +67,8 @@ void generateCorrectiveEvent(uint32_t cell_idx, int32_t correction);
 **File**: `src/cpp_kernel/braided/TorusBraidV2.h`
 
 **New Features**:
-- **Phase 2 Metrics**: Track violations and corrective events across all tori
+- Metrics captured per run; see logs.
+
 - **Enhanced Statistics**: Detailed reporting of constraint violations
 - **Violation Rate Calculation**: Per-exchange violation rates
 
@@ -76,7 +78,8 @@ void performBraidExchange();
 void printStatistics();
 uint64_t getTotalBoundaryViolations();
 uint64_t getTotalGlobalViolations();
-uint64_t getTotalCorrectiveEvents();
+Metrics captured per run; see logs.
+
 ```
 
 ### 4. Comprehensive Test Suite
@@ -87,8 +90,8 @@ uint64_t getTotalCorrectiveEvents();
 1. ✅ **ProjectionV2 Structure**: Validate enhanced projection with constraints
 2. ✅ **Boundary Constraint Detection**: Detect violations in boundary states
 3. ✅ **Global Constraint Detection**: Detect violations in global invariants
-4. ✅ **Corrective Event Generation**: Generate events to restore consistency
-5. ✅ **Braided System Phase 2 Integration**: Full system test with all three tori
+4. Metrics captured per run; see logs.
+
 6. ✅ **Constraint Convergence**: Verify violations remain bounded over time
 
 **All 6 tests passing** ✅
@@ -106,7 +109,8 @@ uint64_t getTotalCorrectiveEvents();
   TEST 1: ProjectionV2 Structure
 ═══════════════════════════════════════════════════════════════
 ✓ ProjectionV2 structure validated
-  - Size: 4752 bytes (~4.7KB)
+  - Metrics captured per run; see logs.
+
   - Active boundary constraints: 32
   - Active global constraints: 3
   - Hash verification: PASS
@@ -125,18 +129,21 @@ uint64_t getTotalCorrectiveEvents();
 ✓ Detected time sync violation
 
 ═══════════════════════════════════════════════════════════════
-  TEST 4: Corrective Event Generation
+  Metrics captured per run; see logs.
+
 ═══════════════════════════════════════════════════════════════
 ✓ Corrective events generated successfully
 
 ═══════════════════════════════════════════════════════════════
-  TEST 5: Braided System Phase 2 Integration
+  Metrics captured per run; see logs.
+
 ═══════════════════════════════════════════════════════════════
 ✓ Braided system completed successfully
-  - Braid cycles: 5
+  - Metrics captured per run; see logs.
+
   - Total boundary violations: 0
   - Total global violations: 0
-  - Total corrective events: 0
+  - Metrics captured per run; see logs.
 
 ═══════════════════════════════════════════════════════════════
   TEST 6: Constraint Convergence Over Time
@@ -159,13 +166,11 @@ The braided system successfully propagates constraints between tori. When a toru
 1. Extracts boundary and global constraints
 2. Compares them to its own state
 3. Detects violations
-4. Generates corrective events
-
-### 2. Corrective Events Restore Consistency
+4. Metrics captured per run; see logs.
 
 When boundary states diverge, the system automatically generates corrective events to restore consistency. This is the **DNA-like self-correction** we were aiming for.
 
-### 3. O(1) Overhead Maintained
+Metrics captured per run; see logs.
 
 Despite adding constraint information, the projection size remains O(1):
 - Phase 1: 4.2KB
@@ -187,14 +192,7 @@ When all three tori run identical workloads, violations are zero. This shows the
 
 ### Overhead Analysis
 
-| Operation | Phase 1 | Phase 2 | Overhead |
-|-----------|---------|---------|----------|
-| **Projection Size** | 4.2KB | 4.7KB | +12% |
-| **Projection Extraction** | ~1μs | ~2μs | +100% |
-| **Constraint Application** | N/A | ~5μs | New |
-| **Corrective Events** | 0 | Variable | Variable |
-
-**Total Overhead per Braid Cycle**: ~7μs (negligible for 1000-tick intervals)
+Metrics captured per run; see logs.
 
 ### Scalability
 
@@ -254,7 +252,8 @@ The constraint system is the first step toward:
 **Tasks**:
 1. Enhanced failure detection
 2. Torus reconstruction from projections
-3. Process migration on failure
+3. Metrics captured per run; see logs.
+
 4. Self-healing system
 
 **Success Criteria**:
@@ -273,8 +272,8 @@ The constraint system is the first step toward:
 4. Incremental projections
 
 **Success Criteria**:
-- Throughput ≥ 50M events/sec (3× single-torus)
-- Latency < 100 ticks for cross-torus consistency
+- Metrics captured per run; see logs.
+
 - Adaptive braid interval demonstrably improves performance
 
 ---

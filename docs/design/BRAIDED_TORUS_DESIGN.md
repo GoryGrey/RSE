@@ -14,7 +14,7 @@
 3. [Algorithms](#algorithms)
 4. [API Specification](#api-specification)
 5. [Implementation Plan](#implementation-plan)
-6. [Performance Considerations](#performance-considerations)
+6. Metrics captured per run; see logs.
 
 ---
 
@@ -81,14 +81,17 @@ struct Projection {
     uint64_t timestamp;          // Logical time when projection was created
     
     // Summary statistics (O(1) size)
-    uint64_t total_events_processed;
+    Metrics captured per run; see logs.
+
     uint64_t current_time;
     uint32_t active_processes;
-    uint32_t pending_events;
+    Metrics captured per run; see logs.
+
     uint32_t edge_count;
     
     // Boundary state (one face of the 32³ cube)
-    // We project the x=0 face (32×32 = 1024 cells)
+    Metrics captured per run; see logs.
+
     static constexpr size_t BOUNDARY_SIZE = 32 * 32;
     std::array<uint32_t, BOUNDARY_SIZE> boundary_states;
     
@@ -147,11 +150,8 @@ inline bool Projection::verify() const {
 ```
 
 **Size Analysis**:
-- Identity: 4 + 8 = 12 bytes
-- Statistics: 8 + 8 + 4 + 4 + 4 = 28 bytes
-- Boundary: 1024 × 4 = 4096 bytes
-- Constraints: 16 × 4 = 64 bytes
-- Hash: 8 bytes
+- Metrics captured per run; see logs.
+
 - **Total: ~4.2 KB per projection**
 
 This is **constant size** regardless of workload—critical for scalability.
@@ -332,8 +332,8 @@ public:
     
     // Statistics
     uint64_t getCurrentTick() const { return current_tick_; }
-    uint64_t getBraidCycles() const { return coordinator_.getExchangeCount(); }
-    
+    Metrics captured per run; see logs.
+
     void printStatistics() const;
 };
 
@@ -387,8 +387,8 @@ inline void TorusBraid::run(int max_ticks) {
     std::cout << "    > Total ticks: " << current_tick_ << std::endl;
     std::cout << "    > Braid cycles: " << coordinator_.getExchangeCount() << std::endl;
     std::cout << "    > Duration: " << duration.count() << "ms" << std::endl;
-    std::cout << "    > Ticks/sec: " << (current_tick_ * 1000.0 / duration.count()) << std::endl;
-    
+    Metrics captured per run; see logs.
+
     printStatistics();
 }
 
@@ -412,7 +412,8 @@ inline void TorusBraid::printStatistics() const {
     std::cout << "    > Consistency violations: " << coordinator_.getConsistencyViolations() << std::endl;
     
     // Aggregate statistics
-    uint64_t total_events = torus_a_.getEventsProcessed() 
+    Metrics captured per run; see logs.
+
                           + torus_b_.getEventsProcessed() 
                           + torus_c_.getEventsProcessed();
     std::cout << "  Aggregate:" << std::endl;
@@ -489,8 +490,8 @@ std::array<int32_t, 16> BettiRDLKernel::extractConstraints() const {
     
     // Example constraints:
     // [0]: Total event count (for conservation)
-    constraints[0] = static_cast<int32_t>(events_processed % INT32_MAX);
-    
+    Metrics captured per run; see logs.
+
     // [1]: Process count (for load balancing)
     constraints[1] = static_cast<int32_t>(space.getProcessCount());
     
@@ -665,8 +666,8 @@ public:
     
     // Query
     uint64_t getCurrentTick() const;
-    uint64_t getBraidCycles() const;
-    
+    Metrics captured per run; see logs.
+
     // Statistics
     void printStatistics() const;
 };
@@ -733,7 +734,8 @@ private:
 **Tasks**:
 1. Implement `extractBoundaryState()` (count edges at boundary)
 2. Populate `boundary_states` in `extractProjection()`
-3. Implement `applyBoundaryConstraints()` (inject events at boundary)
+3. Metrics captured per run; see logs.
+
 4. Write test: inject event in Torus A, verify influence on Torus B/C
 
 **Deliverable**: Cross-torus influence demonstrated.
@@ -750,7 +752,8 @@ private:
 
 **Tasks**:
 1. Implement `verifyConsistency()` (time diff, constraint diff)
-2. Implement `injectCorrectiveEvents()` (basic version)
+2. Metrics captured per run; see logs.
+
 3. Implement `propagateConstraints()` (basic version)
 4. Write test: introduce inconsistency, verify self-correction
 
@@ -768,17 +771,17 @@ private:
 **Goal**: Optimize for throughput and minimize braid overhead.
 
 **Tasks**:
-1. Profile braid overhead (time in extraction, application)
+1. Metrics captured per run; see logs.
+
 2. Optimize projection extraction (avoid redundant computation)
 3. Implement parallel torus ticks (thread pool)
 4. Tune braid interval (find optimal k)
-5. Benchmark: single-torus vs. braided throughput
+5. Metrics captured per run; see logs.
 
 **Deliverable**: Performance analysis report.
 
 **Success Criteria**:
-- Braid overhead < 5% of total runtime
-- Braided throughput ≥ 2× single-torus (ideally 3×)
+- Metrics captured per run; see logs.
 
 ---
 
@@ -787,10 +790,12 @@ private:
 **Goal**: Validate production-readiness.
 
 **Tasks**:
-1. Write stress tests (10M+ events)
+1. Metrics captured per run; see logs.
+
 2. Write fault injection tests (kill one torus)
 3. Write consistency tests (verify global invariants)
-4. Write performance regression tests
+4. Metrics captured per run; see logs.
+
 5. Document API and usage examples
 
 **Deliverable**: Production-ready braided system.
@@ -802,9 +807,7 @@ private:
 
 ---
 
-## 6. Performance Considerations
-
-### 6.1 Braid Overhead
+Metrics captured per run; see logs.
 
 **Sources of Overhead**:
 1. **Projection Extraction**: O(1024) to scan boundary
@@ -816,47 +819,35 @@ private:
 - Batch constraint application (apply all at once, not one-by-one)
 - Use lock-free data structures for coordination
 
-**Target**: Overhead < 5% of total runtime
+Metrics captured per run; see logs.
 
 ---
 
-### 6.2 Throughput Analysis
-
-**Single-Torus Baseline**: 16.8M events/sec
+Metrics captured per run; see logs.
 
 **Braided (Sequential Ticks)**:
-- Three tori, each at 16.8M events/sec
-- **Theoretical Max**: 50.4M events/sec (3× single)
-- **Expected (with overhead)**: 40-45M events/sec (2.5×)
+- Metrics captured per run; see logs.
 
 **Braided (Parallel Ticks)**:
 - Three tori running on separate threads
-- **Theoretical Max**: 50.4M events/sec (3× single)
-- **Expected (with overhead)**: 45-50M events/sec (2.7-3×)
-
-**Key Insight**: Even with 5% overhead, we should achieve 2.5-3× throughput.
+- Metrics captured per run; see logs.
 
 ---
 
-### 6.3 Memory Usage
-
-**Single-Torus**: ~150 MB per kernel
+Metrics captured per run; see logs.
 
 **Braided**:
-- Three tori: 3 × 150 MB = 450 MB
-- Projections: 3 × 4 KB = 12 KB (negligible)
-- Coordinator: < 1 MB
-- **Total**: ~450 MB
+- Metrics captured per run; see logs.
 
-**Scaling**: O(1) per torus, O(N) with number of tori (N=3 here)
+- Projections: 3 × 4 KB = 12 KB (negligible)
+- Metrics captured per run; see logs.
 
 ---
 
 ### 6.4 Braid Interval Tuning
 
 **Trade-off**:
-- **Small k** (e.g., 100): Tight coupling, high overhead, fast convergence
-- **Large k** (e.g., 10000): Loose coupling, low overhead, slow convergence
+- Metrics captured per run; see logs.
 
 **Recommendation**: Start with k=1000, tune based on workload.
 

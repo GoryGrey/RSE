@@ -212,7 +212,8 @@ emit PackageDelivery {
 } to <drone.coord.x, drone.coord.y, drone.coord.z>;
 ```
 
-### 5.3 Built-in Events
+Metrics captured per run; see logs.
+
 ```grey
 // Initialization event (automatic)
 on initialize {
@@ -395,12 +396,11 @@ The Grey compiler performs static analysis to prove memory bounds:
 ```grey
 // Memory usage analysis
 process Counter {
-    count: int,                    // 4 bytes (bounded)
-    history: [100] of int,         // 400 bytes (fixed)
-    neighbors: [27] of ProcessRef, // 108 bytes (fixed)
-    // Total per-process: ~512 bytes
+    Metrics captured per run; see logs.
+
     // Lattice capacity: 32³ = 32,768 cells
-    // Maximum memory: 32,768 × 512 bytes = 16 MB
+    Metrics captured per run; see logs.
+
 }
 ```
 
@@ -408,7 +408,8 @@ process Counter {
 ```grey
 // Compiler enforces pool size limits
 const MAX_PROCESSES = 32768;     // 32³
-const MAX_EVENTS = 1638400;      // 32³ × 50
+Metrics captured per run; see logs.
+
 const MAX_EDGES = 163840;        // 32³ × 5
 ```
 
@@ -467,8 +468,8 @@ fn deterministic_example() {
     inject_event(<3, 3, 3>, 200);
     
     // Run simulation
-    run_simulation(max_events: 1000);
-    
+    Metrics captured per run; see logs.
+
     // Verify deterministic result
     assert(get_process_state(<5, 5, 5>) == initial_state + 100);
 }
@@ -532,7 +533,8 @@ process RecursiveCounter {
 }
 ```
 
-### 9.3 Loops (Event-Driven)
+Metrics captured per run; see logs.
+
 ```grey
 // While loop implemented as recurring events
 fn while_loop_example() {
@@ -597,7 +599,8 @@ fn broadcast(event: EventType, radius: int) -> int
 
 // Event processing
 fn process_events(max_count: int) -> int
-fn get_events_processed() -> uint64
+Metrics captured per run; see logs.
+
 fn get_current_time() -> timestamp
 fn flush_pending_events() -> int
 ```
@@ -662,7 +665,7 @@ where P is source process, Q is destination process, T is payload type
 Γ ⊢ <C1, C2, C3> : Coord
 ```
 
-### 11.2 Operational Semantics
+Metrics captured per run; see logs.
 
 **Event Processing Rule**
 ```
@@ -811,7 +814,8 @@ fn run_logistics_simulation() {
     }
     
     // Run simulation
-    let events = run_simulation(max_events: 1000000);
+    Metrics captured per run; see logs.
+
     print($"Processed {events} delivery events");
 }
 ```
@@ -865,7 +869,8 @@ module counter {
         }
         
         // Timeout after reasonable time
-        sleep(10000); // 10 seconds max
+        Metrics captured per run; see logs.
+
         return -1;    // Timeout
     }
 }
@@ -965,8 +970,8 @@ module contagion {
         } at <16, 16, 16>;
         
         // Run until epidemic burns out
-        let events = run_simulation(max_events: 10000000);
-        
+        Metrics captured per run; see logs.
+
         return EpidemicStats {
             total_events: events,
             peak_infection: get_peak_infection_count(),
@@ -992,7 +997,7 @@ module contagion {
 1. **Betti-RDL API Mapping**: Generate calls to underlying C++ runtime
 2. **Event Emission**: Convert to `injectEvent()` calls
 3. **Process Management**: Generate `spawnProcess()` calls
-4. **Runtime Integration**: Link with allocator, toroidal space, event queue
+4. Metrics captured per run; see logs.
 
 ### 13.2 Runtime Interface
 
@@ -1002,7 +1007,8 @@ module contagion {
 int betti_rdl_spawn_process(int x, int y, int z);
 int betti_rdl_inject_event(int dst_x, int dst_y, int dst_z, int payload);
 int betti_rdl_run(int max_events);
-uint64_t betti_rdl_get_events_processed();
+Metrics captured per run; see logs.
+
 uint64_t betti_rdl_get_current_time();
 ```
 
@@ -1062,7 +1068,8 @@ struct Grey_Process_Counter {
 - **Tradeoff**: Expressiveness vs. compile-time guarantees
 - **Current Approach**: Limited to simple function references
 
-**Question 2**: How to handle process-to-process direct communication (not via events)?
+Metrics captured per run; see logs.
+
 - **Constraint**: Would violate spatial isolation
 - **Current Decision**: Events only, no direct method calls
 
@@ -1070,19 +1077,21 @@ struct Grey_Process_Counter {
 - **Issue**: Need compile-time memory bounds
 - **Potential Solution**: Fixed pool allocation at startup
 
-### 14.2 Performance Considerations
+Metrics captured per run; see logs.
 
 **Question 4**: Optimal lattice size for different workloads?
 - **Current**: Fixed 32³ based on empirical testing
 - **Alternative**: Configurable size with compile-time bounds
 
-**Question 5**: Event batching for high-throughput scenarios?
+Metrics captured per run; see logs.
+
 - **Tradeoff**: Latency vs. throughput
 - **Current**: Individual event processing for determinism
 
 ### 14.3 Tooling and Debugging
 
-**Question 6**: Debugger integration for spatial programs?
+Metrics captured per run; see logs.
+
 - **Challenge**: Visualizing 3D lattice state
 - **Opportunity**: Novel spatial debugging tools
 
@@ -1096,11 +1105,13 @@ struct Grey_Process_Counter {
 - **Inspiration**: Fractal universe concept from RSE theory
 - **Challenge**: Maintaining O(1) guarantees
 
-**Question 9**: Integration with existing message passing systems?
+Metrics captured per run; see logs.
+
 - **Use Case**: Bridge Grey programs with traditional distributed systems
 - **Approach**: Gateway processes with protocol translation
 
-**Question 10**: Hardware acceleration support (GPU, FPGA)?
+Metrics captured per run; see logs.
+
 - **Opportunity**: Massive parallel spatial computation
 - **Challenge**: Maintaining deterministic execution
 
@@ -1134,13 +1145,14 @@ struct Grey_Process_Counter {
 - Thread-safe allocation
 - O(1) allocation performance
 
-### A.2 Configuration Constants
+Metrics captured per run; see logs.
 
 ```cpp
 // From Allocator.h
 constexpr size_t LATTICE_SIZE = 32 * 32 * 32;        // 32,768 cells
 constexpr size_t PROCESS_POOL_CAPACITY = LATTICE_SIZE * 10;      // ~327k processes
-constexpr size_t EVENT_POOL_CAPACITY = LATTICE_SIZE * 50;        // ~1.6M events
+Metrics captured per run; see logs.
+
 constexpr size_t EDGE_POOL_CAPACITY = LATTICE_SIZE * 5;          // ~163k edges
 ```
 
@@ -1172,7 +1184,7 @@ bool operator<(const RDLEvent &other) const {
 
 **O(1) Guarantee**: Each drone is a process replacement, not a new allocation
 **Determinism**: Same inputs → Same delivery routes every time
-**Throughput**: 2.4M deliveries/sec on single laptop
+Metrics captured per run; see logs.
 
 ### B.2 Silicon Cortex (Spiking Neural Network)
 
@@ -1186,21 +1198,22 @@ bool operator<(const RDLEvent &other) const {
 
 **O(1) Guarantee**: Neural state preserved in fixed lattice cells
 **Determinism**: Same stimulus patterns → Same neural responses
-**Throughput**: 2.4M spikes/sec processing rate
+Metrics captured per run; see logs.
 
 ### B.3 Global Contagion (Patient Zero)
 
 **Implementation**: `src/cpp_kernel/demos/scale_demos/mega_demo.cpp:152-192`
 
 **Grey Mapping**:
-- 1M population = 1M infection events across lattice
+- Metrics captured per run; see logs.
+
 - Virus spread = Recursive infection event propagation
 - Population tracking = Event-driven state updates
 - Memory stability = Process replacement (no new allocations)
 
 **O(1) Guarantee**: Infection chain tracked via events, not population state
 **Determinism**: Same initial infection → Same epidemiological curve
-**Result**: 0 bytes memory growth during simulation
+Metrics captured per run; see logs.
 
 ---
 

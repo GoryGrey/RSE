@@ -48,27 +48,25 @@ Per-torus independent scheduler with:
 
 ### **Test 1: Basic Scheduling** ✅
 - 5 processes, 1000 ticks
-- **Result**: Perfect fairness - all processes got exactly 200 ticks each
-- **CPU Utilization**: 100%
+- Metrics captured per run; see logs.
+
 - **Context Switches**: 9
 
 ### **Test 2: Blocking & Unblocking** ✅
 - 3 processes, blocked one mid-execution
 - **Result**: Blocked process correctly stopped, others continued
-- **CPU Utilization**: 100% (no idle time)
+- Metrics captured per run; see logs.
 
 ### **Test 3: Load Balancing** ✅
 - 3 tori with imbalanced load (10, 2, 0 processes)
 - Migrated 3 processes from overloaded to empty torus
 - **Result**: Load balanced to (7, 2, 3)
-- **All tori**: 100% CPU utilization
+- Metrics captured per run; see logs.
 
-### **Test 4: Fairness (CFS)** ✅
 - 5 processes with different priorities (50, 100, 150, 200, 250)
 - 5000 ticks total
 - **Result**: ALL processes got exactly 1000 ticks each
-- **Fairness Ratio**: 1.0 (perfect)
-- **Context Switches**: 49 (very low overhead)
+- Metrics captured per run; see logs.
 
 ---
 
@@ -91,12 +89,14 @@ Processes C → Torus C scheduler → Core 3
               No bottleneck!
 ```
 
-### **2. O(1) Scheduling Overhead**
+Metrics captured per run; see logs.
+
 - Scheduling time doesn't grow with number of processes
 - Each torus schedules independently
 - No locks, no contention
 
-### **3. Perfect Fairness**
+Metrics captured per run; see logs.
+
 - Completely Fair Scheduler (CFS) algorithm
 - All processes get equal CPU time regardless of priority
 - No starvation
@@ -120,7 +120,8 @@ On old hardware with 3 cores:
 ```
 1000 processes → 1 global scheduler → 3 cores
                       ↓
-        Scheduler overhead = 10-15% of CPU
+        Metrics captured per run; see logs.
+
                       ↓
               Only 85-90% for actual work
 ```
@@ -130,7 +131,8 @@ On same old hardware:
 ```
 1000 processes → 3 independent schedulers → 3 cores
                       ↓
-        Scheduler overhead = 1-2% per torus
+        Metrics captured per run; see logs.
+
                       ↓
               98-99% for actual work
               + Perfect load distribution
@@ -154,7 +156,8 @@ On same old hardware:
 
 ### **Fairness**
 - **Traditional OS**: Varies (priority inversion, starvation)
-- **Braided OS**: Perfect (1.0 fairness ratio)
+- Metrics captured per run; see logs.
+
 - **Improvement**: Guaranteed fairness
 
 ### **Scalability**
@@ -173,7 +176,8 @@ On same old hardware:
    - Consistency emerges from local decisions
    - Scales perfectly
 
-2. **Fairness is achievable**
+2. Metrics captured per run; see logs.
+
    - CFS algorithm is simple and effective
    - Perfect fairness with minimal overhead
    - No starvation
@@ -202,7 +206,8 @@ On same old hardware:
 
 3. **Testing validates design**
    - Perfect fairness ratio proves CFS works
-   - 100% CPU utilization proves no waste
+   - Metrics captured per run; see logs.
+
    - Low context switches prove efficiency
 
 ---
@@ -262,8 +267,7 @@ src/cpp_kernel/demos/
 
 ### **What Was Surprising**
 - CFS algorithm is simpler than expected
-- Perfect fairness ratio (1.0) was unexpected
-- Context switch overhead is incredibly low (49 switches for 5000 ticks)
+- Metrics captured per run; see logs.
 
 ### **What's Exciting**
 - This actually works! Old hardware can run fast!
@@ -281,8 +285,8 @@ We've built the **emergent scheduler** - the core innovation that makes the brai
 **Key achievements:**
 - ✅ No global scheduler bottleneck
 - ✅ O(1) scheduling overhead
-- ✅ Perfect fairness (1.0 ratio)
-- ✅ 100% CPU utilization
+- Metrics captured per run; see logs.
+
 - ✅ Cache-friendly execution
 - ✅ Load balancing support
 

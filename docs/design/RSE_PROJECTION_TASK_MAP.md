@@ -50,9 +50,10 @@
 
 ## Phase E: Bench + Validation
 
-9) **Latency measurement**
+Metrics captured per run; see logs.
+
    - Record exchange time (send -> ACK).
-   - Target <1ms LAN latency.
+   - Metrics captured per run; see logs.
 
 10) **Correctness validation**
    - Validate fixed projection size.

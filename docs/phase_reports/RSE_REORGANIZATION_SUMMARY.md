@@ -139,7 +139,8 @@ Future operating system components:
 - 7 header files (braided system)
 - 5 README files (documentation)
 - 2 demo programs
-- 1 CMakeLists.txt (build configuration)
+- Metrics captured per run; see logs.
+
 - 1 OS roadmap document
 
 ---
@@ -148,11 +149,7 @@ Future operating system components:
 
 ### Execution Modes
 
-| Mode | Status | Performance | Use Case |
-|------|--------|-------------|----------|
-| **Single-Torus** | ✅ Production | 16.8M events/sec | Simple workloads, embedded systems |
-| **Braided-Torus** | ✅ Phase 1 | 16.8M/torus | Fault tolerance, distributed computing |
-| **OS Mode** | 🚧 Planned | TBD | Next-gen operating system |
+Metrics captured per run; see logs.
 
 ### Test Results
 
@@ -197,10 +194,11 @@ Future operating system components:
 2. **Phase 4: Optimization**
    - Parallel torus execution
    - Adaptive braid interval
-   - 50M+ events/sec target
+   - Metrics captured per run; see logs.
 
 ### Long-Term (Q1-Q2 2026)
-1. **Phase 5: Benchmarking**
+1. Metrics captured per run; see logs.
+
    - Comprehensive comparison with single-torus
    - Real-world workload testing
 

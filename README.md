@@ -68,18 +68,10 @@ Key properties:
 
 ## Benchmarks (QEMU, TSC cycles)
 
-Cycle-counted benchmarks averaged across 3 headless QEMU runs (see `build/boot/boot_run{1..3}.log` and `PROJECT_STATUS.md`):
+Metrics are captured per run. Use logs to inspect real values:
 
-- **Compute**: 400,000 ops, 27,630,748 cycles (69 cycles/op)
-- **Memory**: 67,108,864 bytes, 2,301,450,865 cycles (34 cycles/byte)
-- **RAMFS File I/O**: 288 ops, 9,904,718 cycles (34,391 cycles/op)
-- **Fast-Path I/O (`/dev/fast0`)**: 2,097,152 bytes, 72,452,785 cycles (34 cycles/byte)
-- **UEFI FAT File I/O (USB disk)**: 144 ops, 2,119,454,926 cycles (14,718,437 cycles/op)
-- **UEFI Raw Block I/O (USB disk)**: 524,288 bytes, write 40,468,877 cycles (77 cycles/byte), read 39,997,075 cycles (76 cycles/byte)
-- **Virtio-Block I/O (disk)**: 512 bytes, write 11,673,098 cycles (22,798 cycles/byte), read 2,962,657 cycles (5,786 cycles/byte)
-- **Net ARP Probe (virtio-net RX)**: 64 bytes, 4,071,957 cycles
-- **UDP/HTTP RX Server (raw)**: bench rx=0 udp=0 http=0, 45,667,664 cycles
-- **HTTP Loopback**: 50,000 requests, 100,639,261 cycles (2,012 cycles/req)
+- Kernel + UEFI benchmarks: `./scripts/run_full_system_test.sh` (see `build/boot/boot.log` or `/tmp` log overrides).
+- Host baseline: `./scripts/run_linux_baseline.sh`.
 
 Notes:
 - These are **QEMU TSC cycle counts**, not wall-clock time.

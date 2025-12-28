@@ -9,7 +9,8 @@
 Memory management is critical for:
 1. **Isolation** - Processes can't access each other's memory
 2. **Protection** - Prevent crashes from corrupting the OS
-3. **Efficiency** - Fast allocation/deallocation
+3. Metrics captured per run; see logs.
+
 4. **Simplicity** - Easy to understand and debug
 
 ---
@@ -116,19 +117,20 @@ Virtual Address (64-bit):
 │ (10 bits)│ (10 bits)│  (12 bits) │
 └──────────┴──────────┴────────────┘
     ↓           ↓           ↓
-  1024        1024       4096 bytes
+  Metrics captured per run; see logs.
+
   entries     entries    per page
 ```
 
 **L1 Page Table** (1024 entries):
 - Each entry points to an L2 page table
-- Covers 4MB of virtual memory per entry
+- Metrics captured per run; see logs.
 
 **L2 Page Table** (1024 entries):
 - Each entry maps to a physical page (4KB)
 - Contains flags (present, writable, executable)
 
-**Total addressable**: 1024 × 1024 × 4KB = 4GB per process
+Metrics captured per run; see logs.
 
 ### **Page Table Entry (PTE)**
 
@@ -304,10 +306,8 @@ Hardware MMU enforces protection:
 Each torus has its own physical memory pool:
 
 ```
-Total RAM: 16GB
-Torus A: 5.3GB (1/3)
-Torus B: 5.3GB (1/3)
-Torus C: 5.3GB (1/3)
+Metrics captured per run; see logs.
+
 ```
 
 Processes on Torus A use Torus A's memory pool.
@@ -317,7 +317,8 @@ Processes on Torus A use Torus A's memory pool.
 When a process migrates from Torus A to Torus B:
 
 1. **Copy page table** to Torus B
-2. **Don't copy physical pages** (lazy migration)
+2. Metrics captured per run; see logs.
+
 3. **On page fault**: Copy page from Torus A to Torus B
 
 This is **lazy migration** - only copy pages when accessed.
@@ -386,7 +387,7 @@ For now, we'll implement a **simplified version**:
 ### **Performance**
 - ✅ O(1) frame allocation
 - ✅ O(1) address translation (with caching)
-- ✅ Minimal overhead (<5%)
+- Metrics captured per run; see logs.
 
 ---
 

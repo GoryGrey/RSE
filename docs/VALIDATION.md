@@ -72,7 +72,8 @@ This script will:
 Step 1: Building C++ kernel...
   ✅ C++ kernel built successfully
 
-Step 2: Environment Configuration
+Metrics captured per run; see logs.
+
   BETTI_RDL_SHARED_LIB=/home/engine/project/build/shared/lib/libbetti_rdl_c.so
   BETTI_RDL_INCLUDE_DIR=/home/engine/project/src/cpp_kernel
 
@@ -119,7 +120,8 @@ from betti_rdl_bindings import Kernel
 kernel = Kernel()
 kernel.spawn_process(0, 0, 0)
 kernel.inject_event(0, 0, 0, 1)
-events = kernel.run(100)
+Metrics captured per run; see logs.
+
 print(f'Processed {events} events')
 "
 ```
@@ -133,7 +135,8 @@ const { Kernel } = require('./index.js');
 const kernel = new Kernel();
 kernel.spawnProcess(0, 0, 0);
 kernel.injectEvent(0, 0, 0, 1);
-const events = kernel.run(100);
+Metrics captured per run; see logs.
+
 console.log(\`Processed \${events} events\`);
 "
 ```
@@ -220,10 +223,11 @@ sudo apt-get install cmake  # Ubuntu/Debian
 
 The binding matrix test uses a simple counter workload:
 
-1. **Initialize**: Create a kernel with 32×32×32 toroidal space
+1. Metrics captured per run; see logs.
+
 2. **Spawn**: Create a process at origin (0,0,0)
-3. **Inject**: Send events with incremental values
-4. **Execute**: Run for a fixed number of events
+3. Metrics captured per run; see logs.
+
 5. **Verify**: Check event counts and telemetry
 
 This workload is designed to:

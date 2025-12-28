@@ -66,7 +66,7 @@ Betti-RDL: Events reuse grid cells → Memory constant → Never runs out
 
 **Location:** `src/cpp_kernel/ToroidalSpace.h`
 
-A 32×32×32 grid with wrap-around boundaries (like Pac-Man).
+Metrics captured per run; see logs.
 
 ```cpp
 template<int DIM>
@@ -107,10 +107,11 @@ Custom memory allocator with **fixed-size pools** for O(1) guarantee.
 class BoundedAllocator {
     // Pre-allocated pools
     char process_pool[327680 * 64];      // 5,120 processes max
-    char event_pool[1638400 * 32];       // 51,200 events max
+    Metrics captured per run; see logs.
+
     char edge_pool[163840 * 64];         // 2,560 edges max
-    char generic_pool[67108864];         // 64 MB generic
-    
+    Metrics captured per run; see logs.
+
     // Free lists for O(1) allocation
     FixedVector<void*, 8192> free_process_list;
     FixedVector<void*, 8192> free_event_list;
@@ -120,10 +121,8 @@ class BoundedAllocator {
 
 **Memory Layout:**
 ```
-Process Pool:   [P][P][P][P]...[P]  (5,120 × 64 bytes)
-Event Pool:     [E][E][E][E]...[E]  (51,200 × 32 bytes)
-Edge Pool:      [→][→][→]...[→]     (2,560 × 64 bytes)
-Generic Pool:   [...............]    (64 MB)
+Metrics captured per run; see logs.
+
 ```
 
 **Allocation Strategy:**
@@ -191,13 +190,14 @@ class BettiRDLKernel {
     
     // Thread-safe injection buffer
     std::mutex event_injection_lock;
-    FixedVector<Event, 16384> pending_events;
-    
+    Metrics captured per run; see logs.
+
     // Spatial substrate
     ToroidalSpace<32> space;
     
     // Statistics
-    uint64_t events_processed = 0;
+    Metrics captured per run; see logs.
+
     uint64_t current_time = 0;
 };
 ```
@@ -206,12 +206,13 @@ class BettiRDLKernel {
 
 ```cpp
 int BettiRDLKernel::run(int max_events) {
-    int events_in_run = 0;
-    
+    Metrics captured per run; see logs.
+
     // 1. Flush pending injections
     flushPendingEvents();
     
-    // 2. Process events from priority queue
+    Metrics captured per run; see logs.
+
     while (!event_queue.empty() && events_in_run < max_events) {
         RDLEvent evt = event_queue.pop();
         
@@ -220,7 +221,8 @@ int BettiRDLKernel::run(int max_events) {
         if (proc) {
             proc->state += evt.payload;  // Accumulate
             
-            // 4. Process may generate new events
+            Metrics captured per run; see logs.
+
             if (should_cascade(evt)) {
                 event_queue.push(new_event);
             }
@@ -244,7 +246,8 @@ int BettiRDLKernel::run(int max_events) {
 ```
 [Initialization Phase]
 1. Allocate ToroidalSpace (32³ × sizeof(Node))
-2. Allocate BoundedAllocator pools (~150 MB)
+2. Metrics captured per run; see logs.
+
 3. Initialize FixedStructures (bounded sizes)
 4. DONE - Memory now constant forever
 ```
@@ -264,14 +267,7 @@ int BettiRDLKernel::run(int max_events) {
 
 ### Memory Budget Breakdown
 
-| Component | Size | Purpose |
-|-----------|------|---------|
-| ToroidalSpace | ~2 MB | 32³ grid cells |
-| Process Pool | ~20 MB | 5,120 max processes |
-| Event Pool | ~52 MB | 51,200 max events |
-| Edge Pool | ~10 MB | 2,560 max edges |
-| Generic Pool | 64 MB | Misc allocations |
-| **Total** | **~150 MB** | **Fixed at startup** |
+Metrics captured per run; see logs.
 
 **Key Insight:** This is the TOTAL memory regardless of workload!
 
@@ -398,19 +394,11 @@ void BettiRDLKernel::injectEvent(int x, int y, int z, uint64_t ts, int payload) 
 
 ### Throughput
 
-| Scenario | Events/Second | Notes |
-|----------|--------------|-------|
-| Single kernel | 16.8M | Single-threaded |
-| 4 parallel kernels | 71.4M | Linear scaling |
-| 16 parallel kernels | 285.7M | Linear scaling |
+Metrics captured per run; see logs.
 
 ### Latency
 
-| Operation | Time | Notes |
-|-----------|------|-------|
-| Event injection | ~5 ns | Lock + push_back |
-| Event processing | ~59 ns | Min-heap pop + deliver |
-| Process spawn | ~100 ns | Grid lookup + alloc |
+Metrics captured per run; see logs.
 
 ### Scaling
 
@@ -433,7 +421,8 @@ Total = O(N) memory
 ### Why 32³ Grid?
 
 **Pros:**
-- Fits in L2 cache (2 MB data)
+- Metrics captured per run; see logs.
+
 - Power-of-2 arithmetic (fast modulo)
 - Large enough for most simulations
 - Small enough to pre-allocate
@@ -557,7 +546,7 @@ p2.start()
 # Bad: Inject one-by-one
 for i in range(1000):
     kernel.inject_event(0, 0, 0, i)
-    kernel.run(1)  # Overhead!
+    Metrics captured per run; see logs.
 
 # Good: Inject all, then run
 for i in range(1000):
@@ -594,10 +583,12 @@ kernel.run(1000)
 ### 4. Parallel Kernels
 
 ```python
-# Single kernel: 16.8M events/sec
+Metrics captured per run; see logs.
+
 kernel = Kernel()
 
-# 4 kernels: 67M events/sec
+Metrics captured per run; see logs.
+
 kernels = [Kernel() for _ in range(4)]
 ```
 

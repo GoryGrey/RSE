@@ -25,7 +25,8 @@ Complete API documentation for all language bindings: C++, Rust, Python, Node.js
 ## Core Concepts
 
 ### ToroidalSpace
-- 32×32×32 3D grid with wrap-around boundaries
+- Metrics captured per run; see logs.
+
 - Total capacity: 32,768 cells
 - Coordinates: (x, y, z) where 0 ≤ x,y,z < 32
 
@@ -98,7 +99,7 @@ kernel.injectEvent(0, 0, 0, 10, 42);
 Executes the scheduler for at most `max_events`.
 
 **Parameters:**
-- `max_events`: Maximum events to process (0 = run until empty)
+- Metrics captured per run; see logs.
 
 **Returns:** Actual number of events processed
 
@@ -108,7 +109,8 @@ int processed = kernel.run(1000);
 std::cout << "Processed " << processed << " events\n";
 ```
 
-##### `uint64_t getEventsProcessed() const`
+Metrics captured per run; see logs.
+
 Returns cumulative total of events processed across all `run()` calls.
 
 **Returns:** Total event count
@@ -173,7 +175,8 @@ void betti_rdl_inject_event(BettiRDLCompute* kernel, int x, int y, int z, int va
 int betti_rdl_run(BettiRDLCompute* kernel, int max_events);
 
 // Query
-uint64_t betti_rdl_get_events_processed(const BettiRDLCompute* kernel);
+Metrics captured per run; see logs.
+
 uint64_t betti_rdl_get_current_time(const BettiRDLCompute* kernel);
 size_t betti_rdl_get_process_count(const BettiRDLCompute* kernel);
 int betti_rdl_get_process_state(const BettiRDLCompute* kernel, int pid);
@@ -223,7 +226,8 @@ Injects an event (thread-safe).
 kernel.inject_event(5, 5, 5, 42);
 ```
 
-##### `fn run(&mut self, max_events: i32) -> i32`
+Metrics captured per run; see logs.
+
 Executes scheduler.
 
 **Returns:** Number of events processed
@@ -234,7 +238,8 @@ let processed = kernel.run(1000);
 println!("Processed {} events", processed);
 ```
 
-##### `fn get_events_processed(&self) -> u64`
+Metrics captured per run; see logs.
+
 Returns total events processed.
 
 ##### `fn get_current_time(&self) -> u64`
@@ -431,7 +436,8 @@ processed := kernel.Run(1000)
 fmt.Printf("Processed %d events\n", processed)
 ```
 
-##### `func (k *Kernel) EventsProcessed() uint64`
+Metrics captured per run; see logs.
+
 Returns total events processed.
 
 ##### `func (k *Kernel) CurrentTime() uint64`
@@ -447,7 +453,7 @@ Returns process state.
 
 ## Common Patterns
 
-### 1. Spawning and Injecting Events
+Metrics captured per run; see logs.
 
 ```python
 # Python
@@ -477,7 +483,7 @@ kernel.run(100)
 # Process state will be 15
 ```
 
-### 3. Event Cascades (Recursive Events)
+Metrics captured per run; see logs.
 
 Processes can generate new events when they receive events:
 
@@ -486,7 +492,8 @@ Processes can generate new events when they receive events:
 for i in range(10):
     kernel.inject_event(0, 0, 0, i)
 
-kernel.run(100)  # Will process all 100 events in cascade
+Metrics captured per run; see logs.
+
 ```
 
 ### 4. Multi-threaded Event Injection
@@ -514,12 +521,13 @@ t1.join();
 t2.join();
 ```
 
-### 5. Stepping Through Events
+Metrics captured per run; see logs.
 
 ```javascript
 // Node.js: Process events in small batches
 while (true) {
-    const processed = kernel.run(10);  // Process 10 events at a time
+    Metrics captured per run; see logs.
+
     if (processed === 0) break;
     
     console.log(`Time: ${kernel.get_current_time()}, Events: ${processed}`);
@@ -559,7 +567,7 @@ while (true) {
 Inject multiple events before calling `run()` to reduce overhead.
 
 ### 2. Appropriate Batch Size
-Use `run(1000)` instead of `run(1)` for better throughput.
+Metrics captured per run; see logs.
 
 ### 3. Spatial Locality
 Place related processes near each other in the grid for better cache performance.
@@ -575,8 +583,8 @@ Measure throughput with `getEventsProcessed()` and `getCurrentTime()`.
 ## Limitations
 
 ### Hard Limits
-- **Grid Size:** 32×32×32 (32,768 cells)
-- **Event Queue:** 8,192 events (bounded)
+- Metrics captured per run; see logs.
+
 - **Process Pool:** 5,120 processes maximum
 - **Single Node:** No multi-node coordination (yet)
 

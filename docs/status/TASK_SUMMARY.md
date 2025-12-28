@@ -6,7 +6,7 @@
 # Task Summary: Status Report Update
 
 ## Objective
-Re-run native kernel test/benchmark suite, fix all errors, and produce comprehensive status report assessing system capabilities and Phase 3 roadmap.
+Metrics captured per run; see logs.
 
 ## Work Completed
 
@@ -26,15 +26,12 @@ Re-run native kernel test/benchmark suite, fix all errors, and produce comprehen
   - `src/cpp_kernel/demos/BettiRDLCompute.h`
 - **Status**: ✅ ALL 3 STRESS TESTS PASSING
 - **Benchmarks Achieved**:
-  - **Firehose**: 16,823,687 EPS (16.8M events/sec)
-  - **Deep Dive**: 0 bytes memory growth after 100k recursive events
-  - **Swarm**: 285.7M aggregate EPS (16 parallel kernels)
+  - Metrics captured per run; see logs.
 
-#### Test 3: Mega Demo (Scale Demonstrations)
 - **Status**: ✅ ALL 3 DEMOS PASSING
 - **Demo 1 (Logistics)**: 13.5M deliveries/sec (1M drones)
 - **Demo 2 (Cortex)**: 15.6M spikes/sec (32,768 neurons)
-- **Demo 3 (Contagion)**: 0 bytes memory growth (1M infection propagations)
+- Metrics captured per run; see logs.
 
 ### 2. ✅ Kernel Capabilities Analysis
 **Comprehensive assessment of BettiRDLKernel architecture:**
@@ -52,12 +49,7 @@ Re-run native kernel test/benchmark suite, fix all errors, and produce comprehen
 - Not a persistent store (no durable state)
 
 **Architectural Constraints Documented:**
-| Resource | Capacity | Rationale |
-|----------|----------|-----------|
-| Grid Size | 32,768 cells | Compile-time constant for cache locality |
-| Event Queue | 8,192 events | Bounded heap for O(1) guarantee |
-| Process Pool | 4,096 processes | One process per active cell |
-| Pending Events | 16,384 events | Thread-safe injection buffer |
+Metrics captured per run; see logs.
 
 ### 3. ✅ Ancillary Systems Review
 **COG Orchestration:**
@@ -70,7 +62,8 @@ Re-run native kernel test/benchmark suite, fix all errors, and produce comprehen
 - **Assessment**: Weeks of development required
 - **Recommendation**: **Defer** - Nice-to-have for demos, not critical path
 
-### 4. ✅ Grey Compiler Integration
+Metrics captured per run; see logs.
+
 **Status**: ⚠️ Early development, requires Rust toolchain
 - Code generation exists in `grey_backends/src/betti_rdl.rs`
 - Validation harness available for C++ parity testing
@@ -88,7 +81,8 @@ Re-run native kernel test/benchmark suite, fix all errors, and produce comprehen
 **Contents:**
 - Executive summary with production-ready assessment
 - Component inventory (6 major systems evaluated)
-- Fresh benchmark tables with December 2024 data
+- Metrics captured per run; see logs.
+
 - Kernel capabilities deep-dive
 - Integration gap analysis (critical/important/minor)
 - Grey compiler integration status
@@ -106,13 +100,14 @@ Re-run native kernel test/benchmark suite, fix all errors, and produce comprehen
 **LAUNCH_PLAN.md:**
 - Updated status to "Production-Ready Core, Ecosystem Maturing"
 - Expanded pre-launch checklist with validation items
-- Replaced generic next steps with detailed Phase 3 roadmap from status report
+- Metrics captured per run; see logs.
 
 ## Key Findings
 
 ### Production-Ready
 ✅ C++ kernel passes all tests  
-✅ Performance exceeds design goals (16.8M EPS)  
+Metrics captured per run; see logs.
+
 ✅ O(1) memory guarantees verified  
 ✅ Thread-safety proven under load  
 ✅ Rust bindings validated
@@ -132,7 +127,8 @@ Re-run native kernel test/benchmark suite, fix all errors, and produce comprehen
 
 **Rationale:**
 1. Core architecture is sound (no design flaws discovered)
-2. Performance exceeds requirements
+2. Metrics captured per run; see logs.
+
 3. No production workloads yet to inform v2 design
 4. Better to invest in ecosystem (docs, bindings, examples)
 
@@ -171,7 +167,8 @@ Re-run native kernel test/benchmark suite, fix all errors, and produce comprehen
 
 ### Test Logs (Captured)
 6. `/tmp/threadsafe_test.log` - Thread-safe scheduler test output
-7. `/tmp/stress_test.log` - Stress test benchmark results
+7. Metrics captured per run; see logs.
+
 8. `/tmp/mega_demo.log` - Scale demo results
 
 ## Validation Evidence
@@ -180,13 +177,13 @@ Re-run native kernel test/benchmark suite, fix all errors, and produce comprehen
 ```
 Thread-Safe Scheduler: 6/6 PASSED
 Stress Test: 3/3 PASSED
-  - Firehose: 16.8M EPS ✅
-  - Deep Dive: 0 bytes growth ✅
-  - Swarm: 285.7M aggregate EPS ✅
+  - Metrics captured per run; see logs.
+
 Mega Demo: 3/3 PASSED
   - Logistics: 13.5M deliveries/sec ✅
   - Cortex: 15.6M spikes/sec ✅
-  - Contagion: 0 bytes growth ✅
+  - Metrics captured per run; see logs.
+
 ```
 
 **Build Status:**
@@ -199,12 +196,14 @@ cd src/cpp_kernel/build && make -j$(nproc)
 ```
 Recursion Depth 100,000:
   Traditional C++: Stack Overflow 💥
-  Betti-RDL: 0 bytes memory delta ✅
+  Metrics captured per run; see logs.
+
 ```
 
 ## Acceptance Criteria Met
 
-✅ Report contains fresh benchmark numbers (December 2024)  
+Metrics captured per run; see logs.
+
 ✅ Explicit assessment for Grey compiler (early stage, needs Rust)  
 ✅ Explicit assessment for bindings (Rust validated, others need testing)  
 ✅ Explicit assessment for kernel (production-ready)  
@@ -218,7 +217,7 @@ Recursion Depth 100,000:
 
 ## Conclusion
 
-The Betti-RDL kernel is **production-ready for single-node workloads**. All core guarantees validated, exceptional performance proven, and clear path forward established. The status report provides stakeholders with comprehensive assessment and actionable roadmap for Phase 3.
+Metrics captured per run; see logs.
 
 **Next immediate actions:**
 1. Install language runtimes (Python, Node.js, Go) and run binding matrix test

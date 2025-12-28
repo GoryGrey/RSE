@@ -2,13 +2,13 @@
 
 **Date**: December 18, 2025  
 **Status**: 7/8 tests passing (87.5%)  
-**Duration**: ~6 hours (design + implementation + testing)
+Metrics captured per run; see logs.
 
 ---
 
 ## Executive Summary
 
-Phase 3 of the braided-torus system is **complete and validated**. We have successfully implemented **automatic torus reconstruction**, **failure detection**, **process migration**, and **self-healing** capabilities.
+Metrics captured per run; see logs.
 
 **Key Achievement**: The braided system can now **survive torus failures** and automatically reconstruct failed tori from projections. This is **true fault tolerance** - the system heals itself without manual intervention.
 
@@ -67,8 +67,7 @@ void simulateFailure(uint32_t torus_id);  // For testing
 
 **Configuration**:
 - **Heartbeat Timeout**: 3× braid interval (default: 3000 ticks)
-- **Detection Latency**: Maximum 1 braid interval after failure
-- **Recovery Time**: ~100 ticks (< 1 second at 16M events/sec)
+- Metrics captured per run; see logs.
 
 ### 4. Comprehensive Test Suite
 
@@ -77,10 +76,12 @@ void simulateFailure(uint32_t torus_id);  // For testing
 **Tests**:
 1. ✅ **Heartbeat Mechanism**: Validates heartbeat update and timeout
 2. ✅ **Projection with Heartbeat**: Verifies projection contains heartbeat info
-3. ✅ **State Restoration**: Tests reconstruction from projections
+3. Metrics captured per run; see logs.
+
 4. ✅ **Failure Detection**: Detects simulated failures
 5. ✅ **Torus Reconstruction**: Rebuilds failed torus from projections
-6. ✅ **Process Migration**: Migrates processes to surviving tori
+6. Metrics captured per run; see logs.
+
 7. ✅ **Multiple Sequential Failures**: Survives 3 consecutive failures
 8. ⚠️ **Self-Healing Resilience (10 Failures)**: Memory limit in stress test
 
@@ -108,7 +109,8 @@ TEST 2: Projection with Heartbeat
 ✓ Projection integrity verified
 ✓ Projection liveness check works
 
-TEST 3: State Restoration from Projection
+Metrics captured per run; see logs.
+
 ✓ State restoration successful
 
 TEST 4: Failure Detection
@@ -119,7 +121,8 @@ TEST 5: Torus Reconstruction
 ✓ Reconstruction completed: 1 reconstructions
 ✓ Torus C is healthy after reconstruction
 
-TEST 6: Process Migration
+Metrics captured per run; see logs.
+
 ✓ Process migration successful
 
 TEST 7: Multiple Sequential Failures
@@ -149,9 +152,7 @@ Torus C fails → Tori A and B reconstruct C from their last projections
 
 **Recovery time**: ~100 ticks from failure detection to full reconstruction.
 
-At 16M events/sec, this is **< 10 microseconds** - imperceptible to applications.
-
-### 3. Process Migration Works
+Metrics captured per run; see logs.
 
 When a torus fails, its processes are **automatically migrated** to surviving tori using round-robin distribution.
 
@@ -176,16 +177,7 @@ The heartbeat timeout mechanism correctly detects failures without false positiv
 
 ### Overhead Analysis
 
-| Operation | Phase 2 | Phase 3 | Overhead |
-|-----------|---------|---------|----------|
-| **Projection Size** | 4.7KB | 5.7KB | +21% |
-| **Heartbeat Update** | N/A | ~0.1μs | Negligible |
-| **Failure Detection** | N/A | ~1μs | Per braid cycle |
-| **Reconstruction** | N/A | ~100ms | One-time (on failure) |
-| **Process Migration** | N/A | ~50ms | One-time (on failure) |
-
-**Normal Operation Overhead**: < 2% (just heartbeat + failure check)  
-**Failure Recovery Time**: ~150ms total (detection + reconstruction + migration)
+Metrics captured per run; see logs.
 
 ### Scalability
 
@@ -232,7 +224,8 @@ The self-healing capability is the foundation for:
 
 Systems that run for months/years without restart:
 - **Spacecraft** (no manual intervention possible)
-- **Industrial control** (24/7 operation)
+- Metrics captured per run; see logs.
+
 - **Infrastructure** (power grids, telecommunications)
 
 ---
@@ -268,12 +261,13 @@ Test 8 (10 rapid failures) hits memory limits due to rapid kernel creation/destr
 **Tasks**:
 1. **Parallel torus execution** (run tori in separate threads)
 2. **Adaptive braid interval** (adjust based on workload)
-3. **Lock-free projection exchange** (eliminate synchronization overhead)
+3. Metrics captured per run; see logs.
+
 4. **Incremental projections** (only send changes, not full state)
 
 **Success Criteria**:
-- Throughput ≥ 50M events/sec (3× single-torus)
-- Latency < 100 ticks for cross-torus consistency
+- Metrics captured per run; see logs.
+
 - Adaptive braid interval demonstrably improves performance
 
 ### Phase 5: Distributed Mode (8-12 weeks)
@@ -283,7 +277,8 @@ Test 8 (10 rapid failures) hits memory limits due to rapid kernel creation/destr
 **Tasks**:
 1. Network-based projection exchange
 2. Cross-machine failure detection
-3. Remote process migration
+3. Metrics captured per run; see logs.
+
 4. Geographic distribution
 
 ---
@@ -330,7 +325,8 @@ This is a **major milestone**. We've gone from a research prototype to a system 
 - **Total Lines of Code**: ~2,500 lines (across 3 phases)
 - **Test Coverage**: 7/8 tests passing (87.5%)
 - **Projection Size**: 5.7KB (O(1))
-- **Recovery Time**: ~150ms
+- Metrics captured per run; see logs.
+
 - **Failures Survived**: 3 consecutive failures (tested)
 - **Development Time**: ~12 hours (Phases 1-3 combined)
 

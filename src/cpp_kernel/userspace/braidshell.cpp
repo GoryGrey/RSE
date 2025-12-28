@@ -2,7 +2,9 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <fstream>
 #include <cstring>
+#include <cstdlib>
 #include <unistd.h>
 #include <sys/utsname.h>
 #include <sys/stat.h>
@@ -31,6 +33,62 @@
 #define BLINK   "\033[5m"
 #define REVERSE "\033[7m"
 
+struct TelemetryFile {
+    std::string path;
+    std::string contents;
+};
+
+bool loadTelemetryFile(TelemetryFile* out) {
+    if (!out) {
+        return false;
+    }
+    const char* path = std::getenv("RSE_METRICS_PATH");
+    if (!path || path[0] == '\0') {
+        return false;
+    }
+    std::ifstream file(path);
+    if (!file) {
+        return false;
+    }
+    std::ostringstream buffer;
+    buffer << file.rdbuf();
+    out->path = path;
+    out->contents = buffer.str();
+    return true;
+}
+
+void printTelemetrySection(const std::string& title) {
+    TelemetryFile telemetry;
+    const bool has_telemetry = loadTelemetryFile(&telemetry);
+
+    std::cout << CYAN << "┌─[ " << BOLD << title << RESET << CYAN
+              << " ]─────────────────────────────────────────┐" << RESET << "\n";
+    if (!has_telemetry) {
+        std::cout << CYAN << "│ " << RED << "No telemetry loaded." << RESET << "\n";
+        std::cout << CYAN << "│ " << DIM
+                  << "Set RSE_METRICS_PATH to a real metrics log."
+                  << RESET << "\n";
+        std::cout << CYAN << "└───────────────────────────────────────────────┘"
+                  << RESET << "\n\n";
+        return;
+    }
+
+    std::cout << CYAN << "│ " << RESET << "Source: " << telemetry.path << "\n";
+    std::cout << CYAN << "│" << RESET << "\n";
+
+    std::istringstream lines(telemetry.contents);
+    std::string line;
+    while (std::getline(lines, line)) {
+        if (line.empty()) {
+            std::cout << CYAN << "│" << RESET << "\n";
+        } else {
+            std::cout << CYAN << "│ " << RESET << line << "\n";
+        }
+    }
+    std::cout << CYAN << "└───────────────────────────────────────────────┘"
+              << RESET << "\n\n";
+}
+
 void clearScreen() {
     std::cout << "\033[2J\033[H";
 }
@@ -58,24 +116,23 @@ void printSystemInfo() {
     struct utsname uts;
     uname(&uts);
     
-    std::cout << CYAN << "│ " << YELLOW << "OS:        " << RESET << GREEN << "BraidedOS v0.1.0" << RESET << " (Revolutionary)\n";
-    std::cout << CYAN << "│ " << YELLOW << "Kernel:    " << RESET << PURPLE << "Braided-Torus Runtime" << RESET << "\n";
-    std::cout << CYAN << "│ " << YELLOW << "Arch:      " << RESET << BLUE << uts.machine << RESET << "\n";
+    std::cout << CYAN << "│ " << YELLOW << "OS:        " << RESET
+              << GREEN << uts.sysname << " " << uts.release << RESET << "\n";
+    std::cout << CYAN << "│ " << YELLOW << "Kernel:    " << RESET
+              << PURPLE << uts.version << RESET << "\n";
+    std::cout << CYAN << "│ " << YELLOW << "Arch:      " << RESET
+              << BLUE << uts.machine << RESET << "\n";
     std::cout << CYAN << "│" << RESET << "\n";
-    
-    // Torus Status
-    std::cout << CYAN << "│ " << MAGENTA << BOLD << "⚡ TORUS STATUS" << RESET << "\n";
-    std::cout << CYAN << "│   " << GREEN << "●" << RESET << " Torus A: " << GREEN << "ACTIVE" << RESET << "  │  Load: " << CYAN << "█████████░" << RESET << " 90%\n";
-    std::cout << CYAN << "│   " << GREEN << "●" << RESET << " Torus B: " << GREEN << "ACTIVE" << RESET << "  │  Load: " << CYAN << "███████░░░" << RESET << " 70%\n";
-    std::cout << CYAN << "│   " << GREEN << "●" << RESET << " Torus C: " << GREEN << "ACTIVE" << RESET << "  │  Load: " << CYAN << "████████░░" << RESET << " 80%\n";
-    std::cout << CYAN << "│" << RESET << "\n";
-    
-    // Performance
-    std::cout << CYAN << "│ " << ORANGE << BOLD << "⚙  PERFORMANCE" << RESET << "\n";
-    std::cout << CYAN << "│   " << RESET << "Events/sec:  " << GREEN << BOLD << "285.7M" << RESET << " (parallel)\n";
-    std::cout << CYAN << "│   " << RESET << "Fairness:    " << GREEN << BOLD << "1.0" << RESET << " (perfect)\n";
-    std::cout << CYAN << "│   " << RESET << "CPU Usage:   " << GREEN << BOLD << "100%" << RESET << " (no waste)\n";
-    std::cout << CYAN << "│   " << RESET << "Memory:      " << GREEN << BOLD << "O(1)" << RESET << " (bounded)\n";
+    TelemetryFile telemetry;
+    if (loadTelemetryFile(&telemetry)) {
+        std::cout << CYAN << "│ " << ORANGE << BOLD << "⚙  TELEMETRY" << RESET << "\n";
+        std::cout << CYAN << "│   " << RESET << "Source: " << telemetry.path << "\n";
+    } else {
+        std::cout << CYAN << "│ " << ORANGE << BOLD << "⚙  TELEMETRY" << RESET << "\n";
+        std::cout << CYAN << "│   " << RED << "No telemetry loaded" << RESET << "\n";
+        std::cout << CYAN << "│   " << DIM << "Set RSE_METRICS_PATH to a real metrics log."
+                  << RESET << "\n";
+    }
     std::cout << CYAN << "│" << RESET << "\n";
     
     // Features
@@ -100,40 +157,17 @@ void printHelp() {
     std::cout << MAGENTA << "│ " << CYAN << BOLD << "clear" << RESET << "     - Clear screen\n";
     std::cout << MAGENTA << "│ " << CYAN << BOLD << "exit" << RESET << "      - Exit BraidShell\n";
     std::cout << MAGENTA << "│" << RESET << "\n";
+    std::cout << MAGENTA << "│ " << DIM << "Telemetry: set RSE_METRICS_PATH to a real metrics log" << RESET << "\n";
+    std::cout << MAGENTA << "│" << RESET << "\n";
     std::cout << MAGENTA << "└───────────────────────────────────────────────────────────────┘" << RESET << "\n\n";
 }
 
 void printTorusStatus() {
-    std::cout << CYAN << "┌─[ " << BOLD << "BRAIDED TORUS VISUALIZATION" << RESET << CYAN << " ]──────────────────────────┐" << RESET << "\n";
-    std::cout << CYAN << "│" << RESET << "\n";
-    std::cout << CYAN << "│     " << GREEN << "╔═══════╗" << RESET << "       " << YELLOW << "╔═══════╗" << RESET << "       " << MAGENTA << "╔═══════╗" << RESET << "\n";
-    std::cout << CYAN << "│     " << GREEN << "║ TOR-A ║" << RESET << " ◄───► " << YELLOW << "║ TOR-B ║" << RESET << " ◄───► " << MAGENTA << "║ TOR-C ║" << RESET << "\n";
-    std::cout << CYAN << "│     " << GREEN << "╚═══════╝" << RESET << "       " << YELLOW << "╚═══════╝" << RESET << "       " << MAGENTA << "╚═══════╝" << RESET << "\n";
-    std::cout << CYAN << "│         " << DIM << "↑                 ↑                 ↑" << RESET << "\n";
-    std::cout << CYAN << "│         " << DIM << "└─────────────────┴─────────────────┘" << RESET << "\n";
-    std::cout << CYAN << "│                  " << PURPLE << BOLD << "⚡ BRAIDED ⚡" << RESET << "\n";
-    std::cout << CYAN << "│" << RESET << "\n";
-    std::cout << CYAN << "│  " << GREEN << "Torus A" << RESET << " │ Processes: " << CYAN << "42" << RESET << " │ Events: " << GREEN << "95.2M/s" << RESET << "\n";
-    std::cout << CYAN << "│  " << YELLOW << "Torus B" << RESET << " │ Processes: " << CYAN << "38" << RESET << " │ Events: " << GREEN << "91.8M/s" << RESET << "\n";
-    std::cout << CYAN << "│  " << MAGENTA << "Torus C" << RESET << " │ Processes: " << CYAN << "40" << RESET << " │ Events: " << GREEN << "98.7M/s" << RESET << "\n";
-    std::cout << CYAN << "│" << RESET << "\n";
-    std::cout << CYAN << "│  " << PURPLE << "Braid Exchanges:" << RESET << " " << BOLD << "1,247" << RESET << " │ Violations: " << GREEN << "0" << RESET << "\n";
-    std::cout << CYAN << "└───────────────────────────────────────────────────────────────┘" << RESET << "\n\n";
+    printTelemetrySection("TORUS TELEMETRY");
 }
 
 void printPerformance() {
-    std::cout << ORANGE << "┌─[ " << BOLD << "PERFORMANCE METRICS" << RESET << ORANGE << " ]─────────────────────────────────────┐" << RESET << "\n";
-    std::cout << ORANGE << "│" << RESET << "\n";
-    std::cout << ORANGE << "│  " << CYAN << "Events/sec (single):" << RESET << "  " << GREEN << BOLD << "16.8M" << RESET << "  " << CYAN << "████████░░" << RESET << "\n";
-    std::cout << ORANGE << "│  " << CYAN << "Events/sec (parallel):" << RESET << " " << GREEN << BOLD << "285.7M" << RESET << " " << CYAN << "██████████" << RESET << "\n";
-    std::cout << ORANGE << "│" << RESET << "\n";
-    std::cout << ORANGE << "│  " << YELLOW << "Scheduler Fairness:" << RESET << "    " << GREEN << BOLD << "1.0" << RESET << " (perfect)\n";
-    std::cout << ORANGE << "│  " << YELLOW << "CPU Utilization:" << RESET << "       " << GREEN << BOLD << "100%" << RESET << "\n";
-    std::cout << ORANGE << "│  " << YELLOW << "Context Switches:" << RESET << "      " << CYAN << "49" << RESET << " (per 5000 ticks)\n";
-    std::cout << ORANGE << "│  " << YELLOW << "Memory Overhead:" << RESET << "       " << GREEN << "<2%" << RESET << "\n";
-    std::cout << ORANGE << "│" << RESET << "\n";
-    std::cout << ORANGE << "│  " << MAGENTA << BOLD << "vs Traditional OS:" << RESET << " " << GREEN << BOLD << "10-20% FASTER" << RESET << " 🚀\n";
-    std::cout << ORANGE << "└───────────────────────────────────────────────────────────────┘" << RESET << "\n\n";
+    printTelemetrySection("PERFORMANCE METRICS");
 }
 
 void printStat(const std::string& path) {

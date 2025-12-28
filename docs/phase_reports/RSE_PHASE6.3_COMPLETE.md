@@ -97,7 +97,7 @@ struct MemFSFile {
 - Power-of-2 capacity
 - Efficient memory usage
 
-### **3. File Operations**
+Metrics captured per run; see logs.
 
 ```cpp
 // Create and write

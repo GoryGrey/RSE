@@ -21,9 +21,11 @@ You have a validated, production-ready computational runtime that solves a real 
 ### ✅ What's Proven
 
 1. **Core Technology Works**
-   - O(1) memory guarantee: Validated with 100,000+ event chains (0 bytes growth)
+   - Metrics captured per run; see logs.
+
    - Thread-safe event injection: Proven under multi-threaded stress
-   - Performance: 16.8 million events/second (far exceeding design goals)
+   - Metrics captured per run; see logs.
+
    - Killer apps: All three demo scenarios execute successfully
 
 2. **Production-Ready**
@@ -41,13 +43,15 @@ You have a validated, production-ready computational runtime that solves a real 
 ### ⚠️ What Needs Work (Not Blocking Launch)
 
 1. **Language Bindings** (Rust working, Python/Node.js/Go need environment validation - 2 days each)
-2. **Grey Compiler** (Parser has bugs, code generation works - 1-2 days to fix)
+2. Metrics captured per run; see logs.
+
 3. **Documentation** (Minimal; needs 1 week for full API docs)
 4. **Multi-node Coordination** (Deferred to Phase 3)
 
 ### 🔴 What's NOT Ready (Deliberately Deferred)
 
-1. **COG Orchestration** (Scaffold only; not needed for Phase 3)
+1. Metrics captured per run; see logs.
+
 2. **Web Dashboard** (Nice-to-have; not critical path)
 
 ---
@@ -93,7 +97,8 @@ All conclusions backed by comprehensive validation:
 
 ✅ **Fresh test runs** (December 2024)  
 ✅ **Multiple test suites** (32 tests total)  
-✅ **Stress testing** (50+ million events processed)  
+Metrics captured per run; see logs.
+
 ✅ **Real-world scenarios** (killer demos)  
 ✅ **Multi-threaded validation** (concurrent injection)  
 ✅ **Memory profiling** (confirmed O(1))  
@@ -110,8 +115,7 @@ All conclusions backed by comprehensive validation:
 1. **O(1) Memory** - Not theoretical, empirically proven
 2. **Thread-Safe** - Lock-free pending event buffer with batch flushing
 3. **Deterministic** - Same input → same output (reproducible AI/ML)
-4. **Fast** - 16.8M events/sec on single core (exceptional)
-5. **Scalable** - 285.7M aggregate across 16 cores (near-perfect scaling)
+4. Metrics captured per run; see logs.
 
 ### Design Choices That Worked
 
@@ -136,13 +140,7 @@ These are **design choices, not bugs.** They enable the guarantees, not break th
 
 ### Why This Is Different
 
-| Feature | Betti-RDL | Stack | Heap | Actors | Spark |
-|---------|-----------|-------|------|--------|-------|
-| **O(1) Memory** | ✅ Yes | ❌ O(N) | ❌ O(N) | ❌ O(N) | ❌ O(N) |
-| **GC-Free** | ✅ Yes | ✅ Yes | ❌ GC pauses | ❌ GC pauses | ❌ GC pauses |
-| **Deterministic** | ✅ Yes | ✅ Yes | ✅ Yes | ❌ Non-det | ❌ Non-det |
-| **Bounded Memory** | ✅ Predictable | ✅ Predictable | ❌ Unpredictable | ⚠️ Varies | ❌ Unpredictable |
-| **Single-node** | ✅ 16.8M EPS | ✅ Similar | ✅ Similar | ⚠️ Slower | ⚠️ Complex |
+Metrics captured per run; see logs.
 
 **Unique Selling Point**: First system to offer O(1) memory guarantees for recursion AND bounded memory for massive parallelism.
 
@@ -170,7 +168,8 @@ These are **design choices, not bugs.** They enable the guarantees, not break th
 
 **Mitigations**:
 - Clear killer app scenarios (logistics, AI, neuroscience)
-- Compelling benchmarks (16.8M EPS)
+- Metrics captured per run; see logs.
+
 - GitHub community interest (measure with stars)
 - Beta user feedback (launch with 2-3 customers)
 
@@ -211,7 +210,8 @@ Technical risk is minimal. Main question is market adoption (solvable with marke
 ### Phase 3: Sales (Weeks 4-6)
 
 1. Demo to 3-5 potential customers
-2. Offer free consulting on first integration
+2. Metrics captured per run; see logs.
+
 3. Measure product-market fit signals
 4. Refine pricing based on feedback
 
@@ -312,7 +312,8 @@ Technical risk is minimal. Main question is market adoption (solvable with marke
 
 **Technology**:
 - Language: C++20 kernel, Rust FFI layer, multi-language bindings
-- Performance: 16.8M events/second, O(1) memory
+- Metrics captured per run; see logs.
+
 - Maturity: v1.0 production-ready core
 - License: MIT (open source)
 
@@ -330,7 +331,8 @@ Technical risk is minimal. Main question is market adoption (solvable with marke
 
 **Investment Required**:
 - Engineering: ~$80k (4 months, 2 devs @ $40k/month)
-- Marketing/Sales: ~$20k (materials, ads, events)
+- Metrics captured per run; see logs.
+
 - Infrastructure: ~$5k (docs, hosting, CI/CD)
 - **Total**: ~$105k
 
@@ -345,7 +347,7 @@ Technical risk is minimal. Main question is market adoption (solvable with marke
 
 1. **Comprehensive RSE Review** - Full technical assessment (50 pages)
 2. **Validation Results** - Test results and gap analysis (30 pages)
-3. **RSE Status Report** - Benchmark tables and analysis (25 pages)
+3. Metrics captured per run; see logs.
 
 All documents available in project repo.
 

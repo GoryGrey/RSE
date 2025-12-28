@@ -52,7 +52,8 @@ pip install .
 [BoundedAllocator] ========== INITIALIZATION ==========
 [Metal] ToroidalSpace <32x32x32> Init.
 [COMPUTE] Initializing Betti-RDL with real computation...
-Python: Processed 10 events, total: 10
+Metrics captured per run; see logs.
+
 ✅ Python binding works!
 ```
 
@@ -66,7 +67,8 @@ Python: Processed 10 events, total: 10
 ```
 [Metal] ToroidalSpace <32x32x32> Init.
 [COMPUTE] Initializing Betti-RDL with real computation...
-Node.js: Processed 100 events, total: 100
+Metrics captured per run; see logs.
+
 ✅ Node.js test passed
 ```
 
@@ -87,8 +89,8 @@ BETTI-RDL RUST EXAMPLE
 [Metal] ToroidalSpace <32x32x32> Init.
 [COMPUTE] Initializing Betti-RDL with real computation...
 [RESULTS]
-Events in this run: 30
-Total events processed: 30
+Metrics captured per run; see logs.
+
 Current time: 9
 Active processes: 10
 [VALIDATION]
@@ -134,7 +136,8 @@ BETTI-RDL GO EXAMPLE
 [Metal] ToroidalSpace <32x32x32> Init.
 [COMPUTE] Initializing Betti-RDL with real computation...
 [RESULTS]
-Events processed: 30
+Metrics captured per run; see logs.
+
 Current time: 9
 Active processes: 10
 [VALIDATION]
@@ -225,9 +228,7 @@ Active processes: 10
 - Limitations & workarounds
 
 **Key Insights:**
-- 📊 Memory: ~150 MB fixed at startup (O(1) guarantee)
-- 📊 Throughput: 16.8M events/sec (single kernel), 285.7M aggregate (16 kernels)
-- 📊 Latency: ~59 ns per event
+- Metrics captured per run; see logs.
 
 ---
 
@@ -319,7 +320,8 @@ General { message: "Expected parameter name", location: SourceLocation { line: 0
 1. **Add Debug Logging** to lexer to see token stream
 2. **Verify Token Format** matches parser expectations
 3. **Test Lexer Standalone** with simple inputs
-4. **Fix Token Stream** generation
+4. Metrics captured per run; see logs.
+
 5. **Re-test End-to-End** compilation
 
 **Estimated Time:** 1-2 days investigation + fix
@@ -330,18 +332,7 @@ General { message: "Expected parameter name", location: SourceLocation { line: 0
 
 ### Launch Readiness Checklist
 
-| Criterion | Status | Notes |
-|-----------|--------|-------|
-| All 4 language bindings validated | ✅ Done | Python, Node.js, Go, Rust |
-| Grey compiler working end-to-end | ⚠️ Partial | Tests pass, parser needs fix |
-| 30+ pages of documentation | ✅ Done | 101 pages created |
-| 5-10 working examples | ✅ Done | Examples in all languages |
-| API documentation | ✅ Done | Complete reference |
-| Killer demos reproducible | ✅ Done | 5-minute setup |
-| Zero test failures | ✅ Done | C++ tests: 6/6, Bindings: 4/4 |
-| Performance benchmarks stable | ✅ Done | 16.8M events/sec validated |
-| Contributing guide | ✅ Done | Community ready |
-| Launch blog post | 🔄 Next | Week 4-5 |
+Metrics captured per run; see logs.
 
 **Overall Launch Readiness:** **85%** (Grey compiler: 15%)
 
@@ -450,11 +441,13 @@ cargo run --example basic
    - Edge case testing
 
 2. **Stress Tests**
-   - 10M+ events
+   - Metrics captured per run; see logs.
+
    - 1000+ processes
    - Memory stability validation
 
-3. **Regression Benchmarks**
+3. Metrics captured per run; see logs.
+
    - Automated performance tracking
    - CI fails on performance regression
    - Historical performance graphs

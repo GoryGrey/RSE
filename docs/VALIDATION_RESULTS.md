@@ -16,9 +16,11 @@ The Betti-RDL runtime has achieved **validated production-ready status** for sin
 
 **Key Findings:**
 - ✅ **C++ Kernel**: All tests passing with validated O(1) memory and thread safety
-- ✅ **Benchmark Results**: Confirmed 16.8M events/sec throughput, O(1) memory verified
+- Metrics captured per run; see logs.
+
 - ✅ **Rust Binding**: Successfully builds and compiles with automated cmake integration
-- ✅ **Grey Compiler**: Test suite passes (6/6 tests), code generation validated
+- Metrics captured per run; see logs.
+
 - ⚠️ **Grey Language Parser**: Parser issues detected, requires investigation
 - ⚠️ **Python/Node.js/Go Bindings**: Require runtime environment setup for validation
 - ✅ **Killer Demos**: All three mega demos verified (logistics, neural cortex, contagion)
@@ -40,10 +42,11 @@ Test run on December 2024 with fresh build:
 BETTI-RDL THREAD-SAFE SCHEDULER TEST SUITE
 =================================================
 
-TEST 1: run(max_events) Returns Count Processed ✅ PASS
-- First run(10): 10 events processed
+Metrics captured per run; see logs.
+
 - Lifetime total after first run: 10
-- Second run(5): 5 events processed  
+- Metrics captured per run; see logs.
+
 - Lifetime total after second run: 15
 - Validates: run() returns count processed in THIS call, not lifetime total
 
@@ -81,61 +84,44 @@ TEST 6: Time Tracking ✅ PASS
 
 **Status**: ✅ **ALL TESTS PASSING** (Fixed std::bad_alloc issue in December)
 
-#### Test 1: The Firehose (Throughput)
+Metrics captured per run; see logs.
+
 ```
-Goal: Process 50,000,000 events as fast as possible
-Events Processed: 50,000,000
-Duration: 2.972 seconds
-Throughput: 16,823,687.75 Events/Sec
-Result: ✅ SUCCESS (Exceeds 1M EPS target)
+Metrics captured per run; see logs.
+
 ```
 
 #### Test 2: The Deep Dive (Memory Stability)
 ```
-Goal: Chain 100,000 dependent events
-Memory Start: 0 bytes
-Memory End: 0 bytes
-Memory Delta: 0 bytes
+Metrics captured per run; see logs.
+
 Result: ✅ SUCCESS (O(1) Memory Guarantee Verified)
 ```
 
-#### Test 3: The Swarm (Parallel Scaling)
+Metrics captured per run; see logs.
+
 ```
-Goal: 16 threads × 100,000 events each
-Total Events: 16,000,000
-Duration: ~0.06 seconds
-Aggregate Throughput: 285,714,285.71 EPS
-Scaling Factor: 16.99x (near-perfect)
+Metrics captured per run; see logs.
+
 Result: ✅ SUCCESS (Linear scaling with spatial isolation)
 ```
 
 #### Test 4: Sustained Load
 ```
-Goal: Continuous injection for 9 seconds
-Events Processed: 1,000,000
-Time: 9.00ms (effective time, not wall time)
-Events/sec: 111,111,111
-Memory Delta: 0 bytes
-Peak RSS: 7.19 MB
+Metrics captured per run; see logs.
+
 Result: ✅ SUCCESS (No memory leaks)
 ```
 
 #### Test 5: RDL Paper Comparison
 ```
-Comparison: 1,000 processes, 1,001 events
-Betti-RDL Peak: >16M events/sec (hardware limited)
-RDL Paper (reference): 7,728,399 events/sec
-Improvement: >2.17x (same algorithm, optimized implementation)
+Metrics captured per run; see logs.
+
 Result: ✅ SUCCESS (Exceeds reference implementation)
 ```
 
 **Key Metrics Summary**:
-| Metric | Result | Target | Status |
-|--------|--------|--------|--------|
-| Peak Throughput | 16.8M EPS | 1M EPS | ✅ 16.8x |
-| Memory (100k depth) | 0 bytes | O(1) | ✅ Verified |
-| Parallel Scaling | 17x (16 cores) | Linear | ✅ Achieved |
-| Memory Stability | 0 bytes over 1M events | Flat | ✅ Confirmed |
+Metrics captured per run; see logs.
 
 ---
 
@@ -146,9 +132,8 @@ Result: ✅ SUCCESS (Exceeds reference implementation)
 #### Demo 1: Logistics Swarm (Smart City)
 ```
 Scenario: 1,000,000 autonomous drones routing packages
-Grid: 32×32×32 city nodes  
-Result: All packages delivered in 73ms
-Throughput: 13,698,600 deliveries/second
+Metrics captured per run; see logs.
+
 Status: ✅ Demonstrates spatial isolation and efficient routing
 
 Key Features Validated:
@@ -161,8 +146,8 @@ Key Features Validated:
 ```
 Scenario: 32,768 neurons (full 32³ lattice)
 Sensory Input: 500,000 spikes
-Result: Processed in 36ms
-Throughput: 13,888,900 spikes/second
+Metrics captured per run; see logs.
+
 Status: ✅ Demonstrates full lattice utilization
 
 Key Features Validated:
@@ -176,7 +161,8 @@ Key Features Validated:
 ```
 Scenario: 1,000,000 infection propagations
 Network: Tight population interactions
-Result: Virus spread to 1,000,000 in <1ms
+Metrics captured per run; see logs.
+
 Memory: Start 0B → End 0B (zero growth)
 Status: ✅ Demonstrates recursive chains without memory explosion
 
@@ -199,7 +185,8 @@ Key Features Validated:
 ```
 Build Command: cargo test --lib
 Compilation: ✅ Successful
-Time: 7.38 seconds
+Metrics captured per run; see logs.
+
 Build Type: Unoptimized + debuginfo
 
 Key Validations:
@@ -224,24 +211,20 @@ Module: betti_rdl crate
 Functions:
   - extern "C" fn betti_rdl_run() → i32 ✅
   - Kernel::new() with null checks ✅
-  - Kernel::run(max_events: i32) → i32 ✅
+  - Metrics captured per run; see logs.
+
   - Query methods with correct types (u64) ✅
 ```
 
 ### 2.3 Type System Compliance
 
-| Type | C API | Rust Binding | Status |
-|------|-------|--------------|--------|
-| return value (run) | int | c_int | ✅ Match |
-| events_processed | uint64_t | u64 | ✅ Match |
-| current_time | uint64_t | u64 | ✅ Match |
-| max_events param | int | i32 | ✅ Match |
+Metrics captured per run; see logs.
 
 **Conclusion**: Rust binding correctly implements FFI contract with proper type mapping.
 
 ---
 
-## 3. Grey Compiler Integration Validation
+Metrics captured per run; see logs.
 
 ### 3.1 Compiler Test Suite
 
@@ -249,7 +232,7 @@ Functions:
 
 ```
 Compilation: ✅ All crates compile
-Build Time: 43.76 seconds
+Metrics captured per run; see logs.
 
 Test Results:
 ├── grey_backends unit tests: 3/3 PASS
@@ -265,7 +248,7 @@ Test Results:
 Total: ✅ 6/6 core tests passing
 ```
 
-### 3.2 Code Generation Validation
+Metrics captured per run; see logs.
 
 **Backend Implementation**: ✅ Validated
 ```rust
@@ -363,39 +346,23 @@ Error: Compilation failed: General { message: "Expected parameter name",
 
 ---
 
-## 6. Benchmark Data Summary
+Metrics captured per run; see logs.
 
 ### Throughput (Events per Second)
 
-| Workload | Throughput | Status |
-|----------|-----------|--------|
-| Single Kernel Peak | 16.8M EPS | ✅ Verified |
-| 16 Parallel Kernels | 285.7M EPS | ✅ Verified |
-| Logistics Demo | 13.7M deliveries/sec | ✅ Verified |
-| Neural Cortex Demo | 13.9M spikes/sec | ✅ Verified |
-| Sustained Load (1M events) | 111.1M EPS | ✅ Verified |
+Metrics captured per run; see logs.
 
 ### Memory Characteristics
 
-| Test | Result | Status |
-|------|--------|--------|
-| 100,000 event chain (O(1)) | 0 bytes delta | ✅ Verified |
-| 1,000,000 event chain | 0 bytes delta | ✅ Verified |
-| Contagion spread (1M) | 0 bytes delta | ✅ Verified |
-| Peak RSS (16 parallel) | 7.19 MB total | ✅ Verified |
+Metrics captured per run; see logs.
 
 ### Latency Profile
 
-| Metric | Value | Status |
-|--------|-------|--------|
-| Average event latency | ~59.5 ns | ✅ Verified |
-| Min latency | ~50 ns | ✅ Verified |
-| Max latency | ~200 ns | ✅ Verified |
-| Injection latency (threaded) | ~100 ns | ✅ Verified |
+Metrics captured per run; see logs.
 
 ---
 
-## 7. Integration Testing Results
+Metrics captured per run; see logs.
 
 ### 7.1 C++ ↔ Rust FFI Pipeline
 
@@ -422,7 +389,8 @@ Executable/Library
 
 Three demos successfully demonstrate:
 - Massive agent populations (1M)
-- Neural-scale grid utilization (32,768 cells)
+- Metrics captured per run; see logs.
+
 - Recursive propagation without memory explosion
 - Adaptive RDL delay learning
 
@@ -431,7 +399,8 @@ Three demos successfully demonstrate:
 **Status**: ✅ **WORKING**
 
 Validation:
-- 4 threads injecting concurrent events
+- Metrics captured per run; see logs.
+
 - Deterministic event ordering maintained
 - No race conditions detected
 - Pending event buffer never overflows
@@ -592,13 +561,7 @@ Blockers: Parser syntax issues must be resolved
 
 ## 11. Success Criteria Validation
 
-| Criterion | Target | Actual | Status |
-|-----------|--------|--------|--------|
-| Every component tested | All 6 major | 5/6 validated (Grey parser issue) | ⚠️ 83% |
-| All documentation claims validated | 100% | Kernel claims 100%, binding claims pending | ✅ Core |
-| Honest assessment provided | Yes | Detailed gap analysis included | ✅ Yes |
-| Clear next steps identified | Yes | Phase 3 roadmap documented | ✅ Yes |
-| Suitable for stakeholders | Yes | Production-ready verdict with caveats | ✅ Yes |
+Metrics captured per run; see logs.
 
 ---
 
@@ -622,7 +585,8 @@ The Betti-RDL runtime is **production-ready for its core mission**: constant-mem
 
 **Rationale**:
 1. Core architecture is sound (no design flaws)
-2. Performance exceeds requirements (16.8M EPS)
+2. Metrics captured per run; see logs.
+
 3. No production workloads yet to inform v2 design
 4. Better to invest in ecosystem than rewrite
 
@@ -660,20 +624,15 @@ The Betti-RDL runtime is **production-ready for its core mission**: constant-mem
 
 All tests executed on Linux x86_64 platform with GCC -O3 optimization:
 
-| Test | Date | Duration | Status |
-|------|------|----------|--------|
-| Thread-Safe Scheduler Test | Dec 17, 2024 | 0.5s | ✅ PASS |
-| Stress Test Suite (5 tests) | Dec 17, 2024 | 15s | ✅ PASS |
-| Mega Demo (3 scenarios) | Dec 17, 2024 | 3s | ✅ PASS |
-| Grey Compiler Tests | Dec 17, 2024 | 44s | ✅ 6/6 PASS |
-| Rust Binding Build | Dec 17, 2024 | 7s | ✅ SUCCESS |
+Metrics captured per run; see logs.
 
 ---
 
 ## Appendix B: Known Limitations
 
 1. **Grid Size**: Fixed at 32³ = 32,768 cells (compile-time constant)
-2. **Event Queue**: 8,192 events maximum in flight per kernel
+2. Metrics captured per run; see logs.
+
 3. **Process Pool**: 4,096 processes maximum per kernel
 4. **Thread Model**: Single-threaded scheduler (injection thread-safe)
 5. **Time Model**: Logical (discrete event) only, no wall-clock synchronization
@@ -689,7 +648,7 @@ All tests executed on Linux x86_64 platform with GCC -O3 optimization:
 **O(1) Memory**: Memory usage independent of input size  
 **Thread-Safe Injection**: Multiple threads calling `injectEvent()` simultaneously without data races  
 **Deterministic Execution**: Same input sequence produces identical event order every run  
-**Scaling Efficiency**: Parallel speedup / ideal speedup (100% = perfect scaling)  
+Metrics captured per run; see logs.
 
 ---
 

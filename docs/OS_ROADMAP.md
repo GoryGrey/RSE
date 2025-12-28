@@ -46,7 +46,7 @@ Success criteria:
 
 ### 3) Filesystem Growth
 - BlockFS directories + permissions (basic permission enforcement now in place).
-- Stronger journaling and recovery (beyond current checksum/sanitize pass).
+- Stronger journaling and recovery (beyond current checksum/sanitize pass and journal write checks).
 - Consistent stat/list semantics for /persist and root.
 
 Success criteria:

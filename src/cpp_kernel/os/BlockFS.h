@@ -187,7 +187,7 @@ public:
             if (header_.version < kVersion) {
                 header_.version = kVersion;
                 clear_journal();
-                sync_header();
+                (void)sync_header();
             }
             mounted_ = true;
             return true;
@@ -650,8 +650,8 @@ private:
         header_.data_start_lba = data_start_lba_;
         header_.region_blocks = region_blocks_;
         clear_journal();
-        sync_header();
-        sync_entries();
+        (void)sync_header();
+        (void)sync_entries();
     }
 
     bool read_header(BlockFSHeader& out) {
@@ -668,15 +668,16 @@ private:
         return true;
     }
 
-    void sync_header() {
+    bool sync_header() {
         uint8_t* scratch = new uint8_t[block_size_];
         if (!scratch) {
-            return;
+            return false;
         }
         std::memset(scratch, 0, block_size_);
         std::memcpy(scratch, &header_, sizeof(BlockFSHeader));
-        rse_block_write(start_lba_, scratch, 1);
+        bool ok = rse_block_write(start_lba_, scratch, 1) == 0;
         delete[] scratch;
+        return ok;
     }
 
     bool load_entries() {
@@ -695,17 +696,18 @@ private:
         return true;
     }
 
-    void sync_entries() {
+    bool sync_entries() {
         uint32_t bytes = sizeof(BlockFSEntry) * kMaxFiles;
         uint32_t blocks = table_blocks_;
         uint8_t* scratch = new uint8_t[(size_t)blocks * block_size_];
         if (!scratch) {
-            return;
+            return false;
         }
         std::memset(scratch, 0, (size_t)blocks * block_size_);
         std::memcpy(scratch, entries_, bytes);
-        rse_block_write(start_lba_ + 1, scratch, blocks);
+        bool ok = rse_block_write(start_lba_ + 1, scratch, blocks) == 0;
         delete[] scratch;
+        return ok;
     }
 
     BlockFSEntry* find_entry(const char* name) {
@@ -830,7 +832,7 @@ private:
             }
         }
         if (changed) {
-            sync_entries();
+            (void)sync_entries();
         }
     }
 
@@ -900,19 +902,21 @@ private:
         }
         if (header_.journal_index >= kMaxFiles) {
             clear_journal();
-            sync_header();
+            (void)sync_header();
             return;
         }
         if (entry_crc(header_.journal_entry) != header_.journal_crc) {
             clear_journal();
-            sync_header();
+            (void)sync_header();
             return;
         }
         header_.journal_entry.slot_index = header_.journal_index;
         entries_[header_.journal_index] = header_.journal_entry;
-        sync_entries();
+        if (!sync_entries()) {
+            return;
+        }
         clear_journal();
-        sync_header();
+        (void)sync_header();
     }
 
     bool commit_entry(uint32_t index) {
@@ -923,11 +927,14 @@ private:
         header_.journal_index = index;
         header_.journal_entry = entries_[index];
         header_.journal_crc = entry_crc(header_.journal_entry);
-        sync_header();
-        sync_entries();
+        if (!sync_header()) {
+            return false;
+        }
+        if (!sync_entries()) {
+            return false;
+        }
         clear_journal();
-        sync_header();
-        return true;
+        return sync_header();
     }
 
     int64_t block_read_at(uint64_t base_lba, uint64_t offset, uint8_t* buf, uint32_t count) {

@@ -98,6 +98,21 @@ int main() {
     int64_t bad_mkdir = os::syscall(os::SYS_MKDIR, bad_addr, 0755);
     assert(bad_mkdir == -os::EFAULT);
 
+    int64_t bad_pipe = os::syscall(os::SYS_PIPE, bad_addr);
+    assert(bad_pipe == -os::EFAULT);
+
+    int64_t bad_time = os::syscall(os::SYS_TIME, bad_addr);
+    assert(bad_time == -os::EFAULT);
+
+    os::rse_timespec req = { 0, 1000 };
+    uint64_t req_addr = proc.vmem->allocate(sizeof(req));
+    assert(req_addr != 0);
+    assert(proc.vmem->writeUser(req_addr, &req, sizeof(req)));
+    int64_t bad_nanosleep_req = os::syscall(os::SYS_NANOSLEEP, bad_addr, 0);
+    assert(bad_nanosleep_req == -os::EFAULT);
+    int64_t bad_nanosleep_rem = os::syscall(os::SYS_NANOSLEEP, req_addr, bad_addr);
+    assert(bad_nanosleep_rem == -os::EFAULT);
+
     os::PageTable* pt = proc.vmem->getPageTable();
     assert(pt != nullptr);
     uint64_t no_user = proc.vmem->getHeapEnd() - os::PAGE_SIZE * 4;

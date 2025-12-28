@@ -29,7 +29,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - BlockFS persistence with checksum + journal + corruption detection (flat table, directory paths), with mount-time sanitize for duplicates/invalid entries.
 - TCP-lite framing over `/dev/net0` for loopback handshake/data tests.
 - In-kernel socket syscalls (`socket/bind/listen/accept/connect`) with loopback device-backed buffers.
-- Syscall dispatcher with user-range validation and per-torus dispatch.
+- Syscall dispatcher with user-range validation (including nanosleep/pipe/time pointers) and per-torus dispatch.
 - User mmap rejects overlaps; mmap/mprotect/munmap validate zero/unaligned sizes; PROT_EXEC blocked for anonymous mmap and limited to code pages; stack guard pages widened; mmap uses guard pages by default; read/write reject oversized counts; mprotect refuses unmapped ranges; VFS reserves `/dev` and rejects invalid `/persist` subpaths; net loopback backpressure returns `-EAGAIN`.
 - Ring3 exec smoke (UEFI): exec path works; isolation still evolving.
 - Projection exchange across 3 VMs via IVSHMEM shared memory.

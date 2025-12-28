@@ -825,6 +825,9 @@ inline int64_t sys_nanosleep(uint64_t req_ptr, uint64_t rem_ptr, uint64_t,
     if (req_ptr == 0) {
         return -EINVAL;
     }
+    if (!validate_user_range(current, req_ptr, sizeof(rse_timespec), false)) {
+        return -EFAULT;
+    }
     rse_timespec req = {};
     if (!read_user_bytes(current, req_ptr, &req, sizeof(req))) {
         return -EFAULT;

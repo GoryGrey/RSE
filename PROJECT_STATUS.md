@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-**The Bible - Last Updated: December 27, 2025 (user guard tests + BlockFS checksum journal + net loopback + full system test pass)**
+**The Bible - Last Updated: December 28, 2025 (wall-clock benchmark snapshot + exchange diagnostics + full system test pass)**
 
 ---
 
@@ -124,13 +124,19 @@ RSE/
 
 ## 📈 Performance Metrics
 
-No static performance numbers are kept here. Capture real metrics per run and store logs:
+Real metrics only. Latest snapshot captured from logs on December 28, 2025:
 
-- Kernel + UEFI benchmarks: `./scripts/run_full_system_test.sh` (use `NET_LOG_DIR` or `BOOT_LOG_DIR` to redirect logs).
-- Host baseline: `./scripts/run_linux_baseline.sh`.
-- BraidShell telemetry: set `RSE_METRICS_PATH` to a real metrics log.
+| Metric | RSE (UEFI/QEMU, TSC-calibrated) | Linux baseline (host) | Notes |
+|--------|----------------------------------|------------------------|-------|
+| Compute | 55 ns/op (22,301,494 ns total) | 580.5 ns/op | Different workloads/environments |
+| Memory copy | 9 ns/byte (631,566,526 ns total) | 171.3 ns/byte | Different sizes/passes |
+| File I/O | RAMFS 11,078 ns/op | 30,625 ns/op | Different storage paths |
+| HTTP loopback | 434 ns/req | blocked (permission denied) | Network sandbox blocks host HTTP |
 
-Comparative claims are deferred until benchmarks are captured and reviewed.
+Notes:
+- RSE ns values are derived from TSC calibration via UEFI `Stall`; treat as approximate.
+- Source logs: `build/boot/boot.log` (RSE) and `benchmarks/linux_baseline.json` (Linux).
+- Capture new runs with `./scripts/run_full_system_test.sh` and `./scripts/run_linux_baseline.sh`.
 
 ---
 

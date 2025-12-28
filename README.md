@@ -1,6 +1,6 @@
 # RSE (Resilient Spatial Execution)
 
-**Last Updated**: December 27, 2025 (user guard tests + BlockFS checksum journal + net loopback + full system test pass)  
+**Last Updated**: December 28, 2025 (wall-clock benchmark snapshot + exchange diagnostics + full system test pass)  
 **Status**: Research prototype. Bootable UEFI kernel with an interactive dashboard (keyboard/mouse) and in-kernel workloads; braided projection exchange works in multi-VM via shared memory. Native fast-path I/O is now in-kernel (`/dev/fast0`), while UEFI/virtio remain compatibility paths; ring3 exec smoke now passes with the user-mode window remap.
 
 **Quick Links**: [Project Status](PROJECT_STATUS.md) | [Documentation](#documentation)
@@ -66,15 +66,24 @@ Key properties:
 
 ---
 
-## Benchmarks (QEMU, TSC cycles)
+## Benchmarks (QEMU, TSC cycles + calibrated ns)
 
 Metrics are captured per run. Use logs to inspect real values:
 
 - Kernel + UEFI benchmarks: `./scripts/run_full_system_test.sh` (see `build/boot/boot.log` or `/tmp` log overrides).
 - Host baseline: `./scripts/run_linux_baseline.sh`.
 
+Latest snapshot (Dec 28, 2025):
+
+| Metric | RSE (UEFI/QEMU, TSC-calibrated) | Linux baseline (host) | Notes |
+|--------|----------------------------------|------------------------|-------|
+| Compute | 55 ns/op (22,301,494 ns total) | 580.5 ns/op | Different workloads/environments |
+| Memory copy | 9 ns/byte (631,566,526 ns total) | 171.3 ns/byte | Different sizes/passes |
+| File I/O | RAMFS 11,078 ns/op | 30,625 ns/op | Different storage paths |
+| HTTP loopback | 434 ns/req | blocked (permission denied) | Network sandbox blocks host HTTP |
+
 Notes:
-- These are **QEMU TSC cycle counts**, not wall-clock time.
+- RSE logs include cycles plus **TSC-calibrated ns** (UEFI `Stall`); treat ns as approximate.
 - Parsed benchmark files live in `benchmarks/uefi_bench.json` (raw log: `benchmarks/uefi_serial.log`); refresh via scripts when needed.
 - Linux baseline results live in `benchmarks/linux_baseline.json`.
 - External UDP/HTTP RX proof log is saved at `build/boot/proof.log` when captured.

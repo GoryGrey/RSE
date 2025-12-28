@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-**The Bible - Last Updated: December 28, 2025 (persist path validation + syscall VFS test + full system test pass)**
+**The Bible - Last Updated: December 28, 2025 (user memory validation hardening + isolation test + full system test pass)**
 
 ---
 
@@ -46,7 +46,7 @@ This status covers both the runtime (Betti-RDL engine) and the OS scaffold conta
 | **UI Input (Keyboard/Mouse)** | ✅ Working | Interactive | Dashboard selection + actions |
 | **Projection Exchange (IVSHMEM)** | ⚠️ Lab-only | 3-torus Multi-VM | Shared-memory transport |
 
-**Test Coverage**: Full system test + UEFI bench + fastio bench + ring3 smoke/exec (UEFI run-iso; exec passes) + Linux baseline + IVSHMEM exchange + sys_wait + sys_ps + sys_stat + sys_vfs_persist + sys_pipe + sys_dup tests; external UDP/HTTP proof captured in `build/boot/proof.log`.
+**Test Coverage**: Full system test + UEFI bench + fastio bench + ring3 smoke/exec (UEFI run-iso; exec passes) + Linux baseline + IVSHMEM exchange + sys_wait + sys_ps + sys_stat + sys_user_isolation + sys_vfs_persist + sys_pipe + sys_dup tests; external UDP/HTTP proof captured in `build/boot/proof.log`.
 
 **Note (3-VM SHM exchange)**: If the IDE freezes during the projection exchange step, run the test from a terminal and redirect logs outside the repo to avoid heavy file-watcher load:
 `NET_LOG_DIR=/tmp/rse_net_exchange TIMEOUT_EXCHANGE=90 TIMEOUT_BOOT=120 ./scripts/run_full_system_test.sh`

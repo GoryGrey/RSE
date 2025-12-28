@@ -25,6 +25,12 @@ private:
     MemFS* fs_;
     DeviceManager* device_mgr_;
     BlockFS* blockfs_;
+    static constexpr uint16_t kRootMode = 0755;
+    static constexpr uint16_t kDevRootMode = 0555;
+    static constexpr uint16_t kPersistRootMode = 0755;
+    static constexpr uint16_t kPermRead = 0400;
+    static constexpr uint16_t kPermWrite = 0200;
+    static constexpr uint16_t kPermExec = 0100;
 
     bool hasDevPrefix(const char* path) const {
         if (!path) {
@@ -88,6 +94,103 @@ private:
             }
         }
         return in_segment;
+    }
+
+    static bool check_mode(uint16_t mode, uint16_t needed) {
+        return (mode & needed) == needed;
+    }
+
+    bool split_parent_abs(const char* path, char* out, size_t max) const {
+        if (!path || !out || max == 0 || path[0] != '/') {
+            return false;
+        }
+        const char* last = std::strrchr(path, '/');
+        if (!last || last == path) {
+            if (max < 2) {
+                return false;
+            }
+            out[0] = '/';
+            out[1] = '\0';
+            return true;
+        }
+        size_t len = static_cast<size_t>(last - path);
+        if (len + 1 > max) {
+            return false;
+        }
+        std::memcpy(out, path, len);
+        out[len] = '\0';
+        return true;
+    }
+
+    bool split_parent_rel(const char* path, char* out, size_t max) const {
+        if (!path || !out || max == 0) {
+            return false;
+        }
+        const char* last = std::strrchr(path, '/');
+        if (!last) {
+            out[0] = '\0';
+            return true;
+        }
+        size_t len = static_cast<size_t>(last - path);
+        if (len + 1 > max) {
+            return false;
+        }
+        std::memcpy(out, path, len);
+        out[len] = '\0';
+        return true;
+    }
+
+    bool memfs_dir_mode(const char* path, uint16_t* out_mode) const {
+        if (!out_mode || !fs_) {
+            return false;
+        }
+        if (!path || std::strcmp(path, "/") == 0 || std::strcmp(path, "") == 0) {
+            *out_mode = kRootMode;
+            return true;
+        }
+        uint32_t size = 0;
+        bool is_dir = false;
+        uint32_t mode = 0;
+        if (!fs_->stat(path, &size, &is_dir, &mode)) {
+            return false;
+        }
+        if (!is_dir) {
+            return false;
+        }
+        *out_mode = static_cast<uint16_t>(mode);
+        return true;
+    }
+
+    bool persist_dir_mode(const char* path, uint16_t* out_mode) const {
+        if (!out_mode || !blockfs_ || !blockfs_->isMounted()) {
+            return false;
+        }
+        if (!path || path[0] == '\0') {
+            *out_mode = kPersistRootMode;
+            return true;
+        }
+        uint32_t size = 0;
+        uint8_t type = 0;
+        uint16_t mode = 0;
+        if (!blockfs_->stat(path, &size, &type, &mode)) {
+            return false;
+        }
+        if (type != BlockFS::kEntryDir) {
+            return false;
+        }
+        *out_mode = mode;
+        return true;
+    }
+
+    bool persist_dir_access(const char* path, uint16_t needed) const {
+        if (!blockfs_ || !blockfs_->isMounted()) {
+            return false;
+        }
+        uint16_t mode = 0;
+        if (!persist_dir_mode(path, &mode)) {
+            return false;
+        }
+        return check_mode(mode, needed);
     }
     
 public:
@@ -204,7 +307,23 @@ public:
                 std::cerr << "[VFS] BlockFS not mounted" << std::endl;
                 return -1;
             }
-            BlockFSEntry* entry = blockfs_->open(persist, (flags & O_CREAT) != 0);
+            char parent[BlockFS::kNameMax + 1] = {};
+            if (!split_parent_rel(persist, parent, sizeof(parent))) {
+                return -EINVAL;
+            }
+            uint16_t parent_mode = 0;
+            if (!persist_dir_mode(parent, &parent_mode)) {
+                return -ENOENT;
+            }
+            uint16_t need = kPermExec;
+            if (flags & O_CREAT) {
+                need = static_cast<uint16_t>(need | kPermWrite);
+            }
+            if (!check_mode(parent_mode, need)) {
+                return -EACCES;
+            }
+            BlockFSEntry* entry = blockfs_->open(persist, (flags & O_CREAT) != 0,
+                                                 static_cast<uint16_t>(mode));
             if (!entry) {
                 std::cerr << "[VFS] BlockFS open failed: " << persist << std::endl;
                 return -1;
@@ -235,6 +354,21 @@ public:
 
         if (!fs_ || !fs_->isValidPath(path, false)) {
             return -EINVAL;
+        }
+        char parent[256] = {};
+        if (!split_parent_abs(path, parent, sizeof(parent))) {
+            return -EINVAL;
+        }
+        uint16_t parent_mode = 0;
+        if (!memfs_dir_mode(parent, &parent_mode)) {
+            return -ENOENT;
+        }
+        uint16_t need = kPermExec;
+        if (flags & O_CREAT) {
+            need = static_cast<uint16_t>(need | kPermWrite);
+        }
+        if (!check_mode(parent_mode, need)) {
+            return -EACCES;
         }
 
         // Look up file
@@ -700,6 +834,17 @@ public:
             if (!blockfs_ || !blockfs_->isMounted()) {
                 return -1;
             }
+            char parent[BlockFS::kNameMax + 1] = {};
+            if (!split_parent_rel(persist, parent, sizeof(parent))) {
+                return -EINVAL;
+            }
+            uint16_t parent_mode = 0;
+            if (!persist_dir_mode(parent, &parent_mode)) {
+                return -ENOENT;
+            }
+            if (!check_mode(parent_mode, static_cast<uint16_t>(kPermWrite | kPermExec))) {
+                return -EACCES;
+            }
             return blockfs_->remove(persist) ? 0 : -1;
         }
         if (hasDevPrefix(path)) {
@@ -710,6 +855,17 @@ public:
         }
         if (!fs_ || !fs_->isValidPath(path, false)) {
             return -EINVAL;
+        }
+        char parent[256] = {};
+        if (!split_parent_abs(path, parent, sizeof(parent))) {
+            return -EINVAL;
+        }
+        uint16_t parent_mode = 0;
+        if (!memfs_dir_mode(parent, &parent_mode)) {
+            return -ENOENT;
+        }
+        if (!check_mode(parent_mode, static_cast<uint16_t>(kPermWrite | kPermExec))) {
+            return -EACCES;
         }
         if (fs_->remove(path)) {
             return 0;
@@ -723,6 +879,9 @@ public:
         }
         const char* target = path ? path : "/";
         if (strcmp(target, "/") == 0 || strcmp(target, "") == 0) {
+            if (!check_mode(kRootMode, static_cast<uint16_t>(kPermRead | kPermExec))) {
+                return -EACCES;
+            }
             uint32_t written = 0;
             auto append_entry = [&](const char* entry) {
                 if (!entry) {
@@ -760,11 +919,17 @@ public:
             if (!device_mgr_) {
                 return -1;
             }
+            if (!check_mode(kDevRootMode, static_cast<uint16_t>(kPermRead | kPermExec))) {
+                return -EACCES;
+            }
             return (int32_t)device_mgr_->list(buf, max);
         }
         if (strcmp(target, "/persist") == 0 || strcmp(target, "/persist/") == 0) {
             if (!blockfs_ || !blockfs_->isMounted()) {
                 return -1;
+            }
+            if (!persist_dir_access(nullptr, static_cast<uint16_t>(kPermRead | kPermExec))) {
+                return -EACCES;
             }
             return blockfs_->listDirectory(nullptr, buf, max);
         }
@@ -776,7 +941,17 @@ public:
             if (!blockfs_ || !blockfs_->isMounted()) {
                 return -1;
             }
+            if (!persist_dir_access(persist, static_cast<uint16_t>(kPermRead | kPermExec))) {
+                return -EACCES;
+            }
             return blockfs_->listDirectory(persist, buf, max);
+        }
+        uint16_t mode = 0;
+        if (!memfs_dir_mode(target, &mode)) {
+            return -ENOENT;
+        }
+        if (!check_mode(mode, static_cast<uint16_t>(kPermRead | kPermExec))) {
+            return -EACCES;
         }
         return fs_->list(target, buf, max);
     }
@@ -787,7 +962,7 @@ public:
         }
         if (strcmp(path, "/") == 0 || strcmp(path, "") == 0) {
             out->size = 0;
-            out->mode = 0555;
+            out->mode = kRootMode;
             out->type = RSE_STAT_DIR;
             return 0;
         }
@@ -796,7 +971,7 @@ public:
                 return -ENOENT;
             }
             out->size = 0;
-            out->mode = 0555;
+            out->mode = kDevRootMode;
             out->type = RSE_STAT_DIR;
             return 0;
         }
@@ -805,7 +980,7 @@ public:
                 return -ENOENT;
             }
             out->size = 0;
-            out->mode = 0555;
+            out->mode = kPersistRootMode;
             out->type = RSE_STAT_DIR;
             return 0;
         }
@@ -890,6 +1065,17 @@ public:
             if (!blockfs_ || !blockfs_->isMounted()) {
                 return -1;
             }
+            char parent[BlockFS::kNameMax + 1] = {};
+            if (!split_parent_rel(persist, parent, sizeof(parent))) {
+                return -EINVAL;
+            }
+            uint16_t parent_mode = 0;
+            if (!persist_dir_mode(parent, &parent_mode)) {
+                return -ENOENT;
+            }
+            if (!check_mode(parent_mode, static_cast<uint16_t>(kPermWrite | kPermExec))) {
+                return -EACCES;
+            }
             return blockfs_->mkdir(persist, (uint16_t)mode) ? 0 : -1;
         }
         if (hasDevPrefix(path) || lookupDevice(path)) {
@@ -897,6 +1083,17 @@ public:
         }
         if (!fs_ || !fs_->isValidPath(path, false)) {
             return -EINVAL;
+        }
+        char parent[256] = {};
+        if (!split_parent_abs(path, parent, sizeof(parent))) {
+            return -EINVAL;
+        }
+        uint16_t parent_mode = 0;
+        if (!memfs_dir_mode(parent, &parent_mode)) {
+            return -ENOENT;
+        }
+        if (!check_mode(parent_mode, static_cast<uint16_t>(kPermWrite | kPermExec))) {
+            return -EACCES;
         }
         return fs_->mkdir(path, mode) ? 0 : -1;
     }

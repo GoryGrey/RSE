@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: December 28, 2025 (MemFS directories + socket syscalls + expanded tests)
+Last Updated: December 28, 2025 (FS permissions + BlockFS sanitize + socket syscalls)
 
 ---
 
@@ -25,7 +25,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 
 - Bootable UEFI kernel (serial + framebuffer) with dashboard and input.
 - In-kernel benchmarks (compute, memory, RAMFS, UEFI FS/block, fastio, HTTP loopback).
-- MemFS + BlockFS with per-process file descriptors, `/persist` directories, and MemFS nested paths.
+- MemFS + BlockFS with per-process file descriptors, `/persist` directories, MemFS nested paths, and permission checks on open/list/mkdir/unlink.
 - BlockFS persistence with checksum + journal + corruption detection (flat table, directory paths).
 - TCP-lite framing over `/dev/net0` for loopback handshake/data tests.
 - In-kernel socket syscalls (`socket/bind/listen/accept/connect`) with loopback device-backed buffers.
@@ -51,7 +51,7 @@ Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal a
 
 - No full user-mode isolation/permissions yet; ring3 exec is a smoke path.
 - Network stack is minimal (ARP/UDP parsing + loopback); socket syscalls are loopback-only.
-- BlockFS uses fixed slots; directory paths exist but hierarchy/permissions are still rudimentary.
+- BlockFS uses fixed slots; permissions are basic (no user ownership model yet).
 - Workload init is one-shot per boot.
 
 ---

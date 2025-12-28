@@ -95,6 +95,25 @@ int main() {
     int64_t rm_dir = os::syscall(os::SYS_UNLINK, dir_addr);
     assert(rm_dir == 0);
 
+    const char writeonly_dir[] = "/private";
+    uint64_t writeonly_addr = write_user_string(proc, writeonly_dir);
+    int64_t writeonly_mkdir = os::syscall(os::SYS_MKDIR, writeonly_addr, 0300);
+    assert(writeonly_mkdir == 0);
+
+    std::array<char, 64> perm_list_buf{};
+    uint64_t perm_list_addr = proc.vmem->allocate(perm_list_buf.size());
+    assert(perm_list_addr != 0);
+    int64_t perm_list_rc = os::syscall(os::SYS_LIST, writeonly_addr,
+                                       perm_list_addr, perm_list_buf.size());
+    assert(perm_list_rc == -os::EACCES);
+
+    const char writeonly_file[] = "/private/data.txt";
+    uint64_t writeonly_file_addr = write_user_string(proc, writeonly_file);
+    int64_t writeonly_fd = os::syscall(os::SYS_OPEN, writeonly_file_addr,
+                                       os::O_CREAT | os::O_TRUNC | os::O_RDWR);
+    assert(writeonly_fd >= 0);
+    (void)os::syscall(os::SYS_CLOSE, writeonly_fd);
+
     const char ro_path[] = "/ro.txt";
     uint64_t ro_addr = write_user_string(proc, ro_path);
     int64_t ro_fd = os::syscall(os::SYS_OPEN, ro_addr,

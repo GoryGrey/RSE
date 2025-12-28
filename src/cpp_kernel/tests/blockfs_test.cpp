@@ -16,14 +16,14 @@ int main() {
     assert(mounted);
 
     const char nested_name[] = "bad/name";
-    os::BlockFSEntry* bad = fs.open(nested_name, true);
+    os::BlockFSEntry* bad = fs.open(nested_name, true, 0644);
     assert(bad == nullptr);
     bool removed_bad = fs.remove(nested_name);
     assert(!removed_bad);
 
     bool made_dir = fs.mkdir("bad", 0755);
     assert(made_dir);
-    os::BlockFSEntry* nested = fs.open(nested_name, true);
+    os::BlockFSEntry* nested = fs.open(nested_name, true, 0644);
     assert(nested != nullptr);
 
     std::array<char, os::BlockFS::kNameMax + 2> long_name{};
@@ -31,10 +31,10 @@ int main() {
         long_name[i] = 'a';
     }
     long_name[long_name.size() - 1] = '\0';
-    os::BlockFSEntry* too_long = fs.open(long_name.data(), true);
+    os::BlockFSEntry* too_long = fs.open(long_name.data(), true, 0644);
     assert(too_long == nullptr);
 
-    os::BlockFSEntry* entry = fs.open("alpha.txt", true);
+    os::BlockFSEntry* entry = fs.open("alpha.txt", true, 0644);
     assert(entry != nullptr);
 
     const char payload[] = "blockfs payload";

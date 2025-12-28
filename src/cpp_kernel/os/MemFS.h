@@ -522,7 +522,7 @@ public:
         if (std::strcmp(path, "/") == 0 || std::strcmp(path, "") == 0) {
             *size = 0;
             *is_dir = true;
-            *mode = 0555u;
+            *mode = 0755u;
             return true;
         }
         char name[kNameMax + 1];

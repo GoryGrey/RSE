@@ -183,6 +183,7 @@ public:
                 return false;
             }
             apply_journal();
+            sanitize_entries();
             if (header_.version < kVersion) {
                 header_.version = kVersion;
                 clear_journal();
@@ -354,7 +355,7 @@ public:
         return (int32_t)written;
     }
 
-    BlockFSEntry* open(const char* name, bool create) {
+    BlockFSEntry* open(const char* name, bool create, uint16_t mode = 0) {
         if (!mounted_ || !name || name[0] == '\0') {
             return nullptr;
         }
@@ -383,7 +384,8 @@ public:
         free_slot->checksum = 0;
         free_slot->in_use = 1;
         set_entry_type(*free_slot, kEntryFile);
-        set_entry_mode(*free_slot, default_mode(kEntryFile));
+        uint16_t set_mode = mode != 0 ? mode : default_mode(kEntryFile);
+        set_entry_mode(*free_slot, set_mode);
         uint32_t index = (uint32_t)(free_slot - entries_);
         if (!commit_entry(index)) {
             return nullptr;
@@ -717,6 +719,70 @@ private:
             }
         }
         return nullptr;
+    }
+
+    void clear_entry(uint32_t index) {
+        if (index >= kMaxFiles) {
+            return;
+        }
+        BlockFSEntry& entry = entries_[index];
+        entry.name[0] = '\0';
+        entry.size = 0;
+        entry.checksum = 0;
+        entry.in_use = 0;
+        entry.slot_index = index;
+        set_entry_type(entry, kEntryFile);
+        set_entry_mode(entry, 0);
+    }
+
+    void sanitize_entries() {
+        bool changed = false;
+        for (uint32_t i = 0; i < kMaxFiles; ++i) {
+            if (!entries_[i].in_use) {
+                continue;
+            }
+            const char* name = entries_[i].name;
+            if (!is_valid_path(name)) {
+                clear_entry(i);
+                changed = true;
+                continue;
+            }
+            if (entry_type(entries_[i]) == kEntryDir && entries_[i].size != 0) {
+                entries_[i].size = 0;
+                entries_[i].checksum = 0;
+                changed = true;
+            }
+        }
+
+        bool removed = false;
+        do {
+            removed = false;
+            for (uint32_t i = 0; i < kMaxFiles; ++i) {
+                if (!entries_[i].in_use) {
+                    continue;
+                }
+                const char* name = entries_[i].name;
+                if (!parent_dir_exists(name)) {
+                    clear_entry(i);
+                    removed = true;
+                    changed = true;
+                }
+            }
+        } while (removed);
+
+        for (uint32_t i = 0; i < kMaxFiles; ++i) {
+            if (!entries_[i].in_use) {
+                continue;
+            }
+            if (entry_type(entries_[i]) == kEntryFile &&
+                !verify_checksum(&entries_[i])) {
+                clear_entry(i);
+                changed = true;
+            }
+        }
+        if (changed) {
+            sync_entries();
+        }
     }
 
     static void write_name(char* dst, const char* src) {

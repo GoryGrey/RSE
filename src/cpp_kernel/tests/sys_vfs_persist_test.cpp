@@ -174,6 +174,39 @@ int main() {
     int64_t rm_dir = os::syscall(os::SYS_UNLINK, dir_addr);
     assert(rm_dir == 0);
 
+    const char persist_writeonly[] = "/persist/writeonly";
+    uint64_t writeonly_addr = write_user_string(proc, persist_writeonly);
+    int64_t writeonly_mkdir = os::syscall(os::SYS_MKDIR, writeonly_addr, 0300);
+    assert(writeonly_mkdir == 0);
+
+    std::array<char, 64> perm_list_buf{};
+    uint64_t perm_list_addr = proc.vmem->allocate(perm_list_buf.size());
+    assert(perm_list_addr != 0);
+    int64_t perm_list_rc = os::syscall(os::SYS_LIST, writeonly_addr,
+                                       perm_list_addr, perm_list_buf.size());
+    assert(perm_list_rc == -os::EACCES);
+
+    const char persist_writeonly_file[] = "/persist/writeonly/data.txt";
+    uint64_t writeonly_file_addr = write_user_string(proc, persist_writeonly_file);
+    int64_t writeonly_fd = os::syscall(os::SYS_OPEN, writeonly_file_addr,
+                                       os::O_CREAT | os::O_TRUNC | os::O_RDWR);
+    assert(writeonly_fd >= 0);
+    (void)os::syscall(os::SYS_CLOSE, writeonly_fd);
+
+    const char persist_ro[] = "/persist/ro.txt";
+    uint64_t ro_addr = write_user_string(proc, persist_ro);
+    int64_t ro_fd = os::syscall(os::SYS_OPEN, ro_addr,
+                                os::O_CREAT | os::O_TRUNC, 0400);
+    assert(ro_fd >= 0);
+    int64_t ro_close = os::syscall(os::SYS_CLOSE, ro_fd);
+    assert(ro_close == 0);
+
+    int64_t ro_open_write = os::syscall(os::SYS_OPEN, ro_addr, os::O_WRONLY);
+    assert(ro_open_write == -os::EACCES);
+    int64_t ro_open_read = os::syscall(os::SYS_OPEN, ro_addr, os::O_RDONLY);
+    assert(ro_open_read >= 0);
+    (void)os::syscall(os::SYS_CLOSE, ro_open_read);
+
     std::cout << "  ✓ all tests passed" << std::endl;
     return 0;
 }

@@ -58,14 +58,50 @@ int main() {
     int64_t corrupt_read = fs.read(entry, 0, out.data(), sizeof(out));
     assert(corrupt_read == -os::EIO);
 
-    bool removed = fs.remove("alpha.txt");
-    assert(removed);
+    os::BlockFSEntry* dup = fs.open("dup.txt", true, 0644);
+    assert(dup != nullptr);
+    os::BlockFSEntry dup_copy = *dup;
+    dup_copy.size = 0;
+    dup_copy.checksum = 0;
+    dup_copy.in_use = 1;
+    bool wrote_dup = fs.debugWriteEntry(200, dup_copy);
+    assert(wrote_dup);
 
-    bool removed_dir_fail = fs.remove("bad");
+    os::BlockFSEntry* oversize = fs.open("oversize.txt", true, 0644);
+    assert(oversize != nullptr);
+    os::BlockFSEntry oversize_copy = *oversize;
+    oversize_copy.size = fs.getSlotBlocks() * fs.getBlockSize() + 1;
+    oversize_copy.checksum = 0;
+    bool wrote_oversize = fs.debugWriteEntry(oversize->slot_index, oversize_copy);
+    assert(wrote_oversize);
+
+    os::BlockFSEntry* badtype = fs.open("badtype.txt", true, 0644);
+    assert(badtype != nullptr);
+    os::BlockFSEntry badtype_copy = *badtype;
+    badtype_copy.reserved[0] = 0xFF;
+    bool wrote_badtype = fs.debugWriteEntry(badtype->slot_index, badtype_copy);
+    assert(wrote_badtype);
+
+    os::BlockFS fs2;
+    bool mounted2 = fs2.mount(512, os::rse_block_total_blocks());
+    assert(mounted2);
+
+    os::BlockFSEntry* alpha_after = fs2.open("alpha.txt", false, 0);
+    assert(alpha_after == nullptr);
+    bool removed_dup = fs2.remove("dup.txt");
+    assert(removed_dup);
+    os::BlockFSEntry* dup_after = fs2.open("dup.txt", false, 0);
+    assert(dup_after == nullptr);
+    os::BlockFSEntry* oversize_after = fs2.open("oversize.txt", false, 0);
+    assert(oversize_after == nullptr);
+    os::BlockFSEntry* badtype_after = fs2.open("badtype.txt", false, 0);
+    assert(badtype_after == nullptr);
+
+    bool removed_dir_fail = fs2.remove("bad");
     assert(!removed_dir_fail);
-    bool removed_nested = fs.remove(nested_name);
+    bool removed_nested = fs2.remove(nested_name);
     assert(removed_nested);
-    bool removed_dir = fs.remove("bad");
+    bool removed_dir = fs2.remove("bad");
     assert(removed_dir);
 
     std::cout << "  ✓ all tests passed" << std::endl;

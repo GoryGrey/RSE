@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: December 28, 2025 (FS permissions + BlockFS sanitize + socket syscalls)
+Last Updated: December 28, 2025 (FS permissions + BlockFS sanitize hardening)
 
 ---
 
@@ -26,7 +26,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - Bootable UEFI kernel (serial + framebuffer) with dashboard and input.
 - In-kernel benchmarks (compute, memory, RAMFS, UEFI FS/block, fastio, HTTP loopback).
 - MemFS + BlockFS with per-process file descriptors, `/persist` directories, MemFS nested paths, and permission checks on open/list/mkdir/unlink.
-- BlockFS persistence with checksum + journal + corruption detection (flat table, directory paths).
+- BlockFS persistence with checksum + journal + corruption detection (flat table, directory paths), with mount-time sanitize for duplicates/invalid entries.
 - TCP-lite framing over `/dev/net0` for loopback handshake/data tests.
 - In-kernel socket syscalls (`socket/bind/listen/accept/connect`) with loopback device-backed buffers.
 - Syscall dispatcher with user-range validation and per-torus dispatch.

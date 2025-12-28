@@ -521,6 +521,18 @@ public:
         return (uint32_t)rc;
     }
 
+#ifndef RSE_KERNEL
+    bool debugWriteEntry(uint32_t index, const BlockFSEntry& entry) {
+        if (!mounted_ || index >= kMaxFiles) {
+            return false;
+        }
+        entries_[index] = entry;
+        entries_[index].slot_index = index;
+        sync_entries();
+        return true;
+    }
+#endif
+
 private:
     bool mounted_;
     uint32_t block_size_;
@@ -567,6 +579,10 @@ private:
 
     static uint16_t default_mode(uint8_t type) {
         return type == kEntryDir ? 0755 : 0644;
+    }
+
+    static bool valid_type(uint8_t type) {
+        return type == kEntryFile || type == kEntryDir;
     }
 
     bool parent_dir_exists(const char* path) const {
@@ -747,10 +763,43 @@ private:
                 changed = true;
                 continue;
             }
-            if (entry_type(entries_[i]) == kEntryDir && entries_[i].size != 0) {
-                entries_[i].size = 0;
-                entries_[i].checksum = 0;
+            uint8_t type = entry_type(entries_[i]);
+            if (!valid_type(type)) {
+                clear_entry(i);
                 changed = true;
+                continue;
+            }
+            if (entry_mode(entries_[i]) == 0) {
+                set_entry_mode(entries_[i], default_mode(type));
+                changed = true;
+            }
+            if (type == kEntryDir) {
+                if (entries_[i].size != 0 || entries_[i].checksum != 0) {
+                    entries_[i].size = 0;
+                    entries_[i].checksum = 0;
+                    changed = true;
+                }
+            } else {
+                if (entries_[i].size > slot_size_) {
+                    clear_entry(i);
+                    changed = true;
+                    continue;
+                }
+            }
+        }
+
+        for (uint32_t i = 0; i < kMaxFiles; ++i) {
+            if (!entries_[i].in_use) {
+                continue;
+            }
+            for (uint32_t j = i + 1; j < kMaxFiles; ++j) {
+                if (!entries_[j].in_use) {
+                    continue;
+                }
+                if (name_equal(entries_[i].name, entries_[j].name)) {
+                    clear_entry(j);
+                    changed = true;
+                }
             }
         }
 

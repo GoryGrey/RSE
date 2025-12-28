@@ -26,6 +26,24 @@ private:
     DeviceManager* device_mgr_;
     BlockFS* blockfs_;
 
+    bool hasDevPrefix(const char* path) const {
+        if (!path) {
+            return false;
+        }
+        const char* prefix = "/dev";
+        for (int i = 0; prefix[i] != '\0'; ++i) {
+            if (path[i] != prefix[i]) {
+                return false;
+            }
+        }
+        char next = path[4];
+        return next == '\0' || next == '/';
+    }
+
+    bool isDevRoot(const char* path) const {
+        return path && (strcmp(path, "/dev") == 0 || strcmp(path, "/dev/") == 0);
+    }
+
     bool hasPersistPrefix(const char* path) const {
         if (!path) {
             return false;
@@ -60,6 +78,17 @@ public:
         if (!device_mgr_ || !path) {
             return nullptr;
         }
+        const char* name = devName(path);
+        if (!name) {
+            return nullptr;
+        }
+        return device_mgr_->lookup(name);
+    }
+
+    const char* devName(const char* path) const {
+        if (!path) {
+            return nullptr;
+        }
         const char* prefix = "/dev/";
         for (int i = 0; prefix[i] != '\0'; ++i) {
             if (path[i] != prefix[i]) {
@@ -70,7 +99,12 @@ public:
         if (name[0] == '\0') {
             return nullptr;
         }
-        return device_mgr_->lookup(name);
+        for (const char* p = name; *p; ++p) {
+            if (*p == '/' || *p == '\\') {
+                return nullptr;
+            }
+        }
+        return name;
     }
 
     const char* persistName(const char* path) const {
@@ -109,8 +143,21 @@ public:
             return -EINVAL;
         }
         // Device nodes (/dev/*)
-        Device* dev = lookupDevice(path);
-        if (dev) {
+        if (hasDevPrefix(path)) {
+            if (isDevRoot(path)) {
+                return -EINVAL;
+            }
+            const char* dev_name = devName(path);
+            if (!dev_name) {
+                return -EINVAL;
+            }
+            if (!device_mgr_) {
+                return -ENOENT;
+            }
+            Device* dev = device_mgr_->lookup(dev_name);
+            if (!dev) {
+                return -ENOENT;
+            }
             if (dev->open) {
                 dev->open(dev);
             }
@@ -609,6 +656,9 @@ public:
             }
             return blockfs_->remove(persist) ? 0 : -1;
         }
+        if (hasDevPrefix(path)) {
+            return -EINVAL;
+        }
         if (lookupDevice(path)) {
             return -EINVAL;
         }
@@ -653,6 +703,9 @@ public:
                 buf[written] = '\0';
             }
             return (int32_t)written;
+        }
+        if (hasDevPrefix(target) && !isDevRoot(target)) {
+            return -EINVAL;
         }
         if (hasPersistPrefix(target) && !isPersistRoot(target)) {
             return -EINVAL;
@@ -707,6 +760,9 @@ public:
             out->mode = 0666;
             out->type = RSE_STAT_DEVICE;
             return 0;
+        }
+        if (hasDevPrefix(path)) {
+            return -ENOENT;
         }
 
         if (hasPersistPrefix(path)) {

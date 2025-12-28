@@ -24,6 +24,12 @@ int main() {
     int32_t fd = vfs.open(&fdt, "/dev/net0", os::O_RDWR);
     assert(fd >= 0);
 
+    int32_t invalid = vfs.open(&fdt, "/dev/net0/extra", os::O_RDWR);
+    assert(invalid == -os::EINVAL);
+
+    int32_t missing = vfs.open(&fdt, "/dev/missing0", os::O_RDWR);
+    assert(missing == -os::ENOENT);
+
     const char payload[] = "net-loopback";
     int64_t wrote = vfs.write(&fdt, fd, payload, sizeof(payload) - 1);
     assert(wrote == static_cast<int64_t>(sizeof(payload) - 1));

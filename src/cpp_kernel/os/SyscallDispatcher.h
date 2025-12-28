@@ -1156,6 +1156,9 @@ inline int64_t sys_mmap(uint64_t addr, uint64_t size, uint64_t prot,
     if (addr > UINT64_MAX - size) {
         return -EINVAL;
     }
+    if (prot & PROT_EXEC) {
+        return -EACCES;
+    }
     if ((prot & (PROT_EXEC | PROT_WRITE)) == (PROT_EXEC | PROT_WRITE)) {
         return -EACCES;
     }
@@ -1207,6 +1210,16 @@ inline int64_t sys_mprotect(uint64_t addr, uint64_t size, uint64_t prot,
     }
     if (addr > UINT64_MAX - size) {
         return -EINVAL;
+    }
+    if ((prot & (PROT_EXEC | PROT_WRITE)) == (PROT_EXEC | PROT_WRITE)) {
+        return -EACCES;
+    }
+    if (prot & PROT_EXEC) {
+        uint64_t end = addr + size;
+        if (current->memory.code_start == 0 || current->memory.code_end == 0 ||
+            addr < current->memory.code_start || end > current->memory.code_end) {
+            return -EACCES;
+        }
     }
     if (enforce_user_memory(current) &&
         !current->vmem->isUserRange(addr, size)) {

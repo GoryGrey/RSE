@@ -179,6 +179,18 @@ int main() {
   assert(ptr != nullptr);
   assert(std::memcmp(ptr, payload, sizeof(payload)) == 0);
 
+  int64_t exec_ok = os::syscall(os::SYS_MPROTECT,
+                                proc.memory.code_start,
+                                os::PAGE_SIZE,
+                                os::PROT_READ | os::PROT_EXEC);
+  assert(exec_ok == 0);
+  uint64_t stack_page = os::align_down(proc.context.rsp - 1);
+  int64_t exec_fail = os::syscall(os::SYS_MPROTECT,
+                                  stack_page,
+                                  os::PAGE_SIZE,
+                                  os::PROT_READ | os::PROT_EXEC);
+  assert(exec_fail == -os::EACCES);
+
   uint64_t sp = proc.context.rsp;
   uint64_t argc = readUserU64(proc, phys_alloc, sp);
   assert(argc == 2);

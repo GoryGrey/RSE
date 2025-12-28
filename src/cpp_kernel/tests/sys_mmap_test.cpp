@@ -35,6 +35,16 @@ int main() {
                                  os::PROT_READ | os::PROT_WRITE);
     assert(mapped > 0);
     assert(proc.vmem->isUserRange((uint64_t)mapped, os::PAGE_SIZE * 2));
+    os::PageTable* pt = proc.vmem->getPageTable();
+    assert(pt != nullptr);
+    uint64_t guard_before = (uint64_t)mapped - os::PAGE_SIZE;
+    uint64_t guard_after = (uint64_t)mapped + os::PAGE_SIZE * 2;
+    if (guard_before >= proc.vmem->getHeapStart()) {
+        assert(!pt->isMapped(guard_before));
+    }
+    if (guard_after + os::PAGE_SIZE <= proc.vmem->getHeapEnd()) {
+        assert(!pt->isMapped(guard_after));
+    }
 
     int64_t invalid = os::syscall(os::SYS_MMAP, 0, 0, os::PROT_READ);
     assert(invalid == -os::EINVAL);
@@ -44,6 +54,9 @@ int main() {
     int64_t wx = os::syscall(os::SYS_MMAP, 0, os::PAGE_SIZE,
                              os::PROT_EXEC | os::PROT_WRITE);
     assert(wx == -os::EACCES);
+    int64_t exec_only = os::syscall(os::SYS_MMAP, 0, os::PAGE_SIZE,
+                                    os::PROT_EXEC);
+    assert(exec_only == -os::EACCES);
 
     int64_t overlap = os::syscall(os::SYS_MMAP, (uint64_t)mapped, os::PAGE_SIZE,
                                   os::PROT_READ | os::PROT_WRITE);
@@ -63,6 +76,9 @@ int main() {
     assert(rc == -os::EINVAL);
     rc = os::syscall(os::SYS_MPROTECT, (uint64_t)mapped, os::PAGE_SIZE,
                      os::PROT_EXEC | os::PROT_WRITE);
+    assert(rc == -os::EACCES);
+    rc = os::syscall(os::SYS_MPROTECT, (uint64_t)mapped, os::PAGE_SIZE,
+                     os::PROT_EXEC);
     assert(rc == -os::EACCES);
 
     rc = os::syscall(os::SYS_MUNMAP, (uint64_t)mapped + os::PAGE_SIZE, os::PAGE_SIZE);

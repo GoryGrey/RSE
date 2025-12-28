@@ -193,6 +193,17 @@ int main() {
     assert(writeonly_fd >= 0);
     (void)os::syscall(os::SYS_CLOSE, writeonly_fd);
 
+    const char persist_noexec[] = "/persist/noexec";
+    uint64_t noexec_addr = write_user_string(proc, persist_noexec);
+    int64_t noexec_mkdir = os::syscall(os::SYS_MKDIR, noexec_addr, 0200);
+    assert(noexec_mkdir == 0);
+
+    const char persist_noexec_file[] = "/persist/noexec/data.txt";
+    uint64_t noexec_file_addr = write_user_string(proc, persist_noexec_file);
+    int64_t noexec_open = os::syscall(os::SYS_OPEN, noexec_file_addr,
+                                      os::O_CREAT | os::O_TRUNC | os::O_RDWR);
+    assert(noexec_open == -os::EACCES);
+
     const char persist_ro[] = "/persist/ro.txt";
     uint64_t ro_addr = write_user_string(proc, persist_ro);
     int64_t ro_fd = os::syscall(os::SYS_OPEN, ro_addr,

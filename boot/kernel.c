@@ -821,6 +821,43 @@ static inline uint64_t rdtsc(void) {
     return ((uint64_t)hi << 32) | lo;
 }
 
+static uint64_t g_tsc_cycles_per_us;
+
+static uint64_t cycles_to_ns(uint64_t cycles) {
+    if (g_tsc_cycles_per_us == 0) {
+        return 0;
+    }
+    uint64_t whole = cycles / g_tsc_cycles_per_us;
+    uint64_t rem = cycles % g_tsc_cycles_per_us;
+    return (whole * 1000u) + ((rem * 1000u) / g_tsc_cycles_per_us);
+}
+
+static void calibrate_tsc(EFI_SYSTEM_TABLE *st) {
+    if (g_tsc_cycles_per_us != 0) {
+        return;
+    }
+    if (!st || !st->BootServices || !st->BootServices->Stall) {
+        return;
+    }
+    const UINTN delay_us = 100000;
+    uint64_t start = rdtsc();
+    st->BootServices->Stall(delay_us);
+    uint64_t end = rdtsc();
+    uint64_t delta = end - start;
+    if (delta == 0) {
+        return;
+    }
+    g_tsc_cycles_per_us = delta / delay_us;
+    if (g_tsc_cycles_per_us == 0) {
+        return;
+    }
+    serial_write("[RSE] tsc cycles/us=");
+    serial_write_u64(g_tsc_cycles_per_us);
+    serial_write(" delay_us=");
+    serial_write_u64(delay_us);
+    serial_write("\n");
+}
+
 uint64_t kernel_rdtsc(void) {
     return rdtsc();
 }
@@ -3661,6 +3698,12 @@ static int bench_net_arp(void) {
     serial_write(" cycles=");
     serial_write_u64(end - start);
     serial_write("\n");
+    if (g_tsc_cycles_per_us) {
+        uint64_t ns = cycles_to_ns(end - start);
+        serial_write("[RSE] net arp ns=");
+        serial_write_u64(ns);
+        serial_write("\n");
+    }
     return rx_len ? 0 : -1;
 }
 
@@ -3711,6 +3754,12 @@ static void bench_udp_http_server(void) {
     serial_write(" cycles=");
     serial_write_u64(end - start);
     serial_write("\n");
+    if (g_tsc_cycles_per_us) {
+        uint64_t ns = cycles_to_ns(end - start);
+        serial_write("[RSE] udp/http server ns=");
+        serial_write_u64(ns);
+        serial_write("\n");
+    }
 }
 
 static void format_filename(char *buf, uint32_t index) {
@@ -3766,6 +3815,15 @@ static void bench_compute(void) {
     serial_write(" checksum=");
     serial_write_u64(acc);
     serial_write("\n");
+    if (g_tsc_cycles_per_us) {
+        uint64_t ns = cycles_to_ns(cycles);
+        uint64_t ns_per_op = ops ? (ns / ops) : 0;
+        serial_write("[RSE] compute ns=");
+        serial_write_u64(ns);
+        serial_write(" ns/op=");
+        serial_write_u64(ns_per_op);
+        serial_write("\n");
+    }
 }
 
 static void bench_memory(void) {
@@ -3797,6 +3855,15 @@ static void bench_memory(void) {
     serial_write(" cycles/byte=");
     serial_write_u64(cycles_per_byte);
     serial_write("\n");
+    if (g_tsc_cycles_per_us) {
+        uint64_t ns = cycles_to_ns(cycles);
+        uint64_t ns_per_byte = bytes ? (ns / bytes) : 0;
+        serial_write("[RSE] memory ns=");
+        serial_write_u64(ns);
+        serial_write(" ns/byte=");
+        serial_write_u64(ns_per_byte);
+        serial_write("\n");
+    }
 }
 
 static void bench_files(void) {
@@ -3854,6 +3921,15 @@ static void bench_files(void) {
     serial_write(" files=");
     serial_write_u64(ramfs_count());
     serial_write("\n");
+    if (g_tsc_cycles_per_us) {
+        uint64_t ns = cycles_to_ns(cycles);
+        uint64_t ns_per_op = ops ? (ns / ops) : 0;
+        serial_write("[RSE] ramfs ns=");
+        serial_write_u64(ns);
+        serial_write(" ns/op=");
+        serial_write_u64(ns_per_op);
+        serial_write("\n");
+    }
 }
 
 static void bench_fastio(void) {
@@ -3879,6 +3955,15 @@ static void bench_fastio(void) {
     serial_write(" cycles/byte=");
     serial_write_u64(cycles_per_byte);
     serial_write("\n");
+    if (g_tsc_cycles_per_us) {
+        uint64_t ns = cycles_to_ns(cycles);
+        uint64_t ns_per_byte = bytes ? (ns / bytes) : 0;
+        serial_write("[RSE] fastio ns=");
+        serial_write_u64(ns);
+        serial_write(" ns/byte=");
+        serial_write_u64(ns_per_byte);
+        serial_write("\n");
+    }
 }
 
 static void init_workloads(void) {
@@ -3928,6 +4013,15 @@ static void bench_http_loopback(void) {
     serial_write(" checksum=");
     serial_write_u64(bytes);
     serial_write("\n");
+    if (g_tsc_cycles_per_us) {
+        uint64_t ns = cycles_to_ns(cycles);
+        uint64_t ns_per_req = requests ? (ns / requests) : 0;
+        serial_write("[RSE] http ns=");
+        serial_write_u64(ns);
+        serial_write(" ns/req=");
+        serial_write_u64(ns_per_req);
+        serial_write("\n");
+    }
 }
 
 static void bench_uefi_fs(struct rse_boot_info *boot_info) {
@@ -4020,6 +4114,15 @@ static void bench_uefi_fs(struct rse_boot_info *boot_info) {
     serial_write(" checksum=");
     serial_write_u64(checksum);
     serial_write("\n");
+    if (g_tsc_cycles_per_us) {
+        uint64_t ns = cycles_to_ns(cycles);
+        uint64_t ns_per_op = ops ? (ns / ops) : 0;
+        serial_write("[RSE] UEFI FS ns=");
+        serial_write_u64(ns);
+        serial_write(" ns/op=");
+        serial_write_u64(ns_per_op);
+        serial_write("\n");
+    }
 }
 
 static void bench_uefi_block(struct rse_boot_info *boot_info) {
@@ -4120,6 +4223,21 @@ static void bench_uefi_block(struct rse_boot_info *boot_info) {
     serial_write(" checksum=");
     serial_write_u64(checksum);
     serial_write("\n");
+    if (g_tsc_cycles_per_us) {
+        uint64_t write_ns = cycles_to_ns(write_cycles);
+        uint64_t read_ns = cycles_to_ns(read_cycles);
+        uint64_t write_ns_per_byte = bytes ? (write_ns / bytes) : 0;
+        uint64_t read_ns_per_byte = bytes ? (read_ns / bytes) : 0;
+        serial_write("[RSE] UEFI block ns write=");
+        serial_write_u64(write_ns);
+        serial_write(" ns/byte=");
+        serial_write_u64(write_ns_per_byte);
+        serial_write(" read ns=");
+        serial_write_u64(read_ns);
+        serial_write(" ns/byte=");
+        serial_write_u64(read_ns_per_byte);
+        serial_write("\n");
+    }
 
     st->BootServices->FreePool(raw);
 }
@@ -4184,11 +4302,27 @@ static void bench_virtio_block(void) {
     serial_write(" checksum=");
     serial_write_u64(checksum);
     serial_write("\n");
+    if (g_tsc_cycles_per_us) {
+        uint64_t write_ns = cycles_to_ns(write_cycles);
+        uint64_t read_ns = cycles_to_ns(read_cycles);
+        uint64_t write_ns_per_byte = bytes ? (write_ns / bytes) : 0;
+        uint64_t read_ns_per_byte = bytes ? (read_ns / bytes) : 0;
+        serial_write("[RSE] virtio-blk ns write=");
+        serial_write_u64(write_ns);
+        serial_write(" ns/byte=");
+        serial_write_u64(write_ns_per_byte);
+        serial_write(" read ns=");
+        serial_write_u64(read_ns);
+        serial_write(" ns/byte=");
+        serial_write_u64(read_ns_per_byte);
+        serial_write("\n");
+    }
 }
 
 static void run_benchmarks(struct rse_boot_info *boot_info, int do_init) {
     memset(&g_metrics, 0, sizeof(g_metrics));
     serial_write("[RSE] benchmarks begin\n");
+    calibrate_tsc(get_system_table(boot_info));
     if (do_init) {
         init_workloads();
     } else {

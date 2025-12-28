@@ -15,6 +15,16 @@ TIMEOUT_SECS="${TIMEOUT_SECS:-45}"
 NETDEV_DEVICE_OPTS="${NETDEV_DEVICE_OPTS:-disable-modern=on}"
 SHM_SIZE="${SHM_SIZE:-65536}"
 
+log_has() {
+  local needle="$1"
+  local file="$2"
+  if command -v rg >/dev/null 2>&1; then
+    rg -q --fixed-strings "$needle" "$file"
+  else
+    grep -qF "$needle" "$file"
+  fi
+}
+
 if [[ -z "${TORUS_IDS}" ]]; then
   if [[ "${NET_MODE}" == "mcast" ]]; then
     TORUS_IDS="0 1 2"
@@ -67,7 +77,14 @@ for torus_id in ${TORUS_IDS}; do
   build_dir="${BUILD_BASE}/torus${torus_id}"
   log_file="${LOG_DIR}/torus${torus_id}.log"
   (
-    timeout "${TIMEOUT_SECS}s" \
+    {
+      echo "[RSE] run start torus=${torus_id} ts=$(date -u +%s)"
+      echo "[RSE] run cfg net_mode=${NET_MODE} timeout=${TIMEOUT_SECS} shm_size=${SHM_SIZE}"
+      echo "[RSE] run build_dir=${build_dir}"
+      echo "[RSE] run shm_path=${SHM_PATH}"
+    } >"${log_file}"
+    set +e
+    timeout --kill-after=5s "${TIMEOUT_SECS}s" \
       make -B -f "${ROOT_DIR}/boot/Makefile.uefi" \
         BUILD_DIR="${build_dir}" \
         RSE_TORUS_ID="${torus_id}" \
@@ -75,7 +92,13 @@ for torus_id in ${TORUS_IDS}; do
         RSE_SHM_EXCHANGE=1 \
         NETDEV_OPTS="${netdev_opts}" \
         QEMU_EXTRA_OPTS="-object memory-backend-file,id=ivshmem,share=on,mem-path=${SHM_PATH},size=${SHM_SIZE} -device ivshmem-plain,memdev=ivshmem" \
-        run-iso >"${log_file}" 2>&1 || true
+        run-iso >>"${log_file}" 2>&1
+    rc=$?
+    set -e
+    echo "[RSE] run exit rc=${rc}" >>"${log_file}"
+    if [[ "${rc}" -eq 124 ]]; then
+      echo "[RSE] run timeout after ${TIMEOUT_SECS}s" >>"${log_file}"
+    fi
   ) &
   pids+=("$!")
   idx=$((idx + 1))
@@ -84,5 +107,24 @@ done
 for pid in "${pids[@]}"; do
   wait "${pid}"
 done
+
+missing=0
+for torus_id in ${TORUS_IDS}; do
+  log_file="${LOG_DIR}/torus${torus_id}.log"
+  if [[ ! -f "${log_file}" ]]; then
+    echo "WARN: torus${torus_id} log missing (${log_file})"
+    missing=1
+    continue
+  fi
+  if ! log_has "[RSE] shm projection acked" "${log_file}"; then
+    echo "WARN: torus${torus_id} missing projection ack"
+    tail -n 20 "${log_file}" || true
+    missing=1
+  fi
+done
+
+if [[ "${missing}" -eq 0 ]]; then
+  echo "Projection exchange logs look healthy."
+fi
 
 echo "Logs written to ${LOG_DIR}"

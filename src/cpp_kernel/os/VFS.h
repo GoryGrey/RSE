@@ -233,6 +233,10 @@ public:
             return fd;
         }
 
+        if (!fs_ || !fs_->isValidPath(path, false)) {
+            return -EINVAL;
+        }
+
         // Look up file
         MemFSFile* file = fs_->lookup(path);
         
@@ -249,6 +253,18 @@ public:
         if (!file) {
             std::cerr << "[VFS] File not found: " << path << std::endl;
             return -1;
+        }
+
+        if (file->is_dir) {
+            return -EISDIR;
+        }
+
+        uint32_t mode_bits = file->mode != 0 ? file->mode : 0644;
+        bool wants_write = (flags & (O_WRONLY | O_RDWR)) != 0;
+        bool wants_read = (flags & O_WRONLY) == 0;
+        if ((wants_write && (mode_bits & 0200) == 0) ||
+            (wants_read && (mode_bits & 0400) == 0)) {
+            return -EACCES;
         }
         
         // Truncate if O_TRUNC is set
@@ -692,6 +708,9 @@ public:
         if (lookupDevice(path)) {
             return -EINVAL;
         }
+        if (!fs_ || !fs_->isValidPath(path, false)) {
+            return -EINVAL;
+        }
         if (fs_->remove(path)) {
             return 0;
         }
@@ -724,7 +743,7 @@ public:
                 append_entry("persist/");
             }
             if (written < max) {
-                int32_t got = (int32_t)fs_->list(buf + written, max - written);
+                int32_t got = fs_->list("/", buf + written, max - written);
                 if (got > 0) {
                     written += (uint32_t)got;
                 }
@@ -759,7 +778,7 @@ public:
             }
             return blockfs_->listDirectory(persist, buf, max);
         }
-        return (int32_t)fs_->list(buf, max);
+        return fs_->list(target, buf, max);
     }
 
     int32_t stat(const char* path, rse_stat* out) const {
@@ -825,13 +844,21 @@ public:
             return 0;
         }
 
-        MemFSFile* file = fs_->lookup(path);
-        if (!file) {
+        if (!fs_) {
             return -ENOENT;
         }
-        out->size = file->size;
-        out->mode = file->mode;
-        out->type = RSE_STAT_FILE;
+        if (!fs_->isValidPath(path, false)) {
+            return -EINVAL;
+        }
+        uint32_t size = 0;
+        bool is_dir = false;
+        uint32_t mode = 0;
+        if (!fs_->stat(path, &size, &is_dir, &mode)) {
+            return -ENOENT;
+        }
+        out->size = size;
+        out->mode = mode;
+        out->type = is_dir ? RSE_STAT_DIR : RSE_STAT_FILE;
         return 0;
     }
     
@@ -865,7 +892,13 @@ public:
             }
             return blockfs_->mkdir(persist, (uint16_t)mode) ? 0 : -1;
         }
-        return -ENOSYS;
+        if (hasDevPrefix(path) || lookupDevice(path)) {
+            return -EINVAL;
+        }
+        if (!fs_ || !fs_->isValidPath(path, false)) {
+            return -EINVAL;
+        }
+        return fs_->mkdir(path, mode) ? 0 : -1;
     }
 };
 

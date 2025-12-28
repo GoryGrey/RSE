@@ -51,6 +51,13 @@ constexpr int SYS_TIME      = 40;
 constexpr int SYS_SLEEP     = 41;
 constexpr int SYS_NANOSLEEP = 42;
 
+// Sockets
+constexpr int SYS_SOCKET    = 50;
+constexpr int SYS_BIND      = 51;
+constexpr int SYS_LISTEN    = 52;
+constexpr int SYS_ACCEPT    = 53;
+constexpr int SYS_CONNECT   = 54;
+
 // ========== Error Codes ==========
 
 #ifndef EPERM
@@ -89,6 +96,27 @@ constexpr int EFAULT    = 14;  // Bad address
 #ifndef EINVAL
 constexpr int EINVAL    = 22;  // Invalid argument
 #endif
+#ifndef EISDIR
+constexpr int EISDIR    = 21;  // Is a directory
+#endif
+#ifndef ENOTSOCK
+constexpr int ENOTSOCK  = 88;  // Not a socket
+#endif
+#ifndef EADDRINUSE
+constexpr int EADDRINUSE = 98; // Address already in use
+#endif
+#ifndef EOPNOTSUPP
+constexpr int EOPNOTSUPP = 95; // Operation not supported
+#endif
+#ifndef EISCONN
+constexpr int EISCONN   = 106; // Transport endpoint is already connected
+#endif
+#ifndef ENOTCONN
+constexpr int ENOTCONN  = 107; // Transport endpoint is not connected
+#endif
+#ifndef ECONNREFUSED
+constexpr int ECONNREFUSED = 111; // Connection refused
+#endif
 #ifndef ENOSYS
 constexpr int ENOSYS    = 38;  // Function not implemented
 #endif
@@ -121,6 +149,16 @@ struct rse_stat {
 struct rse_timespec {
     uint64_t tv_sec;
     uint64_t tv_nsec;
+};
+
+// ========== Sockets ==========
+
+constexpr uint16_t RSE_AF_LOOP = 1;
+constexpr uint16_t RSE_SOCK_STREAM = 1;
+
+struct rse_sockaddr {
+    uint16_t family;
+    uint16_t port;
 };
 
 // ========== Memory Protection Flags ==========
@@ -266,6 +304,29 @@ inline int64_t sleep(uint64_t seconds) {
 
 inline int64_t nanosleep(const rse_timespec* req, rse_timespec* rem) {
     return syscall(SYS_NANOSLEEP, (uint64_t)req, (uint64_t)rem);
+}
+
+/**
+ * Socket wrappers
+ */
+inline int64_t socket(uint16_t domain, uint16_t type, uint16_t protocol) {
+    return syscall(SYS_SOCKET, domain, type, protocol);
+}
+
+inline int64_t bind(int fd, const rse_sockaddr* addr, uint32_t len) {
+    return syscall(SYS_BIND, fd, (uint64_t)addr, len);
+}
+
+inline int64_t listen(int fd, uint32_t backlog) {
+    return syscall(SYS_LISTEN, fd, backlog);
+}
+
+inline int64_t accept(int fd, rse_sockaddr* addr, uint32_t* addrlen) {
+    return syscall(SYS_ACCEPT, fd, (uint64_t)addr, (uint64_t)addrlen);
+}
+
+inline int64_t connect(int fd, const rse_sockaddr* addr, uint32_t len) {
+    return syscall(SYS_CONNECT, fd, (uint64_t)addr, len);
 }
 
 /**

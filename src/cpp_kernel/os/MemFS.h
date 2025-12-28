@@ -20,7 +20,7 @@ void free(void* ptr);
  * Simple In-Memory File System (MemFS)
  * 
  * Files stored in RAM, no persistence.
- * Flat namespace (no directories).
+ * Supports nested directories in a single namespace.
  */
 
 namespace os {
@@ -35,9 +35,10 @@ struct MemFSFile {
     uint32_t capacity;         // Allocated capacity
     uint32_t mode;             // Permissions (not enforced yet)
     bool in_use;               // Is this file slot used?
+    bool is_dir;               // Directory entry
     
     MemFSFile() 
-        : data(nullptr), size(0), capacity(0), mode(0644), in_use(false) {
+        : data(nullptr), size(0), capacity(0), mode(0644), in_use(false), is_dir(false) {
         name[0] = '\0';
     }
     
@@ -129,127 +130,381 @@ struct MemFSFile {
  */
 class MemFS {
 private:
-    static constexpr uint32_t MAX_FILES = 1024;
-    MemFSFile files_[MAX_FILES];
+    static constexpr uint32_t kMaxFiles = 1024;
+    static constexpr uint32_t kNameMax = 255;
+    MemFSFile files_[kMaxFiles];
     uint32_t num_files_;
-    
+
+    static uint32_t default_mode(bool is_dir) {
+        return is_dir ? 0755u : 0644u;
+    }
+
+    static bool is_valid_path(const char* path, bool allow_root) {
+        if (!path || path[0] == '\0') {
+            return false;
+        }
+        if (path[0] != '/') {
+            return false;
+        }
+        if (path[1] == '\0') {
+            return allow_root;
+        }
+        uint32_t len = 0;
+        bool in_segment = false;
+        for (const char* p = path + 1; *p; ++p) {
+            if (*p == '\\') {
+                return false;
+            }
+            if (*p == '/') {
+                if (!in_segment) {
+                    return false;
+                }
+                in_segment = false;
+            } else {
+                in_segment = true;
+            }
+            if (++len > kNameMax) {
+                return false;
+            }
+        }
+        return in_segment;
+    }
+
+    bool normalize_path(const char* path, char* out, uint32_t out_size,
+                        bool allow_root) const {
+        if (!out || out_size == 0) {
+            return false;
+        }
+        if (!is_valid_path(path, allow_root)) {
+            return false;
+        }
+        if (path[1] == '\0') {
+            out[0] = '\0';
+            return true;
+        }
+        const char* start = path + 1;
+        size_t len = std::strlen(start);
+        if (len >= out_size) {
+            return false;
+        }
+        std::memcpy(out, start, len);
+        out[len] = '\0';
+        return true;
+    }
+
+    MemFSFile* lookup_internal(const char* name) {
+        if (!name) {
+            return nullptr;
+        }
+        for (uint32_t i = 0; i < kMaxFiles; ++i) {
+            if (files_[i].in_use && std::strcmp(files_[i].name, name) == 0) {
+                return &files_[i];
+            }
+        }
+        return nullptr;
+    }
+
+    const MemFSFile* lookup_internal(const char* name) const {
+        if (!name) {
+            return nullptr;
+        }
+        for (uint32_t i = 0; i < kMaxFiles; ++i) {
+            if (files_[i].in_use && std::strcmp(files_[i].name, name) == 0) {
+                return &files_[i];
+            }
+        }
+        return nullptr;
+    }
+
+    bool parent_dir_exists(const char* name) const {
+        if (!name) {
+            return false;
+        }
+        const char* slash = std::strrchr(name, '/');
+        if (!slash) {
+            return true;
+        }
+        if (slash == name) {
+            return false;
+        }
+        char parent[kNameMax + 1];
+        size_t len = (size_t)(slash - name);
+        if (len == 0 || len > kNameMax) {
+            return false;
+        }
+        std::memset(parent, 0, sizeof(parent));
+        std::memcpy(parent, name, len);
+        parent[len] = '\0';
+        const MemFSFile* entry = lookup_internal(parent);
+        return entry && entry->in_use && entry->is_dir;
+    }
+
+    bool has_children(const char* name) const {
+        if (!name) {
+            return false;
+        }
+        size_t len = std::strlen(name);
+        if (len == 0) {
+            return false;
+        }
+        for (uint32_t i = 0; i < kMaxFiles; ++i) {
+            if (!files_[i].in_use) {
+                continue;
+            }
+            const char* entry = files_[i].name;
+            if (std::memcmp(entry, name, len) == 0 && entry[len] == '/') {
+                return true;
+            }
+        }
+        return false;
+    }
+
 public:
     MemFS() : num_files_(0) {}
-    
+
+    bool isValidPath(const char* path, bool allow_root) const {
+        return is_valid_path(path, allow_root);
+    }
+
     /**
      * Create a new file.
      * Returns pointer to file, or nullptr if failed.
      */
-    MemFSFile* create(const char* name, uint32_t mode) {
+    MemFSFile* create(const char* path, uint32_t mode) {
+        char name[kNameMax + 1];
+        if (!normalize_path(path, name, sizeof(name), false)) {
+            return nullptr;
+        }
         // Check if file already exists
-        MemFSFile* existing = lookup(name);
+        MemFSFile* existing = lookup_internal(name);
         if (existing) {
             return existing;  // Already exists
         }
-        
+        if (!parent_dir_exists(name)) {
+            return nullptr;
+        }
+
         // Find free slot
-        for (uint32_t i = 0; i < MAX_FILES; i++) {
+        for (uint32_t i = 0; i < kMaxFiles; i++) {
             if (!files_[i].in_use) {
-                strncpy(files_[i].name, name, sizeof(files_[i].name) - 1);
-                files_[i].name[sizeof(files_[i].name) - 1] = '\0';
-                files_[i].mode = mode;
+                size_t name_len = std::strlen(name);
+                if (name_len > kNameMax) {
+                    name_len = kNameMax;
+                }
+                std::memcpy(files_[i].name, name, name_len);
+                files_[i].name[name_len] = '\0';
+                files_[i].mode = mode != 0 ? mode : default_mode(false);
                 files_[i].in_use = true;
+                files_[i].is_dir = false;
                 files_[i].size = 0;
                 files_[i].capacity = 0;
                 files_[i].data = nullptr;
                 num_files_++;
-                
-                std::cout << "[MemFS] Created file: " << name << std::endl;
-                
+
+                std::cout << "[MemFS] Created file: /" << name << std::endl;
+
                 return &files_[i];
             }
         }
-        
+
         std::cerr << "[MemFS] No free file slots!" << std::endl;
         return nullptr;
     }
-    
+
     /**
      * Look up a file by name.
      * Returns pointer to file, or nullptr if not found.
      */
-    MemFSFile* lookup(const char* name) {
-        for (uint32_t i = 0; i < MAX_FILES; i++) {
-            if (files_[i].in_use && strcmp(files_[i].name, name) == 0) {
-                return &files_[i];
+    MemFSFile* lookup(const char* path) {
+        char name[kNameMax + 1];
+        if (!normalize_path(path, name, sizeof(name), false)) {
+            return nullptr;
+        }
+        return lookup_internal(name);
+    }
+
+    const MemFSFile* lookup(const char* path) const {
+        char name[kNameMax + 1];
+        if (!normalize_path(path, name, sizeof(name), false)) {
+            return nullptr;
+        }
+        return lookup_internal(name);
+    }
+
+    bool mkdir(const char* path, uint32_t mode) {
+        char name[kNameMax + 1];
+        if (!normalize_path(path, name, sizeof(name), false)) {
+            return false;
+        }
+        if (lookup_internal(name)) {
+            return false;
+        }
+        if (!parent_dir_exists(name)) {
+            return false;
+        }
+        for (uint32_t i = 0; i < kMaxFiles; ++i) {
+            if (!files_[i].in_use) {
+                size_t name_len = std::strlen(name);
+                if (name_len > kNameMax) {
+                    name_len = kNameMax;
+                }
+                std::memcpy(files_[i].name, name, name_len);
+                files_[i].name[name_len] = '\0';
+                files_[i].mode = mode != 0 ? mode : default_mode(true);
+                files_[i].in_use = true;
+                files_[i].is_dir = true;
+                files_[i].size = 0;
+                files_[i].capacity = 0;
+                files_[i].data = nullptr;
+                num_files_++;
+
+                std::cout << "[MemFS] Created dir: /" << name << std::endl;
+                return true;
             }
         }
-        
-        return nullptr;
+        std::cerr << "[MemFS] No free file slots!" << std::endl;
+        return false;
     }
-    
+
     /**
      * Delete a file.
      */
-    bool remove(const char* name) {
-        for (uint32_t i = 0; i < MAX_FILES; i++) {
-            if (files_[i].in_use && strcmp(files_[i].name, name) == 0) {
+    bool remove(const char* path) {
+        char name[kNameMax + 1];
+        if (!normalize_path(path, name, sizeof(name), false)) {
+            return false;
+        }
+        for (uint32_t i = 0; i < kMaxFiles; i++) {
+            if (files_[i].in_use && std::strcmp(files_[i].name, name) == 0) {
+                if (files_[i].is_dir && has_children(name)) {
+                    return false;
+                }
                 if (files_[i].data) {
                     free(files_[i].data);
                     files_[i].data = nullptr;
                 }
                 files_[i].in_use = false;
+                files_[i].is_dir = false;
                 files_[i].size = 0;
                 files_[i].capacity = 0;
+                files_[i].mode = default_mode(false);
+                files_[i].name[0] = '\0';
                 num_files_--;
-                
-                std::cout << "[MemFS] Deleted file: " << name << std::endl;
-                
+
+                std::cout << "[MemFS] Deleted file: /" << name << std::endl;
+
                 return true;
             }
         }
-        
-        std::cerr << "[MemFS] File not found: " << name << std::endl;
+
+        std::cerr << "[MemFS] File not found: " << path << std::endl;
         return false;
     }
-    
+
     /**
      * List all files.
      */
     void list() const {
         std::cout << "[MemFS] Files (" << num_files_ << "):" << std::endl;
-        for (uint32_t i = 0; i < MAX_FILES; i++) {
+        for (uint32_t i = 0; i < kMaxFiles; i++) {
             if (files_[i].in_use) {
-                std::cout << "  " << files_[i].name 
+                std::cout << "  " << files_[i].name
+                          << (files_[i].is_dir ? "/" : "")
                           << " (" << files_[i].size << " bytes)" << std::endl;
             }
         }
     }
-    
+
     /**
      * Get statistics.
      */
     void printStats() const {
         uint64_t total_size = 0;
-        for (uint32_t i = 0; i < MAX_FILES; i++) {
+        for (uint32_t i = 0; i < kMaxFiles; i++) {
             if (files_[i].in_use) {
                 total_size += files_[i].size;
             }
         }
-        
-        std::cout << "[MemFS] Files: " << num_files_ << " / " << MAX_FILES
+
+        std::cout << "[MemFS] Files: " << num_files_ << " / " << kMaxFiles
                   << ", Total size: " << (total_size / 1024) << " KB"
                   << std::endl;
     }
 
-    uint32_t list(char* out, uint32_t max) const {
+    int32_t list(const char* path, char* out, uint32_t max) const {
         if (!out || max == 0) {
-            return 0;
+            return -EINVAL;
         }
-        uint32_t written = 0;
-        for (uint32_t i = 0; i < MAX_FILES; ++i) {
+        const char* target = path ? path : "/";
+        char prefix[kNameMax + 1];
+        const char* prefix_ptr = nullptr;
+        uint32_t prefix_len = 0;
+        if (std::strcmp(target, "/") != 0 && target[0] != '\0') {
+            if (!normalize_path(target, prefix, sizeof(prefix), false)) {
+                return -EINVAL;
+            }
+            const MemFSFile* entry = lookup_internal(prefix);
+            if (!entry || !entry->is_dir) {
+                return -ENOENT;
+            }
+            prefix_ptr = prefix;
+            prefix_len = (uint32_t)std::strlen(prefix);
+        }
+
+        struct SeenEntry {
+            char name[kNameMax + 1];
+            bool is_dir;
+        };
+        SeenEntry seen[kMaxFiles];
+        uint32_t seen_count = 0;
+        for (uint32_t i = 0; i < kMaxFiles; ++i) {
             if (!files_[i].in_use) {
                 continue;
             }
             const char* name = files_[i].name;
-            uint32_t j = 0;
-            while (name[j] && written + 1 < max) {
-                out[written++] = name[j++];
+            if (prefix_ptr) {
+                if (std::memcmp(name, prefix_ptr, prefix_len) != 0 ||
+                    name[prefix_len] != '/') {
+                    continue;
+                }
+                name += prefix_len + 1;
+            }
+            if (name[0] == '\0') {
+                continue;
+            }
+            const char* slash = std::strchr(name, '/');
+            uint32_t seg_len = slash ? (uint32_t)(slash - name)
+                                     : (uint32_t)std::strlen(name);
+            if (seg_len == 0) {
+                continue;
+            }
+            bool is_dir = slash != nullptr || files_[i].is_dir;
+            bool found = false;
+            for (uint32_t j = 0; j < seen_count; ++j) {
+                if (std::strncmp(seen[j].name, name, seg_len) == 0 &&
+                    seen[j].name[seg_len] == '\0') {
+                    seen[j].is_dir = seen[j].is_dir || is_dir;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found && seen_count < kMaxFiles) {
+                std::memset(seen[seen_count].name, 0, sizeof(seen[seen_count].name));
+                std::memcpy(seen[seen_count].name, name, seg_len);
+                seen[seen_count].name[seg_len] = '\0';
+                seen[seen_count].is_dir = is_dir;
+                ++seen_count;
+            }
+        }
+
+        uint32_t written = 0;
+        for (uint32_t i = 0; i < seen_count; ++i) {
+            const char* name = seen[i].name;
+            for (uint32_t j = 0; name[j] && written + 1 < max; ++j) {
+                out[written++] = name[j];
+            }
+            if (seen[i].is_dir && written + 1 < max) {
+                out[written++] = '/';
             }
             if (written + 1 >= max) {
                 break;
@@ -257,7 +512,31 @@ public:
             out[written++] = '\n';
         }
         out[written] = '\0';
-        return written;
+        return (int32_t)written;
+    }
+
+    bool stat(const char* path, uint32_t* size, bool* is_dir, uint32_t* mode) const {
+        if (!path || !size || !is_dir || !mode) {
+            return false;
+        }
+        if (std::strcmp(path, "/") == 0 || std::strcmp(path, "") == 0) {
+            *size = 0;
+            *is_dir = true;
+            *mode = 0555u;
+            return true;
+        }
+        char name[kNameMax + 1];
+        if (!normalize_path(path, name, sizeof(name), false)) {
+            return false;
+        }
+        const MemFSFile* entry = lookup_internal(name);
+        if (!entry || !entry->in_use) {
+            return false;
+        }
+        *size = entry->is_dir ? 0u : entry->size;
+        *is_dir = entry->is_dir;
+        *mode = entry->mode != 0 ? entry->mode : default_mode(entry->is_dir);
+        return true;
     }
 };
 

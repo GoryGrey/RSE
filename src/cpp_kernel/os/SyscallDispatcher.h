@@ -6,6 +6,7 @@
 #include "VFS.h"
 #include "PhysicalAllocator.h"
 #include "LoopbackDevice.h"
+#include "SocketLite.h"
 #include <cstring>
 #ifdef RSE_KERNEL
 #include "KernelStubs.h"
@@ -108,6 +109,23 @@ inline bool write_user_bytes(OSProcess* proc, uint64_t addr, const void* src, ui
     return proc->vmem->writeUser(addr, src, size);
 }
 
+inline bool read_user_u32(OSProcess* proc, uint64_t addr, uint32_t* out) {
+    if (!out) {
+        return false;
+    }
+    if (!validate_user_range(proc, addr, sizeof(uint32_t), false)) {
+        return false;
+    }
+    return read_user_bytes(proc, addr, out, sizeof(uint32_t));
+}
+
+inline bool write_user_u32(OSProcess* proc, uint64_t addr, uint32_t value) {
+    if (!validate_user_range(proc, addr, sizeof(uint32_t), true)) {
+        return false;
+    }
+    return write_user_bytes(proc, addr, &value, sizeof(uint32_t));
+}
+
 inline bool copy_user_string(OSProcess* proc, uint64_t addr, char* dst,
                              uint32_t cap, uint32_t* out_len) {
     if (!dst || cap == 0 || addr == 0) {
@@ -202,6 +220,20 @@ inline bool validate_user_path(OSProcess* proc, const char* path, bool allow_per
         return allow_persist_root;
     }
     return persist_path(path);
+}
+
+inline SocketLite* fd_to_socket(OSProcess* proc, int32_t fd) {
+    if (!proc) {
+        return nullptr;
+    }
+    FileDescriptor* desc = proc->fd_table.get(fd);
+    if (!desc || !desc->isDevice() || !desc->device) {
+        return nullptr;
+    }
+    if (!is_socket_device(desc->device)) {
+        return nullptr;
+    }
+    return static_cast<SocketLite*>(desc->device->private_data);
 }
 
 struct ExecStringTable {
@@ -477,6 +509,234 @@ inline int64_t sys_pipe(uint64_t fds_addr, uint64_t, uint64_t,
         delete dev;
         return -EFAULT;
     }
+    return 0;
+}
+
+inline int64_t sys_socket(uint64_t domain, uint64_t type, uint64_t protocol,
+                          uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    if (domain != RSE_AF_LOOP) {
+        return -EOPNOTSUPP;
+    }
+    if (type != 0 && type != RSE_SOCK_STREAM) {
+        return -EOPNOTSUPP;
+    }
+    (void)protocol;
+    SocketLite* sock = socket_manager().allocate();
+    if (!sock) {
+        return -ENOMEM;
+    }
+    Device* dev = create_socket_device(sock);
+    if (!dev) {
+        socket_manager().release(sock);
+        return -ENOMEM;
+    }
+    int32_t fd = current->fd_table.allocateDevice(dev, O_RDWR);
+    if (fd < 0) {
+        socket_manager().release(sock);
+        return -1;
+    }
+    return fd;
+}
+
+inline int64_t sys_bind(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
+                        uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    if (addr_len < sizeof(rse_sockaddr)) {
+        return -EINVAL;
+    }
+    if (!validate_user_range(current, addr_ptr, sizeof(rse_sockaddr), false)) {
+        return -EFAULT;
+    }
+    rse_sockaddr addr{};
+    if (!read_user_bytes(current, addr_ptr, &addr, sizeof(addr))) {
+        return -EFAULT;
+    }
+    if (addr.family != RSE_AF_LOOP) {
+        return -EOPNOTSUPP;
+    }
+    SocketLite* sock = fd_to_socket(current, static_cast<int32_t>(fd));
+    if (!sock) {
+        return -ENOTSOCK;
+    }
+    if (sock->state != SocketLite::State::CREATED) {
+        return -EINVAL;
+    }
+    uint16_t port = addr.port;
+    if (port == 0) {
+        port = socket_manager().allocate_ephemeral_port();
+        if (port == 0) {
+            return -EAGAIN;
+        }
+    }
+    if (socket_manager().port_in_use(port)) {
+        return -EADDRINUSE;
+    }
+    sock->port = port;
+    sock->state = SocketLite::State::BOUND;
+    return 0;
+}
+
+inline int64_t sys_listen(uint64_t fd, uint64_t backlog, uint64_t,
+                          uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    (void)backlog;
+    SocketLite* sock = fd_to_socket(current, static_cast<int32_t>(fd));
+    if (!sock) {
+        return -ENOTSOCK;
+    }
+    if (sock->state != SocketLite::State::BOUND || sock->port == 0) {
+        return -EINVAL;
+    }
+    sock->state = SocketLite::State::LISTENING;
+    sock->pending = nullptr;
+    return 0;
+}
+
+inline int64_t sys_accept(uint64_t fd, uint64_t addr_ptr, uint64_t addrlen_ptr,
+                          uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    SocketLite* listener = fd_to_socket(current, static_cast<int32_t>(fd));
+    if (!listener) {
+        return -ENOTSOCK;
+    }
+    if (listener->state != SocketLite::State::LISTENING) {
+        return -EINVAL;
+    }
+    SocketLite* server_sock = listener->pending;
+    if (!server_sock) {
+        return -EAGAIN;
+    }
+
+    if (addr_ptr != 0) {
+        if (addrlen_ptr == 0) {
+            return -EINVAL;
+        }
+        uint32_t max_len = 0;
+        if (!read_user_u32(current, addrlen_ptr, &max_len)) {
+            return -EFAULT;
+        }
+        if (max_len < sizeof(rse_sockaddr)) {
+            return -EINVAL;
+        }
+        if (!validate_user_range(current, addr_ptr, sizeof(rse_sockaddr), true)) {
+            return -EFAULT;
+        }
+    } else if (addrlen_ptr != 0) {
+        if (!validate_user_range(current, addrlen_ptr, sizeof(uint32_t), true)) {
+            return -EFAULT;
+        }
+    }
+
+    Device* dev = create_socket_device(server_sock);
+    if (!dev) {
+        socket_manager().release(server_sock);
+        return -ENOMEM;
+    }
+    int32_t new_fd = current->fd_table.allocateDevice(dev, O_RDWR);
+    if (new_fd < 0) {
+        socket_manager().release(server_sock);
+        return -1;
+    }
+
+    listener->pending = nullptr;
+
+    if (addr_ptr != 0) {
+        rse_sockaddr out{};
+        out.family = RSE_AF_LOOP;
+        out.port = server_sock->peer_port;
+        if (!write_user_bytes(current, addr_ptr, &out, sizeof(out))) {
+            return -EFAULT;
+        }
+        if (!write_user_u32(current, addrlen_ptr, sizeof(rse_sockaddr))) {
+            return -EFAULT;
+        }
+    } else if (addrlen_ptr != 0) {
+        if (!write_user_u32(current, addrlen_ptr, sizeof(rse_sockaddr))) {
+            return -EFAULT;
+        }
+    }
+
+    return new_fd;
+}
+
+inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
+                           uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    if (addr_len < sizeof(rse_sockaddr)) {
+        return -EINVAL;
+    }
+    if (!validate_user_range(current, addr_ptr, sizeof(rse_sockaddr), false)) {
+        return -EFAULT;
+    }
+    rse_sockaddr addr{};
+    if (!read_user_bytes(current, addr_ptr, &addr, sizeof(addr))) {
+        return -EFAULT;
+    }
+    if (addr.family != RSE_AF_LOOP) {
+        return -EOPNOTSUPP;
+    }
+    if (addr.port == 0) {
+        return -EINVAL;
+    }
+    SocketLite* sock = fd_to_socket(current, static_cast<int32_t>(fd));
+    if (!sock) {
+        return -ENOTSOCK;
+    }
+    if (sock->state == SocketLite::State::CONNECTED) {
+        return -EISCONN;
+    }
+    if (sock->state == SocketLite::State::LISTENING) {
+        return -EOPNOTSUPP;
+    }
+    if (sock->state != SocketLite::State::CREATED &&
+        sock->state != SocketLite::State::BOUND) {
+        return -EINVAL;
+    }
+    SocketLite* listener = socket_manager().find_listener(addr.port);
+    if (!listener) {
+        return -ECONNREFUSED;
+    }
+    if (listener->pending) {
+        return -EAGAIN;
+    }
+    if (sock->port == 0) {
+        uint16_t port = socket_manager().allocate_ephemeral_port();
+        if (port == 0) {
+            return -EAGAIN;
+        }
+        sock->port = port;
+    }
+    SocketLite* server_sock = socket_manager().allocate();
+    if (!server_sock) {
+        return -ENOMEM;
+    }
+    server_sock->state = SocketLite::State::CONNECTED;
+    server_sock->port = listener->port;
+    server_sock->peer_port = sock->port;
+    server_sock->peer = sock;
+    server_sock->pending = nullptr;
+
+    sock->state = SocketLite::State::CONNECTED;
+    sock->peer_port = listener->port;
+    sock->peer = server_sock;
+
+    listener->pending = server_sock;
     return 0;
 }
 
@@ -1287,6 +1547,11 @@ public:
         register_handler(SYS_PS, sys_ps);
         register_handler(SYS_EXEC, sys_exec);
         register_handler(SYS_PIPE, sys_pipe);
+        register_handler(SYS_SOCKET, sys_socket);
+        register_handler(SYS_BIND, sys_bind);
+        register_handler(SYS_LISTEN, sys_listen);
+        register_handler(SYS_ACCEPT, sys_accept);
+        register_handler(SYS_CONNECT, sys_connect);
         register_handler(SYS_DUP, sys_dup);
         register_handler(SYS_DUP2, sys_dup2);
         register_handler(SYS_OPEN, sys_open);

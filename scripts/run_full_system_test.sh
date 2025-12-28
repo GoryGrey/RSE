@@ -64,8 +64,10 @@ CPP_TESTS=(
   sys_kill_test
   sys_ps_test
   sys_stat_test
+  sys_memfs_dir_test
   sys_user_isolation_test
   sys_vfs_persist_test
+  sys_socket_test
   sys_pipe_test
   sys_dup_test
   sys_mmap_test

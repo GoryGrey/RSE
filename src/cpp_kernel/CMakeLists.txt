@@ -174,6 +174,12 @@ if(NOT MSVC)
     target_link_libraries(sys_stat_test atomic)
 endif()
 
+# sys_memfs_dir test
+add_executable(sys_memfs_dir_test tests/sys_memfs_dir_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(sys_memfs_dir_test atomic)
+endif()
+
 # sys_user_isolation test
 add_executable(sys_user_isolation_test tests/sys_user_isolation_test.cpp)
 if(NOT MSVC)
@@ -184,6 +190,12 @@ endif()
 add_executable(sys_vfs_persist_test tests/sys_vfs_persist_test.cpp)
 if(NOT MSVC)
     target_link_libraries(sys_vfs_persist_test atomic)
+endif()
+
+# sys_socket test
+add_executable(sys_socket_test tests/sys_socket_test.cpp)
+if(NOT MSVC)
+    target_link_libraries(sys_socket_test atomic)
 endif()
 
 # sys_pipe test

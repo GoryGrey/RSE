@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: December 28, 2025 (BlockFS directories + tcp-lite loopback + exec/path hardening)
+Last Updated: December 28, 2025 (MemFS directories + socket syscalls + expanded tests)
 
 ---
 
@@ -25,9 +25,10 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 
 - Bootable UEFI kernel (serial + framebuffer) with dashboard and input.
 - In-kernel benchmarks (compute, memory, RAMFS, UEFI FS/block, fastio, HTTP loopback).
-- MemFS + BlockFS with per-process file descriptors and `/persist` directories.
+- MemFS + BlockFS with per-process file descriptors, `/persist` directories, and MemFS nested paths.
 - BlockFS persistence with checksum + journal + corruption detection (flat table, directory paths).
 - TCP-lite framing over `/dev/net0` for loopback handshake/data tests.
+- In-kernel socket syscalls (`socket/bind/listen/accept/connect`) with loopback device-backed buffers.
 - Syscall dispatcher with user-range validation and per-torus dispatch.
 - User mmap rejects overlaps; mmap/mprotect/munmap validate zero/unaligned sizes; PROT_EXEC blocked for anonymous mmap and limited to code pages; stack guard pages widened; mmap uses guard pages by default; read/write reject oversized counts; mprotect refuses unmapped ranges; VFS reserves `/dev` and rejects invalid `/persist` subpaths; net loopback backpressure returns `-EAGAIN`.
 - Ring3 exec smoke (UEFI): exec path works; isolation still evolving.
@@ -38,8 +39,9 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 
 - `./scripts/run_full_system_test.sh` (build + native tests + UEFI boot + IVSHMEM exchange).
 - `./scripts/run_linux_baseline.sh` (host baseline).
-- Syscall + OS tests: `sys_wait_test`, `sys_ps_test`, `sys_stat_test`, `sys_user_isolation_test`,
-  `sys_vfs_persist_test`, `sys_pipe_test`, `sys_dup_test`, `sys_mmap_test`, `exec_vfs_test`.
+- Syscall + OS tests: `sys_wait_test`, `sys_ps_test`, `sys_stat_test`, `sys_memfs_dir_test`,
+  `sys_user_isolation_test`, `sys_vfs_persist_test`, `sys_socket_test`, `sys_pipe_test`,
+  `sys_dup_test`, `sys_mmap_test`, `exec_vfs_test`.
 - Devices: `blockfs_test`, `net_device_test`.
 
 Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal and redirect logs outside the repo:
@@ -48,8 +50,8 @@ Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal a
 ### Known Limitations
 
 - No full user-mode isolation/permissions yet; ring3 exec is a smoke path.
-- Network stack is minimal (ARP/UDP parsing + loopback); tcp-lite framing exists only for loopback tests.
-- BlockFS uses fixed slots; directory paths exist but hierarchy/permissions are still rudimentary (MemFS remains flat).
+- Network stack is minimal (ARP/UDP parsing + loopback); socket syscalls are loopback-only.
+- BlockFS uses fixed slots; directory paths exist but hierarchy/permissions are still rudimentary.
 - Workload init is one-shot per boot.
 
 ---
@@ -67,7 +69,7 @@ Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal a
 - Driver hardening (virtio-net).
 
 3) Filesystem
-- BlockFS directories + permissions.
+- BlockFS directories + permissions (MemFS directories now land).
 - Stronger journaling and recovery.
 
 ---

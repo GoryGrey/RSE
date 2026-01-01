@@ -462,6 +462,10 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
         SocketLite* sock = mgr.find_by_conn(header.conn);
         if (sock) {
             sock->state = SocketLite::State::CLOSED;
+            sock->peer_port = 0;
+            sock->connect_attempts = 0;
+            sock->connect_retry = 0;
+            sock->connect_deadline = 0;
         }
         return;
     }

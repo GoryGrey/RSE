@@ -492,11 +492,8 @@ public:
         if (entry_type(*entry) == kEntryDir && has_children(name)) {
             return false;
         }
-        entry->name[0] = '\0';
-        entry->size = 0;
-        entry->checksum = 0;
-        entry->in_use = 0;
         uint32_t index = (uint32_t)(entry - entries_);
+        clear_entry(index);
         if (!commit_entry(index)) {
             return false;
         }

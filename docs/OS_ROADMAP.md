@@ -21,7 +21,7 @@ This roadmap tracks the path from the current prototype to a production-grade OS
 - UEFI kernel build is freestanding with minimal string/mem shims for kernel C++ code.
 - Ring3 init loads a real freestanding user ELF at `/bin/init`, can run `/persist/boot.rc` or `/boot.rc` scripts, and yields/sleeps across ring3 slots on syscall ticks.
 - IVSHMEM projection exchange across 3 VMs.
-- Ring3 exec smoke path works (isolation still evolving).
+- Ring3 exec smoke path works (isolation still evolving; PIT-based preemption now enabled).
 
 ---
 
@@ -32,7 +32,7 @@ This roadmap tracks the path from the current prototype to a production-grade OS
 - Permission model for memory + file access.
 - Signals and robust process lifecycle (exec/exit/wait).
 - Expand syscall surface while keeping strict pointer checks.
-- Preemptive user scheduling + multiple ring3 processes per torus.
+- Preemptive user scheduling + multiple ring3 processes per torus (PIT-driven time slicing).
   
 Bootstrap guardrail:
 - Introduce only a minimal bootstrap init to launch braided init; it must remain non-monolithic and must not hinder torus autonomy or system capabilities.
@@ -100,6 +100,12 @@ Success criteria:
 - Run `./scripts/run_full_system_test.sh` and `./scripts/run_linux_baseline.sh` for snapshots.
 - Default runs use smoke mode (`RSE_BENCH_SMOKE=1`) to validate real workloads; set `RSE_BENCH_SMOKE=0` for full UEFI/virtio/net micro-benchmarks.
 - Keep benchmarks apples-to-apples before claiming comparisons.
+
+## Bootable ISO Workflow
+
+- Build: `./scripts/build_iso.sh`
+- Run: `./scripts/run_iso.sh`
+- Scripted workloads: `boot/boot.rc.sample` → `/persist/boot.rc`
 
 ---
 

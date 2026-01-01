@@ -101,6 +101,10 @@ static inline uint8_t inb(uint16_t port) {
     return ret;
 }
 
+static inline void io_wait(void) {
+    outb(0x80, 0);
+}
+
 static inline void outw(uint16_t port, uint16_t value) {
     __asm__ volatile("outw %0, %1" : : "a"(value), "Nd"(port));
 }
@@ -119,6 +123,55 @@ static inline uint32_t inl(uint16_t port) {
     uint32_t ret;
     __asm__ volatile("inl %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
+}
+
+static void pic_remap(uint8_t offset1, uint8_t offset2) {
+    uint8_t mask1 = inb(0x21);
+    uint8_t mask2 = inb(0xA1);
+    outb(0x20, 0x11);
+    io_wait();
+    outb(0xA0, 0x11);
+    io_wait();
+    outb(0x21, offset1);
+    io_wait();
+    outb(0xA1, offset2);
+    io_wait();
+    outb(0x21, 0x04);
+    io_wait();
+    outb(0xA1, 0x02);
+    io_wait();
+    outb(0x21, 0x01);
+    io_wait();
+    outb(0xA1, 0x01);
+    io_wait();
+    outb(0x21, mask1);
+    outb(0xA1, mask2);
+}
+
+static void pic_eoi(void) {
+    outb(0x20, 0x20);
+    outb(0xA0, 0x20);
+}
+
+static void pic_unmask_irq0(void) {
+    uint8_t mask = inb(0x21);
+    outb(0x21, (uint8_t)(mask & ~0x01u));
+}
+
+static void pit_init(uint32_t hz) {
+    if (hz == 0) {
+        return;
+    }
+    uint32_t divisor = 1193182u / hz;
+    if (divisor == 0) {
+        divisor = 1;
+    }
+    if (divisor > 0xFFFFu) {
+        divisor = 0xFFFFu;
+    }
+    outb(0x43, 0x36);
+    outb(0x40, (uint8_t)(divisor & 0xFFu));
+    outb(0x40, (uint8_t)((divisor >> 8) & 0xFFu));
 }
 
 static inline void rse_poweroff(void) {
@@ -264,6 +317,8 @@ uint64_t g_saved_r14;
 uint64_t g_saved_r15;
 static struct idt_entry g_idt[256];
 static struct idt_ptr g_idt_desc;
+static int g_timer_ready;
+static uint32_t g_timer_hz = 100;
 uint64_t g_user_mode_kernel_rsp;
 static volatile int g_user_mode_exited;
 
@@ -541,6 +596,38 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
     }
 }
 
+__attribute__((used)) static void irq0_handler(struct int80_frame* frame) {
+    uint64_t user_cr3 = read_cr3();
+    uint64_t kernel_cr3 = g_kernel_cr3 ? g_kernel_cr3 : g_saved_cr3;
+    if (kernel_cr3 && user_cr3 != kernel_cr3) {
+        write_cr3(kernel_cr3);
+    }
+    if (!frame || (frame->cs & 0x3) != 0x3) {
+        pic_eoi();
+        if (kernel_cr3) {
+            write_cr3(user_cr3);
+        }
+        return;
+    }
+    rse_os_sync_ring3_frame(frame);
+    if (rse_os_ring3_tick()) {
+        uint64_t entry = 0;
+        uint64_t stack = 0;
+        if (rse_os_ring3_yield(&entry, &stack)) {
+            if (refresh_user_page_table(entry, stack)) {
+                (void)rse_os_ring3_load_frame(frame);
+                frame->rip = entry;
+                frame->rsp = stack ? stack : USER_STACK_TOP;
+                user_cr3 = g_user_cr3;
+            }
+        }
+    }
+    pic_eoi();
+    if (kernel_cr3) {
+        write_cr3(user_cr3);
+    }
+}
+
 static void exception_dump(const char *label, struct exc_frame *frame, uint64_t cr2) {
     if (!frame) {
         return;
@@ -605,6 +692,43 @@ __attribute__((naked, unused)) static void int80_stub(void) {
         "push %rax\n"
         "mov %rsp, %rdi\n"
         "call int80_handler\n"
+        "pop %rax\n"
+        "pop %rbx\n"
+        "pop %rcx\n"
+        "pop %rdx\n"
+        "pop %rsi\n"
+        "pop %rdi\n"
+        "pop %rbp\n"
+        "pop %r8\n"
+        "pop %r9\n"
+        "pop %r10\n"
+        "pop %r11\n"
+        "pop %r12\n"
+        "pop %r13\n"
+        "pop %r14\n"
+        "pop %r15\n"
+        "iretq\n");
+}
+
+__attribute__((naked, unused)) static void irq0_stub(void) {
+    __asm__ volatile(
+        "push %r15\n"
+        "push %r14\n"
+        "push %r13\n"
+        "push %r12\n"
+        "push %r11\n"
+        "push %r10\n"
+        "push %r9\n"
+        "push %r8\n"
+        "push %rbp\n"
+        "push %rdi\n"
+        "push %rsi\n"
+        "push %rdx\n"
+        "push %rcx\n"
+        "push %rbx\n"
+        "push %rax\n"
+        "mov %rsp, %rdi\n"
+        "call irq0_handler\n"
         "pop %rax\n"
         "pop %rbx\n"
         "pop %rcx\n"
@@ -820,7 +944,8 @@ __attribute__((unused)) static void init_idt(void) {
     set_idt_entry(0x0A, ignore_err_stub, 0x8E);
     set_idt_entry(0x0B, ignore_err_stub, 0x8E);
     set_idt_entry(0x0C, ignore_err_stub, 0x8E);
-    for (int vec = 0x20; vec <= 0x2F; ++vec) {
+    set_idt_entry(0x20, irq0_stub, 0x8E);
+    for (int vec = 0x21; vec <= 0x2F; ++vec) {
         set_idt_entry(vec, irq_stub, 0x8E);
     }
     set_idt_entry(0x80, int80_stub, 0xEE);
@@ -831,6 +956,22 @@ __attribute__((unused)) static void init_idt(void) {
     g_idt_desc.limit = (uint16_t)(sizeof(g_idt) - 1);
     g_idt_desc.base = (uint64_t)(uintptr_t)&g_idt[0];
     __asm__ volatile("lidt %0" : : "m"(g_idt_desc));
+}
+
+static void init_timer_preemption(void) {
+    if (g_timer_ready) {
+        return;
+    }
+    __asm__ volatile("cli");
+    init_idt();
+    pic_remap(0x20, 0x28);
+    pit_init(g_timer_hz);
+    pic_unmask_irq0();
+    __asm__ volatile("sti");
+    g_timer_ready = 1;
+    serial_write("[RSE] timer preemption hz=");
+    serial_write_u64(g_timer_hz);
+    serial_write("\n");
 }
 
 static void init_tss(void) {
@@ -5159,6 +5300,7 @@ static void kmain(struct rse_boot_info *boot_info) {
     serial_write("[RSE] UEFI kernel start\n");
     g_kernel_cr3 = read_cr3();
     init_gdt_user_segments();
+    init_timer_preemption();
 #if RSE_ENABLE_USERMODE
     // Run ring3 smoke after OS init in benchmarks to avoid double-running.
 #endif

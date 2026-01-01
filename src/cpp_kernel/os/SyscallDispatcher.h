@@ -630,15 +630,11 @@ inline int64_t sys_listen(uint64_t fd, uint64_t backlog, uint64_t,
     sock->pending = nullptr;
     sock->pending_next = nullptr;
     sock->pending_count = 0;
-    if (sock->backend == SocketLite::Backend::NET_LITE) {
-        uint64_t clamped = backlog == 0 ? 1 : backlog;
-        if (clamped > kNetLiteMaxBacklog) {
-            clamped = kNetLiteMaxBacklog;
-        }
-        sock->backlog = (uint8_t)clamped;
-    } else {
-        sock->backlog = 1;
+    uint64_t clamped = backlog == 0 ? 1 : backlog;
+    if (clamped > kNetLiteMaxBacklog) {
+        clamped = kNetLiteMaxBacklog;
     }
+    sock->backlog = (uint8_t)clamped;
     return 0;
 }
 
@@ -658,11 +654,8 @@ inline int64_t sys_accept(uint64_t fd, uint64_t addr_ptr, uint64_t addrlen_ptr,
     SocketLite* server_sock = nullptr;
     if (listener->backend == SocketLite::Backend::NET_LITE) {
         socket_poll_net();
-        server_sock = socket_pop_pending(listener);
-    } else {
-        server_sock = listener->pending;
-        listener->pending = nullptr;
     }
+    server_sock = socket_pop_pending(listener);
     if (!server_sock) {
         return -EAGAIN;
     }
@@ -698,11 +691,7 @@ inline int64_t sys_accept(uint64_t fd, uint64_t addr_ptr, uint64_t addrlen_ptr,
         return -1;
     }
 
-    if (listener->backend == SocketLite::Backend::NET_LITE) {
-        if (listener->pending_count == 0) {
-            listener->pending = nullptr;
-        }
-    } else {
+    if (listener->pending_count == 0) {
         listener->pending = nullptr;
     }
 
@@ -850,7 +839,10 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
     if (!listener) {
         return -ECONNREFUSED;
     }
-    if (listener->pending) {
+    if (listener->backlog == 0) {
+        listener->backlog = 1;
+    }
+    if (listener->pending_count >= listener->backlog) {
         return -EAGAIN;
     }
     if (sock->port == 0) {
@@ -874,7 +866,7 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
     sock->peer_port = listener->port;
     sock->peer = server_sock;
 
-    listener->pending = server_sock;
+    socket_append_pending(listener, server_sock);
     return 0;
 }
 

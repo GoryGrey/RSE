@@ -1,0 +1,9 @@
+# RSE boot.rc sample
+help
+compute 500000
+memstress 16
+fileio 8
+ls /
+stat /persist
+net 32
+blk 8

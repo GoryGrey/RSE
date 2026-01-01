@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: January 01, 2026 (ring3 sleep/yield + timeslice; NET_LITE connect retries/backlog/FIN handling; workload yields; directory listing sort; full system test logged)
+Last Updated: January 01, 2026 (PIT timer preemption; ring3 sleep/yield + timeslice; NET_LITE connect retries/backlog/FIN handling; workload yields; directory listing sort; ISO workflow scripts; full system test logged)
 
 ---
 
@@ -36,10 +36,11 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - Ring3 init now loads a real freestanding ELF at `/bin/init` (no synthetic payloads).
 - Ring3 init supports script-driven workloads via `/persist/boot.rc` or `/boot.rc`.
 - Ring3 init yields during long loops to avoid starving other ring3 slots.
-- Ring3 scheduling rotates across multiple ring3 slots on syscall boundaries with per-process time slices (3 slots per torus) and supports sleep/nanosleep via per-syscall ticks.
+- Ring3 scheduling rotates across multiple ring3 slots on syscall boundaries with per-process time slices (3 slots per torus), supports sleep/nanosleep via per-syscall ticks, and has PIT-based preemption enabled.
 - UEFI kernel build is freestanding and provides minimal string/mem shims for kernel C++ code.
 - Projection exchange across 3 VMs via IVSHMEM shared memory.
 - BraidShell demo with telemetry sourced from real logs.
+- ISO build/run scripts for bootable testing (`scripts/build_iso.sh`, `scripts/run_iso.sh`).
 
 Design guardrail:
 - Bootstrapping userland must stay true to the braided, decentralized model: any bootstrap init is minimal, non-monolithic, and must not hinder torus autonomy or system capabilities.

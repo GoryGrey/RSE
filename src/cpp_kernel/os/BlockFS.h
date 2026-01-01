@@ -777,6 +777,10 @@ private:
                 changed = true;
                 continue;
             }
+            if (entries_[i].slot_index != i) {
+                entries_[i].slot_index = i;
+                changed = true;
+            }
             if (entry_mode(entries_[i]) == 0) {
                 set_entry_mode(entries_[i], default_mode(type));
                 changed = true;

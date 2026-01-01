@@ -70,6 +70,23 @@ inline bool validate_user_range(OSProcess* proc, uint64_t addr, uint64_t size, b
     if (!enforce_user_memory(proc)) {
         return true;
     }
+    if (!proc || !proc->vmem) {
+        return false;
+    }
+    if (size == 0) {
+        return true;
+    }
+    uint64_t end = addr + size - 1;
+    if (end < addr) {
+        return false;
+    }
+    uint64_t min_addr = proc->memory.code_start;
+    uint64_t max_addr = proc->memory.stack_end;
+    if (min_addr != 0 && max_addr != 0 && max_addr > min_addr) {
+        if (addr < min_addr || end >= max_addr) {
+            return false;
+        }
+    }
     return proc->vmem->validateUserRange(addr, size, write);
 }
 
@@ -88,6 +105,9 @@ inline bool read_user_bytes(OSProcess* proc, uint64_t addr, void* dst, uint64_t 
         }
         return true;
     }
+    if (!validate_user_range(proc, addr, size, false)) {
+        return false;
+    }
     return proc->vmem->readUser(dst, addr, size);
 }
 
@@ -105,6 +125,9 @@ inline bool write_user_bytes(OSProcess* proc, uint64_t addr, const void* src, ui
             dst[i] = in[i];
         }
         return true;
+    }
+    if (!validate_user_range(proc, addr, size, true)) {
+        return false;
     }
     return proc->vmem->writeUser(addr, src, size);
 }

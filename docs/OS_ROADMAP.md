@@ -15,6 +15,7 @@ This roadmap tracks the path from the current prototype to a production-grade OS
 
 - Bootable UEFI kernel (serial + framebuffer) with dashboard.
 - Syscall dispatcher with user-pointer validation and per-torus dispatch.
+- ELF loader enforces the user virtual address window (rejects out-of-range segments).
 - MemFS + BlockFS with checksum journal; /persist mounted with directory paths; MemFS supports nested paths and basic permission checks; BlockFS sanitizes invalid entries on mount.
 - Minimal network stack (ARP/UDP parsing + loopback) with NET_LITE socket syscalls over the net device path.
 - UEFI kernel build is freestanding with minimal string/mem shims for kernel C++ code.

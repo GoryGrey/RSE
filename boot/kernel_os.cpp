@@ -101,6 +101,13 @@ extern "C" int rse_os_user_map(uint64_t code_vaddr, uint64_t stack_vaddr,
     if (!proc || !proc->vmem || !proc->memory.page_table) {
         return 0;
     }
+    uint64_t code_page = os::align_down(code_vaddr);
+    uint64_t stack_page = os::align_down(stack_vaddr);
+    if (!proc->vmem->isUserRange(code_page, os::PAGE_SIZE) ||
+        !proc->vmem->isUserRange(stack_page, os::PAGE_SIZE)) {
+        serial_write("[RSE] user map range fail\n");
+        return 0;
+    }
     if (!map_user_page(proc, code_vaddr, os::PTE_PRESENT | os::PTE_USER, code_phys_out)) {
         serial_write("[RSE] user map code fail\n");
         return 0;
@@ -112,8 +119,6 @@ extern "C" int rse_os_user_map(uint64_t code_vaddr, uint64_t stack_vaddr,
         return 0;
     }
     serial_write("[RSE] user map ok\n");
-    uint64_t code_page = os::align_down(code_vaddr);
-    uint64_t stack_page = os::align_down(stack_vaddr);
     if (proc->memory.code_start == 0 && proc->memory.code_end == 0) {
         proc->memory.code_start = code_page;
         proc->memory.code_end = code_page + os::PAGE_SIZE;
@@ -158,19 +163,25 @@ extern "C" int rse_os_user_ranges(uint64_t *code_start, uint64_t *code_end,
 
 extern "C" uint64_t rse_os_user_translate(uint64_t vaddr) {
     os::OSProcess* proc = g_ring3_proc ? g_ring3_proc : user_procs[0][0];
-    if (!proc || !proc->memory.page_table) {
+    if (!proc || !proc->memory.page_table || !proc->vmem) {
         return 0;
     }
     uint64_t page = os::align_down(vaddr);
+    if (!proc->vmem->isUserRange(page, os::PAGE_SIZE)) {
+        return 0;
+    }
     return proc->memory.page_table->translate(page);
 }
 
 extern "C" uint64_t rse_os_user_flags(uint64_t vaddr) {
     os::OSProcess* proc = g_ring3_proc ? g_ring3_proc : user_procs[0][0];
-    if (!proc || !proc->memory.page_table) {
+    if (!proc || !proc->memory.page_table || !proc->vmem) {
         return 0;
     }
     uint64_t page = os::align_down(vaddr);
+    if (!proc->vmem->isUserRange(page, os::PAGE_SIZE)) {
+        return 0;
+    }
     const os::PageTableEntry* pte = proc->memory.page_table->getPTE(page);
     if (!pte || !pte->isPresent()) {
         return 0;

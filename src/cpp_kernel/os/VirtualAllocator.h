@@ -613,6 +613,9 @@ private:
         if (!page_table_ || !phys_alloc_ || size == 0) {
             return false;
         }
+        if (!isUserRange(addr, size)) {
+            return false;
+        }
 
         uint64_t virt_start = align_down(addr);
         if (addr > UINT64_MAX - size) {

@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: January 01, 2026 (ring3 init ELF verified; full system test logged)
+Last Updated: January 01, 2026 (user ELF range enforcement; full system test logged)
 
 ---
 
@@ -30,6 +30,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - TCP-lite framing over `/dev/net0` for loopback handshake/data tests.
 - In-kernel socket syscalls (`socket/bind/listen/accept/connect`) with loopback buffers and NET_LITE framing over the net device path.
 - Syscall dispatcher with user-range validation (including nanosleep/pipe/time pointers) and per-torus dispatch.
+- ELF loader enforces the user virtual address window; out-of-range segments are rejected.
 - User mmap rejects overlaps; mmap/mprotect/munmap validate zero/unaligned sizes; PROT_EXEC blocked for anonymous mmap and limited to code pages; stack guard pages widened; mmap uses guard pages by default; read/write reject oversized counts; mprotect refuses unmapped ranges; VFS reserves `/dev` and rejects invalid `/persist` subpaths; net loopback backpressure returns `-EAGAIN`.
 - Ring3 exec smoke (UEFI): exec path works; isolation still evolving.
 - Ring3 init now loads a real freestanding ELF at `/bin/init` (no synthetic payloads).
@@ -104,10 +105,10 @@ Latest snapshot (January 01, 2026):
 
 | Metric | RSE (UEFI/QEMU, TSC-calibrated) | Linux baseline (host) | Notes |
 |--------|----------------------------------|------------------------|-------|
-| Compute | 22 ns/op (8,935,000 ns total) | 580.5 ns/op | ~2.5x faster vs Dec 28 snapshot |
-| Memory copy | 9 ns/byte (634,839,219 ns total) | 171.3 ns/byte | Flat vs Dec 28 snapshot |
-| File I/O | RAMFS 10,729 ns/op | 30,625 ns/op | Slightly faster vs Dec 28 snapshot |
-| HTTP loopback | 425 ns/req | blocked (permission denied) | Slightly faster vs Dec 28 snapshot |
+| Compute | 16 ns/op (6,685,442 ns total) | 580.5 ns/op | ~3.4x faster vs Dec 28 snapshot |
+| Memory copy | 6 ns/byte (415,030,802 ns total) | 171.3 ns/byte | ~1.5x faster vs Dec 28 snapshot |
+| File I/O | RAMFS 9,102 ns/op | 30,625 ns/op | ~1.2x faster vs Dec 28 snapshot |
+| HTTP loopback | 344 ns/req | blocked (permission denied) | ~1.3x faster vs Dec 28 snapshot |
 
 Notes:
 - RSE ns values are derived from TSC calibration via UEFI `Stall`; treat as approximate.

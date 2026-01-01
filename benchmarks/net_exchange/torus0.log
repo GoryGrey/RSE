@@ -1,4 +1,4 @@
-[RSE] run start torus=0 ts=1767258163
+[RSE] run start torus=0 ts=1767259407
 [RSE] run cfg net_mode=none timeout=45 shm_size=65536
 [RSE] run build_dir=/home/gorygrey/Apps/RSE/build/net_exchange/torus0
 [RSE] run shm_path=/home/gorygrey/Apps/RSE/build/net_exchange/ivshmem.bin
@@ -42,7 +42,7 @@ Added to ISO image: directory '/'='/home/gorygrey/Apps/RSE/build/net_exchange/to
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : WARNING : Boot image load size exceeds 65535 blocks of 512 bytes. Will record 0 in El Torito to extend ESP to end-of-medium.
-xorriso : UPDATE :  36.19% done
+xorriso : UPDATE :  30.03% done
 ISO image produced: 66273 sectors
 Written to medium : 66273 sectors at LBA 0
 Writing to 'stdio:/home/gorygrey/Apps/RSE/build/net_exchange/torus0/rse_efi.iso' completed successfully.
@@ -54,12 +54,12 @@ rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus0/rse_raw.img
 dd if=/dev/zero of=/home/gorygrey/Apps/RSE/build/net_exchange/torus0/rse_raw.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.0403361 s, 1.7 GB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.0712015 s, 943 MB/s
 rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus0/rse_virtio.img
 dd if=/dev/zero of=/home/gorygrey/Apps/RSE/build/net_exchange/torus0/rse_virtio.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.0499034 s, 1.3 GB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.0667106 s, 1.0 GB/s
 cp /usr/share/OVMF/OVMF_VARS_4M.fd /home/gorygrey/Apps/RSE/build/net_exchange/torus0/OVMF_VARS.fd
 qemu-system-x86_64 -machine q35 -m 512M \
 	-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
@@ -124,7 +124,7 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] UEFI pointer online
 [RSE] UEFI keyboard online
 [RSE] benchmarks begin
-[RSE] tsc cycles/us=2909 delay_us=100000
+[RSE] tsc cycles/us=2903 delay_us=100000
 [RSE] init workloads start
 [RSE] braided smoke start
 [RSE] braid cycles=3 ticks=300
@@ -173,7 +173,7 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] user map ok
 [init] ring3 start
 [init] torus=0 pid=6
-[init] compute ops=2000000 cycles=48815538 checksum=9791868472914447520
+[init] compute ops=2000000 cycles=38304403 checksum=9791868472914447520
 [RSE] virtio-blk notify idx=7 used=7
 [RSE] virtio-blk notify idx=8 used=8
 [RSE] virtio-blk notify idx=9 used=9
@@ -289,7 +289,7 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] virtio-blk notify idx=118 used=118
 [RSE] virtio-blk notify idx=119 used=119
 [RSE] virtio-blk notify idx=120 used=120
-[init] file ops=68 bytes=4096 cycles=927766944
+[init] file ops=68 bytes=4096 cycles=1472743916
 [init] ls /
 dev/
 persist/
@@ -556,7 +556,7 @@ stat /dev/blk0 size=0 type=device
 [RSE] virtio-blk notify idx=374 used=374
 [RSE] virtio-blk notify idx=375 used=375
 [RSE] virtio-blk notify idx=376 used=376
-[init] /dev/blk0 ops=128 bytes=65536 mismatches=56 cycles=2106205684
+[init] /dev/blk0 ops=128 bytes=65536 mismatches=56 cycles=2233824405
 [RSE] user mode smoke ok
 [RSE] user setup start
 [RSE] user setup ring3 ready torus=1
@@ -578,8 +578,8 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map ok
 [init] ring3 start
 [init] torus=1 pid=2
-[init] compute ops=6000000 cycles=108009992 checksum=8086429594797147306
-[init] memstress bytes=8388608 cycles=181672075 checksum=1069547520
+[init] compute ops=6000000 cycles=144508367 checksum=8086429594797147306
+[init] memstress bytes=8388608 cycles=147930820 checksum=1069547520
 [RSE] user mode smoke ok
 [RSE] user setup start
 [RSE] user setup ring3 ready torus=2
@@ -601,42 +601,42 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map ok
 [init] ring3 start
 [init] torus=2 pid=2
-[init] compute ops=2000000 cycles=20968099 checksum=9791868472914447520
-[init] net0 wrote=960 read=8192 cycles=45710249
+[init] compute ops=2000000 cycles=54484169 checksum=9791868472914447520
+[init] net0 wrote=960 read=8192 cycles=47119603
 [RSE] user mode smoke ok
 [RSE] user mode exec smoke done
 [RSE] compute benchmark start
-[RSE] compute ops=400000 cycles=21665280 cycles/op=54 checksum=4180332335208930419
-[RSE] compute ns=7447672 ns/op=18
+[RSE] compute ops=400000 cycles=24701159 cycles/op=61 checksum=4180332335208930419
+[RSE] compute ns=8508838 ns/op=21
 [RSE] memory benchmark start
-[RSE] memory bytes=67108864 cycles=1588958768 cycles/byte=23
-[RSE] memory ns=546221645 ns/byte=8
+[RSE] memory bytes=67108864 cycles=1595782024 cycles/byte=23
+[RSE] memory ns=549701007 ns/byte=8
 [RSE] ramfs benchmark start
-[RSE] ramfs ops=288 cycles=10720546 cycles/op=37224 checksum=12533760 files=0
-[RSE] ramfs ns=3685302 ns/op=12796
+[RSE] ramfs ops=288 cycles=13676934 cycles/op=47489 checksum=12533760 files=0
+[RSE] ramfs ns=4711310 ns/op=16358
 [RSE] fastio benchmark start
-[RSE] fastio bytes=2097152 cycles=65004687 cycles/byte=30
-[RSE] fastio ns=22346059 ns/byte=10
+[RSE] fastio bytes=2097152 cycles=74506290 cycles/byte=35
+[RSE] fastio ns=25665273 ns/byte=12
 [RSE] UEFI FS benchmark start
-[RSE] UEFI FS ops=144 cycles=956748734 cycles/op=6644088 checksum=12533760
-[RSE] UEFI FS ns=328892655 ns/op=2283976
+[RSE] UEFI FS ops=144 cycles=1047291714 cycles/op=7272859 checksum=12533760
+[RSE] UEFI FS ns=360761871 ns/op=2505290
 [RSE] UEFI block benchmark start
-[RSE] UEFI block bytes=524288 write cycles=21118923 write cycles/byte=40 read cycles=14062329 read cycles/byte=26 checksum=66846720
-[RSE] UEFI block ns write=7259856 ns/byte=13 read ns=4834076 ns/byte=9
+[RSE] UEFI block bytes=524288 write cycles=6302362 write cycles/byte=12 read cycles=44066645 read cycles/byte=84 checksum=66846720
+[RSE] UEFI block ns write=2170982 ns/byte=4 read ns=15179691 ns/byte=28
 [RSE] virtio-blk capacity=131072
 [RSE] virtio-blk modern online
 [RSE] virtio-blk benchmark start
-[RSE] virtio desc req=495431680 data=268611648 status=495431808
+[RSE] virtio desc req=508989440 data=268611648 status=508989568
 [RSE] virtio-blk notify idx=0 used=0
 [RSE] virtio-blk notify idx=1 used=1
-[RSE] virtio-blk bytes=512 write cycles=154670602 write cycles/byte=302091 read cycles=2447054 read cycles/byte=4779 checksum=65280
-[RSE] virtio-blk ns write=53169680 ns/byte=103847 read ns=841201 ns/byte=1642
+[RSE] virtio-blk bytes=512 write cycles=94795524 write cycles/byte=185147 read cycles=4249852 read cycles/byte=8300 checksum=65280
+[RSE] virtio-blk ns write=32654331 ns/byte=63777 read ns=1463951 ns/byte=2859
 [RSE] udp/http server benchmark start
-[RSE] udp/http server rx=0 udp=0 http=0 cycles=278699904
-[RSE] udp/http server ns=95806085
+[RSE] udp/http server rx=0 udp=0 http=0 cycles=500676132
+[RSE] udp/http server ns=172468526
 [RSE] http loopback benchmark start
-[RSE] http requests=50000 cycles=43562322 cycles/req=871 checksum=218650000
-[RSE] http ns=14975016 ns/req=299
+[RSE] http requests=50000 cycles=74572679 cycles/req=1491 checksum=218650000
+[RSE] http ns=25688142 ns/req=513
 [RSE] benchmarks end
 [RSE] auto shutdown
 [RSE] run exit rc=0

@@ -12,6 +12,10 @@ SECTIONS {
         *(.text .text.*)
     } :text
 
+    .note.gnu.build-id : ALIGN(4) {
+        *(.note.gnu.build-id)
+    } :text
+
     .rodata : ALIGN(0x1000) {
         *(.rodata .rodata.*)
     } :text

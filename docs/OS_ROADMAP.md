@@ -18,6 +18,7 @@ This roadmap tracks the path from the current prototype to a production-grade OS
 - MemFS + BlockFS with checksum journal; /persist mounted with directory paths; MemFS supports nested paths and basic permission checks; BlockFS sanitizes invalid entries on mount.
 - Minimal network stack (ARP/UDP parsing + loopback) with NET_LITE socket syscalls over the net device path.
 - UEFI kernel build is freestanding with minimal string/mem shims for kernel C++ code.
+- Ring3 init loads a real freestanding user ELF at `/bin/init`.
 - IVSHMEM projection exchange across 3 VMs.
 - Ring3 exec smoke path works (isolation still evolving).
 
@@ -30,6 +31,10 @@ This roadmap tracks the path from the current prototype to a production-grade OS
 - Permission model for memory + file access.
 - Signals and robust process lifecycle (exec/exit/wait).
 - Expand syscall surface while keeping strict pointer checks.
+- Preemptive user scheduling + multiple ring3 processes per torus.
+  
+Bootstrap guardrail:
+- Introduce only a minimal bootstrap init to launch braided init; it must remain non-monolithic and must not hinder torus autonomy or system capabilities.
 
 Success criteria:
 - Faulty user pointers reliably return EFAULT.

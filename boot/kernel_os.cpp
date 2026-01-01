@@ -22,6 +22,9 @@
 #include "net_projection.h"
 #endif
 
+extern "C" const uint8_t _binary_init_user_elf_start[];
+extern "C" const uint8_t _binary_init_user_elf_end[];
+
 namespace os {
 TorusContext* current_torus_context = nullptr;
 }
@@ -52,8 +55,11 @@ struct UserProgramState {
 };
 
 static os::OSProcess* user_procs[kTorusCount][1 + kExtraProcs] = {};
+#if !RSE_ENABLE_USERMODE
 static UserProgramState user_states[kTorusCount][1 + kExtraProcs] = {};
+#endif
 static os::OSProcess* g_ring3_proc = nullptr;
+static os::OSProcess* g_ring3_procs[kTorusCount] = {};
 
 static bool map_user_page(os::OSProcess* proc, uint64_t vaddr, uint64_t flags, uint64_t* phys_out) {
     if (!proc || !phys_out || !proc->memory.page_table || !proc->vmem) {
@@ -177,6 +183,7 @@ extern "C" uint64_t rse_os_user_flags(uint64_t vaddr) {
 }
 
 
+#if !RSE_ENABLE_USERMODE
 static void user_log_prefix(os::OSProcess* proc, const rse_syscalls* sys, const char* tag) {
     if (!proc || !sys || !tag) {
         return;
@@ -316,6 +323,7 @@ static void user_program_compute(os::OSProcess* proc, void* ctx, const rse_sysca
         st->phase = 1;
     }
 }
+#endif
 static constexpr uint32_t kPipeQueues = 4;
 static constexpr uint32_t kPipeSlots = 64;
 static constexpr uint32_t kPipeMsgMax = 128;
@@ -414,12 +422,6 @@ extern "C" int strcmp(const char* lhs, const char* rhs) {
     if (lhs == rhs) {
         return 0;
     }
-    if (!lhs) {
-        return -1;
-    }
-    if (!rhs) {
-        return 1;
-    }
     while (*lhs && (*lhs == *rhs)) {
         ++lhs;
         ++rhs;
@@ -430,12 +432,6 @@ extern "C" int strcmp(const char* lhs, const char* rhs) {
 extern "C" int strncmp(const char* lhs, const char* rhs, size_t n) {
     if (n == 0 || lhs == rhs) {
         return 0;
-    }
-    if (!lhs) {
-        return -1;
-    }
-    if (!rhs) {
-        return 1;
     }
     for (size_t i = 0; i < n; ++i) {
         unsigned char lc = (unsigned char)lhs[i];
@@ -452,10 +448,8 @@ extern "C" char* strncpy(char* dst, const char* src, size_t n) {
         return dst;
     }
     size_t i = 0;
-    if (src) {
-        for (; i < n && src[i] != '\0'; ++i) {
-            dst[i] = src[i];
-        }
+    for (; i < n && src[i] != '\0'; ++i) {
+        dst[i] = src[i];
     }
     for (; i < n; ++i) {
         dst[i] = '\0';
@@ -464,9 +458,6 @@ extern "C" char* strncpy(char* dst, const char* src, size_t n) {
 }
 
 extern "C" size_t strlen(const char* str) {
-    if (!str) {
-        return 0;
-    }
     size_t len = 0;
     while (str[len] != '\0') {
         ++len;
@@ -487,9 +478,6 @@ extern "C" int memcmp(const void* lhs, const void* rhs, size_t count) {
 
 const char* strchr(const char* str, int ch) __asm("strchr");
 const char* strchr(const char* str, int ch) {
-    if (!str) {
-        return nullptr;
-    }
     char target = static_cast<char>(ch);
     for (const char* p = str; ; ++p) {
         if (*p == target) {
@@ -503,9 +491,6 @@ const char* strchr(const char* str, int ch) {
 
 const char* strrchr(const char* str, int ch) __asm("strrchr");
 const char* strrchr(const char* str, int ch) {
-    if (!str) {
-        return nullptr;
-    }
     char target = static_cast<char>(ch);
     const char* last = nullptr;
     for (const char* p = str; ; ++p) {
@@ -651,12 +636,13 @@ static os::OSProcess* create_process(uint32_t torus_id, uint32_t slot, uint32_t 
     return new (storage[torus_id][slot]) os::OSProcess(pid, parent_pid, torus_id);
 }
 
-static os::OSProcess* create_ring3_process(uint32_t pid, uint32_t parent_pid) {
-    alignas(os::OSProcess) static uint8_t storage[sizeof(os::OSProcess)];
-    return new (storage) os::OSProcess(pid, parent_pid, 0);
+static os::OSProcess* create_ring3_process(uint32_t torus_id, uint32_t pid, uint32_t parent_pid) {
+    alignas(os::OSProcess) static uint8_t storage[kTorusCount][sizeof(os::OSProcess)];
+    return new (storage[torus_id]) os::OSProcess(pid, parent_pid, torus_id);
 }
 
 
+#if !RSE_ENABLE_USERMODE
 static int os_open_shim(const char *name, uint32_t flags) {
     return (int)os::syscall(os::SYS_OPEN, (uint64_t)name, flags, 0644);
 }
@@ -688,7 +674,10 @@ static int os_list_shim(const char *path, char *buf, uint32_t len) {
 static int os_stat_shim(const char *path, struct rse_stat *out) {
     return (int)os::syscall(os::SYS_STAT, (uint64_t)path, (uint64_t)out);
 }
+#endif
+#if !RSE_ENABLE_USERMODE
 extern "C" void init_main(const struct rse_syscalls *sys);
+#endif
 extern "C" uint64_t kernel_rdtsc(void);
 extern "C" int rse_block_init(void);
 extern "C" uint32_t rse_block_size(void);
@@ -806,113 +795,49 @@ struct TorusRuntime {
     os::PhysicalAllocator* phys_alloc;
 };
 
-static bool build_ring3_elf_image(uint8_t* out, size_t cap, size_t* size_out) {
-    if (!out || cap < 512) {
+static bool load_init_elf_payload(const uint8_t** data_out, size_t* size_out) {
+    if (!data_out || !size_out) {
         return false;
     }
-    for (size_t i = 0; i < cap; ++i) {
-        out[i] = 0;
-    }
-
-    const char msg[] = "ring3 elf ok\n";
-    const uint32_t msg_len = (uint32_t)(sizeof(msg) - 1);
-    static constexpr uint64_t kEntry = 0x40000000ull;
-
-    uint8_t payload[128] = {};
-    size_t idx = 0;
-    auto emit = [&](uint8_t b) { payload[idx++] = b; };
-    auto emit_u32 = [&](uint32_t v) {
-        emit((uint8_t)(v & 0xffu));
-        emit((uint8_t)((v >> 8) & 0xffu));
-        emit((uint8_t)((v >> 16) & 0xffu));
-        emit((uint8_t)((v >> 24) & 0xffu));
-    };
-
-    emit(0x48); emit(0xC7); emit(0xC0); emit_u32(os::SYS_WRITE);
-    emit(0x48); emit(0xC7); emit(0xC7); emit_u32(1);
-    emit(0x48); emit(0x8D); emit(0x35);
-    size_t disp_off = idx;
-    emit_u32(0);
-    size_t lea_next = idx;
-    emit(0x48); emit(0xC7); emit(0xC2); emit_u32(msg_len);
-    emit(0xCD); emit(0x80);
-    emit(0x48); emit(0xC7); emit(0xC0); emit_u32(os::SYS_EXIT);
-    emit(0x48); emit(0x31); emit(0xFF);
-    emit(0xCD); emit(0x80);
-    emit(0xF4);
-    size_t msg_pos = idx;
-    for (uint32_t i = 0; i < msg_len; ++i) {
-        emit((uint8_t)msg[i]);
-    }
-
-    uint32_t disp = (uint32_t)(msg_pos - lea_next);
-    payload[disp_off + 0] = (uint8_t)(disp & 0xffu);
-    payload[disp_off + 1] = (uint8_t)((disp >> 8) & 0xffu);
-    payload[disp_off + 2] = (uint8_t)((disp >> 16) & 0xffu);
-    payload[disp_off + 3] = (uint8_t)((disp >> 24) & 0xffu);
-
-    const size_t payload_len = idx;
-    const size_t payload_off = 0x100;
-    const size_t total = payload_off + payload_len;
-    if (total > cap) {
+    const uint8_t* start = _binary_init_user_elf_start;
+    const uint8_t* end = _binary_init_user_elf_end;
+    if (!start || !end || end <= start) {
         return false;
     }
-
-    os::Elf64_Ehdr ehdr = {};
-    ehdr.e_ident[os::EI_MAG0] = os::ELF_MAGIC_0;
-    ehdr.e_ident[os::EI_MAG1] = os::ELF_MAGIC_1;
-    ehdr.e_ident[os::EI_MAG2] = os::ELF_MAGIC_2;
-    ehdr.e_ident[os::EI_MAG3] = os::ELF_MAGIC_3;
-    ehdr.e_ident[os::EI_CLASS] = os::ELFCLASS64;
-    ehdr.e_ident[os::EI_DATA] = os::ELFDATA2LSB;
-    ehdr.e_ident[os::EI_VERSION] = 1;
-    ehdr.e_machine = os::EM_X86_64;
-    ehdr.e_entry = kEntry;
-    ehdr.e_phoff = sizeof(os::Elf64_Ehdr);
-    ehdr.e_phentsize = sizeof(os::Elf64_Phdr);
-    ehdr.e_phnum = 1;
-    ehdr.e_ehsize = sizeof(os::Elf64_Ehdr);
-
-    os::Elf64_Phdr phdr = {};
-    phdr.p_type = os::PT_LOAD;
-    phdr.p_flags = os::PF_R | os::PF_X;
-    phdr.p_offset = payload_off;
-    phdr.p_vaddr = kEntry;
-    phdr.p_paddr = kEntry;
-    phdr.p_filesz = payload_len;
-    phdr.p_memsz = 0x1000;
-    phdr.p_align = 0x1000;
-
-    memcpy_local(out, &ehdr, sizeof(ehdr));
-    memcpy_local(out + ehdr.e_phoff, &phdr, sizeof(phdr));
-    memcpy_local(out + payload_off, payload, payload_len);
-
-    if (size_out) {
-        *size_out = total;
-    }
+    *data_out = start;
+    *size_out = static_cast<size_t>(end - start);
     return true;
 }
 
-static bool install_ring3_elf(TorusRuntime& rt, os::OSProcess* proc) {
+static bool install_init_elf(TorusRuntime& rt, os::OSProcess* proc) {
     if (!rt.vfs || !proc) {
         return false;
     }
-    uint8_t image[512] = {};
+    const uint8_t* image = nullptr;
     size_t image_size = 0;
-    if (!build_ring3_elf_image(image, sizeof(image), &image_size)) {
+    if (!load_init_elf_payload(&image, &image_size)) {
+        serial_write("[RSE] init elf payload missing\n");
         return false;
     }
-    const char path[] = "/ring3.elf";
+    if (rt.vfs->mkdir("/bin", 0755) < 0) {
+        // Directory may already exist; ignore failure here.
+    }
+    const char path[] = "/bin/init";
+    int32_t existing = rt.vfs->open(&proc->fd_table, path, os::O_RDONLY);
+    if (existing >= 0) {
+        rt.vfs->close(&proc->fd_table, existing);
+        return true;
+    }
     int32_t fd = rt.vfs->open(&proc->fd_table, path,
-                              os::O_CREAT | os::O_TRUNC | os::O_WRONLY);
+                              os::O_CREAT | os::O_TRUNC | os::O_WRONLY, 0755);
     if (fd < 0) {
-        serial_write("[RSE] ring3 elf open failed\n");
+        serial_write("[RSE] init elf open failed\n");
         return false;
     }
     int64_t written = rt.vfs->write(&proc->fd_table, fd, image, (uint32_t)image_size);
     rt.vfs->close(&proc->fd_table, fd);
     if (written != (int64_t)image_size) {
-        serial_write("[RSE] ring3 elf write failed\n");
+        serial_write("[RSE] init elf write failed\n");
         return false;
     }
     return true;
@@ -979,6 +904,7 @@ extern "C" int rse_os_fastio_bench(uint64_t* bytes_out,
     return 1;
 }
 
+#if !RSE_ENABLE_USERMODE
 static int os_ps_dump(char *buf, uint32_t len) {
     if (!buf || len == 0) {
         return -1;
@@ -1063,18 +989,24 @@ static int os_ps_dump(char *buf, uint32_t len) {
     }
     return (int)used;
 }
+#endif
 
 extern "C" int rse_os_prepare_ring3(uint32_t torus_id) {
-    if (!g_runtimes_ready || !g_ring3_proc) {
+    if (!g_runtimes_ready) {
         return 0;
     }
-    if (torus_id != 0 || torus_id >= kTorusCount) {
+    if (torus_id >= kTorusCount) {
         return 0;
     }
     TorusRuntime& rt = g_runtimes[torus_id];
     if (!rt.scheduler || !rt.dispatcher) {
         return 0;
     }
+    os::OSProcess* proc = g_ring3_procs[torus_id];
+    if (!proc) {
+        return 0;
+    }
+    g_ring3_proc = proc;
     current_torus_id = torus_id;
     os::current_torus_context = &rt.ctx;
     rt.scheduler->forceCurrentProcess(g_ring3_proc);
@@ -1646,17 +1578,24 @@ extern "C" void rse_os_run(void) {
         user_procs[0][1 + i] = extra;
     }
 
-    if (!g_ring3_proc) {
-        TorusRuntime& rt = runtimes[0];
-        g_ring3_proc = create_ring3_process(rt.ctx.next_pid++, 0);
-        g_ring3_proc->initMemory(rt.phys_alloc);
-        g_ring3_proc->fd_table.bindStandardDevices(rt.console);
-        rt.scheduler->addProcess(g_ring3_proc);
-        if (!install_ring3_elf(rt, g_ring3_proc)) {
-            serial_write("[RSE] ring3 elf install failed\n");
+    for (uint32_t torus_id = 0; torus_id < kTorusCount; ++torus_id) {
+        if (g_ring3_procs[torus_id]) {
+            continue;
+        }
+        TorusRuntime& rt = runtimes[torus_id];
+        g_ring3_procs[torus_id] = create_ring3_process(torus_id, rt.ctx.next_pid++, 0);
+        g_ring3_procs[torus_id]->initMemory(rt.phys_alloc);
+        g_ring3_procs[torus_id]->fd_table.bindStandardDevices(rt.console);
+        rt.scheduler->addProcess(g_ring3_procs[torus_id]);
+        if (!install_init_elf(rt, g_ring3_procs[torus_id])) {
+            serial_write("[RSE] init elf install failed\n");
         }
     }
+    if (!g_ring3_proc) {
+        g_ring3_proc = g_ring3_procs[0];
+    }
 
+    #if !RSE_ENABLE_USERMODE
     struct rse_syscalls sys = {
         .log = serial_write,
         .log_u64 = serial_write_u64,
@@ -1713,6 +1652,7 @@ extern "C" void rse_os_run(void) {
         }
     }
     serial_write("[RSE] userspace run done\n");
+    #endif
 
     serial_write("[RSE] braid scheduler start\n");
     braid_log_loads(runtimes);

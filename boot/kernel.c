@@ -343,6 +343,7 @@ struct int80_frame {
 #define USER_STACK_SIZE 0x10000ull
 #define USER_STACK_TOP (USER_VADDR_BASE + USER_WINDOW_SIZE - 0x1000ull)
 #define USER_STACK_VADDR (USER_STACK_TOP - USER_STACK_SIZE)
+#define RSE_TORUS_COUNT 3u
 
 static bool build_user_page_table(uint64_t code_vaddr, uint64_t stack_vaddr,
                                   uint64_t code_phys, uint64_t stack_phys);
@@ -416,10 +417,17 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
     if (!frame) {
         return;
     }
+    uint64_t user_cr3 = read_cr3();
+    if (g_saved_cr3 && user_cr3 != g_saved_cr3) {
+        write_cr3(g_saved_cr3);
+    }
     uint64_t call = frame->rax;
     if (call == 0) {
         serial_write("[RSE] user syscall ping\n");
         frame->rax = 0;
+        if (g_saved_cr3) {
+            write_cr3(user_cr3);
+        }
         return;
     }
     if (call == 1) {
@@ -427,6 +435,9 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
         frame->ss = GDT_KERNEL_DATA;
         frame->rip = (uint64_t)(uintptr_t)user_mode_return;
         frame->rsp = g_user_mode_kernel_rsp;
+        if (g_saved_cr3) {
+            write_cr3(g_saved_cr3);
+        }
         return;
     }
 
@@ -439,6 +450,9 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
         frame->ss = GDT_KERNEL_DATA;
         frame->rip = (uint64_t)(uintptr_t)user_mode_return;
         frame->rsp = g_user_mode_kernel_rsp;
+        if (g_saved_cr3) {
+            write_cr3(g_saved_cr3);
+        }
         return;
     }
     if (call == RSE_SYS_EXEC && rc == 0) {
@@ -448,8 +462,8 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
             refresh_user_page_table(entry, stack);
             frame->rip = entry;
             frame->rsp = stack ? stack : USER_STACK_TOP;
+            user_cr3 = g_user_cr3;
         }
-        return;
     }
     if ((call == RSE_SYS_BRK || call == RSE_SYS_MMAP || call == RSE_SYS_MUNMAP ||
          call == RSE_SYS_MPROTECT) && rc >= 0) {
@@ -457,7 +471,11 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
         uint64_t stack = 0;
         if (rse_os_ring3_context(&entry, &stack)) {
             refresh_user_page_table(entry, stack);
+            user_cr3 = g_user_cr3;
         }
+    }
+    if (g_saved_cr3) {
+        write_cr3(user_cr3);
     }
 }
 
@@ -871,7 +889,7 @@ __attribute__((naked, unused)) static void user_mode_entry(void) {
         "hlt\n");
 }
 
-static bool setup_user_pages(uint64_t *entry_out, uint64_t *stack_out) {
+static bool setup_user_pages(uint32_t torus_id, uint64_t *entry_out, uint64_t *stack_out) {
     static const uint8_t user_code_ping[] = {
         0x48, 0xC7, 0xC0, 0x00, 0x00, 0x00, 0x00,
         0xCD, 0x80,
@@ -901,7 +919,7 @@ static bool setup_user_pages(uint64_t *entry_out, uint64_t *stack_out) {
         0x48, 0x31, 0xFF,
         0xCD, 0x80,
         0xF4,
-        '/', 'r', 'i', 'n', 'g', '3', '.', 'e', 'l', 'f', 0x00
+        '/', 'b', 'i', 'n', '/', 'i', 'n', 'i', 't', 0x00
     };
 
     serial_write("[RSE] user setup start\n");
@@ -911,10 +929,12 @@ static bool setup_user_pages(uint64_t *entry_out, uint64_t *stack_out) {
 
     const uint8_t* user_code = user_code_ping;
     size_t user_code_len = sizeof(user_code_ping);
-    if (rse_os_prepare_ring3(0)) {
+    if (rse_os_prepare_ring3(torus_id)) {
         user_code = user_code_exec;
         user_code_len = sizeof(user_code_exec);
-        serial_write("[RSE] user setup ring3 ready\n");
+        serial_write("[RSE] user setup ring3 ready torus=");
+        serial_write_u64(torus_id);
+        serial_write("\n");
     } else {
         serial_write("[RSE] user setup ring3 unavailable\n");
     }
@@ -977,10 +997,10 @@ __attribute__((noinline, unused)) static void enter_user_mode(uint64_t entry, ui
         : "memory");
 }
 
-__attribute__((unused)) static void run_user_mode_smoke(void) {
+__attribute__((unused)) static void run_user_mode_smoke(uint32_t torus_id) {
     uint64_t entry = 0;
     uint64_t user_stack = 0;
-    if (!setup_user_pages(&entry, &user_stack)) {
+    if (!setup_user_pages(torus_id, &entry, &user_stack)) {
         serial_write("[RSE] user mode setup failed\n");
         return;
     }
@@ -1026,7 +1046,9 @@ static void run_user_mode_smoke_guarded(void) {
     __asm__ volatile("cli");
     read_idt(&saved);
     init_idt();
-    run_user_mode_smoke();
+    for (uint32_t torus_id = 0; torus_id < RSE_TORUS_COUNT; ++torus_id) {
+        run_user_mode_smoke(torus_id);
+    }
     load_idt(&saved);
     write_rflags(flags);
 }
@@ -1428,9 +1450,9 @@ static void *uefi_alloc_pages(size_t bytes) {
         return NULL;
     }
     UINTN pages = (bytes + 4095u) / 4096u;
-    EFI_PHYSICAL_ADDRESS addr = 0;
+    EFI_PHYSICAL_ADDRESS addr = 0x3FFFFFFFULL; // keep below 1GB identity map
     EFI_STATUS status = st->BootServices->AllocatePages(
-        AllocateAnyPages, EfiBootServicesData, pages, &addr);
+        AllocateMaxAddress, EfiBootServicesData, pages, &addr);
     if (EFI_ERROR(status) || addr == 0) {
         return NULL;
     }

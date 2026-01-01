@@ -313,6 +313,18 @@ inline int64_t sys_getppid(uint64_t, uint64_t, uint64_t,
 }
 
 /**
+ * sys_torus_id: Get current torus ID
+ */
+inline int64_t sys_torus_id(uint64_t, uint64_t, uint64_t,
+                            uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    return current->torus_id;
+}
+
+/**
  * sys_exit: Terminate current process
  */
 inline int64_t sys_exit(uint64_t status, uint64_t, uint64_t,
@@ -1586,6 +1598,7 @@ public:
         // Register core syscalls
         register_handler(SYS_GETPID, sys_getpid);
         register_handler(SYS_GETPPID, sys_getppid);
+        register_handler(SYS_TORUS_ID, sys_torus_id);
         register_handler(SYS_EXIT, sys_exit);
         register_handler(SYS_FORK, sys_fork);
         register_handler(SYS_WAIT, sys_wait);

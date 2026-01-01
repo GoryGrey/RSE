@@ -22,6 +22,7 @@ constexpr int SYS_GETPID    = 5;
 constexpr int SYS_GETPPID   = 6;
 constexpr int SYS_KILL      = 7;
 constexpr int SYS_PS        = 8;
+constexpr int SYS_TORUS_ID  = 9;
 
 // File I/O
 constexpr int SYS_OPEN      = 10;
@@ -234,6 +235,10 @@ inline int64_t getpid() {
 
 inline int64_t getppid() {
     return syscall(SYS_GETPPID);
+}
+
+inline int64_t get_torus_id() {
+    return syscall(SYS_TORUS_ID);
 }
 
 inline int64_t kill(int pid, int sig) {

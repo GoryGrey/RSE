@@ -1,15 +1,24 @@
-[RSE] run start torus=1 ts=1767259407
-[RSE] run cfg net_mode=none timeout=45 shm_size=65536
+[RSE] run start torus=1 ts=1767276665
+[RSE] run cfg net_mode=none timeout=90 shm_size=65536
 [RSE] run build_dir=/home/gorygrey/Apps/RSE/build/net_exchange/torus1
 [RSE] run shm_path=/home/gorygrey/Apps/RSE/build/net_exchange/ivshmem.bin
 mkdir -p /home/gorygrey/Apps/RSE/build/net_exchange/torus1
 gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -fno-builtin -nostdlib -std=c11 -nostdlib -Wl,-T,/home/gorygrey/Apps/RSE/boot/init_user.ld -no-pie -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/init_user.elf /home/gorygrey/Apps/RSE/boot/init_user.c
 cd /home/gorygrey/Apps/RSE/build/net_exchange/torus1 && objcopy -I binary -O elf64-x86-64 -B i386:x86-64 init_user.elf init_user_blob.o
-gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=1 -DRSE_AUTO_EXIT=1 -c /home/gorygrey/Apps/RSE/boot/kernel.c -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel.o
-gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=1 -DRSE_AUTO_EXIT=1 -c /home/gorygrey/Apps/RSE/boot/init.c -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/init.o
-g++ -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=1 -DRSE_AUTO_EXIT=1 -c /home/gorygrey/Apps/RSE/boot/kernel_os.cpp -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel_os.o
-g++ -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=1 -DRSE_AUTO_EXIT=1 -c /home/gorygrey/Apps/RSE/boot/net_projection.cpp -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/net_projection.o
-gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=1 -DRSE_AUTO_EXIT=1 -T /home/gorygrey/Apps/RSE/boot/linker.ld -nostdlib -Wl,-z,max-page-size=0x1000 -no-pie -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel.elf /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel.o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel_os.o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/net_projection.o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/init_user_blob.o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/init.o
+gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=1 -DRSE_AUTO_EXIT=1 -DRSE_BENCH_SMOKE=1 -c /home/gorygrey/Apps/RSE/boot/kernel.c -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel.o
+/home/gorygrey/Apps/RSE/boot/kernel.c:4333:13: warning: ‘bench_virtio_block’ defined but not used [-Wunused-function]
+ 4333 | static void bench_virtio_block(void) {
+      |             ^~~~~~~~~~~~~~~~~~
+/home/gorygrey/Apps/RSE/boot/kernel.c:4216:13: warning: ‘bench_uefi_block’ defined but not used [-Wunused-function]
+ 4216 | static void bench_uefi_block(struct rse_boot_info *boot_info) {
+      |             ^~~~~~~~~~~~~~~~
+/home/gorygrey/Apps/RSE/boot/kernel.c:4115:13: warning: ‘bench_uefi_fs’ defined but not used [-Wunused-function]
+ 4115 | static void bench_uefi_fs(struct rse_boot_info *boot_info) {
+      |             ^~~~~~~~~~~~~
+gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=1 -DRSE_AUTO_EXIT=1 -DRSE_BENCH_SMOKE=1 -c /home/gorygrey/Apps/RSE/boot/init.c -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/init.o
+g++ -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=1 -DRSE_AUTO_EXIT=1 -DRSE_BENCH_SMOKE=1 -c /home/gorygrey/Apps/RSE/boot/kernel_os.cpp -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel_os.o
+g++ -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=1 -DRSE_AUTO_EXIT=1 -DRSE_BENCH_SMOKE=1 -c /home/gorygrey/Apps/RSE/boot/net_projection.cpp -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/net_projection.o
+gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=1 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=1 -DRSE_AUTO_EXIT=1 -DRSE_BENCH_SMOKE=1 -T /home/gorygrey/Apps/RSE/boot/linker.ld -nostdlib -Wl,-z,max-page-size=0x1000 -no-pie -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel.elf /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel.o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/kernel_os.o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/net_projection.o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/init_user_blob.o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/init.o
 /usr/bin/ld: warning: /home/gorygrey/Apps/RSE/build/net_exchange/torus1/init_user_blob.o: missing .note.GNU-stack section implies executable stack
 /usr/bin/ld: NOTE: This behaviour is deprecated and will be removed in a future version of the linker
 gcc -I/usr/include/efi -I/usr/include/efi/x86_64 -fPIC -fshort-wchar -mno-red-zone -ffreestanding -fno-stack-protector -fcf-protection=none -DHAVE_USE_MS_ABI -O2 -Wall -Wextra -c /home/gorygrey/Apps/RSE/boot/uefi_loader.c -o /home/gorygrey/Apps/RSE/build/net_exchange/torus1/uefi_loader.o
@@ -42,9 +51,9 @@ Added to ISO image: directory '/'='/home/gorygrey/Apps/RSE/build/net_exchange/to
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : WARNING : Boot image load size exceeds 65535 blocks of 512 bytes. Will record 0 in El Torito to extend ESP to end-of-medium.
-xorriso : UPDATE :  25.25% done
-ISO image produced: 66273 sectors
-Written to medium : 66273 sectors at LBA 0
+xorriso : UPDATE :  39.78% done
+ISO image produced: 66269 sectors
+Written to medium : 66269 sectors at LBA 0
 Writing to 'stdio:/home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_efi.iso' completed successfully.
 
 rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_data.img
@@ -54,12 +63,12 @@ rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_raw.img
 dd if=/dev/zero of=/home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_raw.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.0817802 s, 821 MB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.064841 s, 1.0 GB/s
 rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_virtio.img
 dd if=/dev/zero of=/home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_virtio.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.0703251 s, 954 MB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.0605452 s, 1.1 GB/s
 cp /usr/share/OVMF/OVMF_VARS_4M.fd /home/gorygrey/Apps/RSE/build/net_exchange/torus1/OVMF_VARS.fd
 qemu-system-x86_64 -machine q35 -m 512M \
 	-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
@@ -91,40 +100,19 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] load_file alloc ok
 [RSE] load_file read ok
 [RSE] Kernel read ok
-[RSE] seg paddr=0x0000000010000000 memsz=0x0000000000027120 pages=0x0000000000000028
-[RSE] seg paddr=0x0000000010028000 memsz=0x00000000032d7118 pages=0x00000000000032d8
+[RSE] seg paddr=0x0000000010000000 memsz=0x0000000000025120 pages=0x0000000000000026
+[RSE] seg paddr=0x0000000010026000 memsz=0x00000000032d7118 pages=0x00000000000032d8
 [RSE] Kernel load ok
 [RSE] GOP framebuffer ok
 [RSE] Jumping to kernel
 [RSE] Jumping to kernel
 [RSE] UEFI kernel start
 [RSE] GDT user segments installed
-[RSE] user setup start
-[RSE] user setup ring3 unavailable
-[RSE] user map begin
-[RSE] user setup os map failed
-[RSE] user mode smoke begin
-[RSE] user syscall ping
-[RSE] user mode smoke ok
-[RSE] user setup start
-[RSE] user setup ring3 unavailable
-[RSE] user map begin
-[RSE] user setup os map failed
-[RSE] user mode smoke begin
-[RSE] user syscall ping
-[RSE] user mode smoke ok
-[RSE] user setup start
-[RSE] user setup ring3 unavailable
-[RSE] user map begin
-[RSE] user setup os map failed
-[RSE] user mode smoke begin
-[RSE] user syscall ping
-[RSE] user mode smoke ok
 [RSE] UEFI framebuffer online
 [RSE] UEFI pointer online
 [RSE] UEFI keyboard online
 [RSE] benchmarks begin
-[RSE] tsc cycles/us=2899 delay_us=100000
+[RSE] tsc cycles/us=2901 delay_us=100000
 [RSE] init workloads start
 [RSE] braided smoke start
 [RSE] braid cycles=3 ticks=300
@@ -135,13 +123,6 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] virtio-blk capacity=131072
 [RSE] virtio-blk modern online
 [RSE] UEFI net online
-[RSE] virtio-blk notify idx=0 used=0
-[RSE] virtio-blk notify idx=1 used=1
-[RSE] virtio-blk notify idx=2 used=2
-[RSE] virtio-blk notify idx=3 used=3
-[RSE] virtio-blk notify idx=4 used=4
-[RSE] virtio-blk notify idx=5 used=5
-[RSE] virtio-blk notify idx=6 used=6
 [RSE] braid scheduler start
 [RSE] torus load a=6 b=2 c=2
 [RSE] torus load a=6 b=2 c=2
@@ -157,486 +138,76 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] user setup ring3 ready torus=0
 [RSE] user map begin
 [RSE] user map page begin
-[RSE] user map page alloc
-[RSE] user map page mapped
+[RSE] user map page existing
 [RSE] user map page begin
-[RSE] user map page alloc
-[RSE] user map page mapped
+[RSE] user map page existing
 [RSE] user map ok
-[RSE] user setup os map ok
 [RSE] user mode smoke begin
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
 [init] ring3 start
 [init] torus=0 pid=6
-[init] compute ops=2000000 cycles=35011865 checksum=9791868472914447520
-[RSE] virtio-blk notify idx=7 used=7
-[RSE] virtio-blk notify idx=8 used=8
-[RSE] virtio-blk notify idx=9 used=9
-[RSE] virtio-blk notify idx=10 used=10
-[RSE] virtio-blk notify idx=11 used=11
-[RSE] virtio-blk notify idx=12 used=12
+[init] compute ops=1000000 cycles=15761262 checksum=13489434137010960902
 [init] using /persist
-[RSE] virtio-blk notify idx=13 used=13
-[RSE] virtio-blk notify idx=14 used=14
-[RSE] virtio-blk notify idx=15 used=15
-[RSE] virtio-blk notify idx=16 used=16
-[RSE] virtio-blk notify idx=17 used=17
-[RSE] virtio-blk notify idx=18 used=18
-[RSE] virtio-blk notify idx=19 used=19
-[RSE] virtio-blk notify idx=20 used=20
-[RSE] virtio-blk notify idx=21 used=21
-[RSE] virtio-blk notify idx=22 used=22
-[RSE] virtio-blk notify idx=23 used=23
-[RSE] virtio-blk notify idx=24 used=24
-[RSE] virtio-blk notify idx=25 used=25
-[RSE] virtio-blk notify idx=26 used=26
-[RSE] virtio-blk notify idx=27 used=27
-[RSE] virtio-blk notify idx=28 used=28
-[RSE] virtio-blk notify idx=29 used=29
-[RSE] virtio-blk notify idx=30 used=30
-[RSE] virtio-blk notify idx=31 used=31
-[RSE] virtio-blk notify idx=32 used=32
-[RSE] virtio-blk notify idx=33 used=33
-[RSE] virtio-blk notify idx=34 used=34
-[RSE] virtio-blk notify idx=35 used=35
-[RSE] virtio-blk notify idx=36 used=36
-[RSE] virtio-blk notify idx=37 used=37
-[RSE] virtio-blk notify idx=38 used=38
-[RSE] virtio-blk notify idx=39 used=39
-[RSE] virtio-blk notify idx=40 used=40
-[RSE] virtio-blk notify idx=41 used=41
-[RSE] virtio-blk notify idx=42 used=42
-[RSE] virtio-blk notify idx=43 used=43
-[RSE] virtio-blk notify idx=44 used=44
-[RSE] virtio-blk notify idx=45 used=45
-[RSE] virtio-blk notify idx=46 used=46
-[RSE] virtio-blk notify idx=47 used=47
-[RSE] virtio-blk notify idx=48 used=48
-[RSE] virtio-blk notify idx=49 used=49
-[RSE] virtio-blk notify idx=50 used=50
-[RSE] virtio-blk notify idx=51 used=51
-[RSE] virtio-blk notify idx=52 used=52
-[RSE] virtio-blk notify idx=53 used=53
-[RSE] virtio-blk notify idx=54 used=54
-[RSE] virtio-blk notify idx=55 used=55
-[RSE] virtio-blk notify idx=56 used=56
-[RSE] virtio-blk notify idx=57 used=57
-[RSE] virtio-blk notify idx=58 used=58
-[RSE] virtio-blk notify idx=59 used=59
-[RSE] virtio-blk notify idx=60 used=60
-[RSE] virtio-blk notify idx=61 used=61
-[RSE] virtio-blk notify idx=62 used=62
-[RSE] virtio-blk notify idx=63 used=63
-[RSE] virtio-blk notify idx=64 used=64
-[RSE] virtio-blk notify idx=65 used=65
-[RSE] virtio-blk notify idx=66 used=66
-[RSE] virtio-blk notify idx=67 used=67
-[RSE] virtio-blk notify idx=68 used=68
-[RSE] virtio-blk notify idx=69 used=69
-[RSE] virtio-blk notify idx=70 used=70
-[RSE] virtio-blk notify idx=71 used=71
-[RSE] virtio-blk notify idx=72 used=72
-[RSE] virtio-blk notify idx=73 used=73
-[RSE] virtio-blk notify idx=74 used=74
-[RSE] virtio-blk notify idx=75 used=75
-[RSE] virtio-blk notify idx=76 used=76
-[RSE] virtio-blk notify idx=77 used=77
-[RSE] virtio-blk notify idx=78 used=78
-[RSE] virtio-blk notify idx=79 used=79
-[RSE] virtio-blk notify idx=80 used=80
-[RSE] virtio-blk notify idx=81 used=81
-[RSE] virtio-blk notify idx=82 used=82
-[RSE] virtio-blk notify idx=83 used=83
-[RSE] virtio-blk notify idx=84 used=84
-[RSE] virtio-blk notify idx=85 used=85
-[RSE] virtio-blk notify idx=86 used=86
-[RSE] virtio-blk notify idx=87 used=87
-[RSE] virtio-blk notify idx=88 used=88
-[RSE] virtio-blk notify idx=89 used=89
-[RSE] virtio-blk notify idx=90 used=90
-[RSE] virtio-blk notify idx=91 used=91
-[RSE] virtio-blk notify idx=92 used=92
-[RSE] virtio-blk notify idx=93 used=93
-[RSE] virtio-blk notify idx=94 used=94
-[RSE] virtio-blk notify idx=95 used=95
-[RSE] virtio-blk notify idx=96 used=96
-[RSE] virtio-blk notify idx=97 used=97
-[RSE] virtio-blk notify idx=98 used=98
-[RSE] virtio-blk notify idx=99 used=99
-[RSE] virtio-blk notify idx=100 used=100
-[RSE] virtio-blk notify idx=101 used=101
-[RSE] virtio-blk notify idx=102 used=102
-[RSE] virtio-blk notify idx=103 used=103
-[RSE] virtio-blk notify idx=104 used=104
-[RSE] virtio-blk notify idx=105 used=105
-[RSE] virtio-blk notify idx=106 used=106
-[RSE] virtio-blk notify idx=107 used=107
-[RSE] virtio-blk notify idx=108 used=108
-[RSE] virtio-blk notify idx=109 used=109
-[RSE] virtio-blk notify idx=110 used=110
-[RSE] virtio-blk notify idx=111 used=111
-[RSE] virtio-blk notify idx=112 used=112
-[RSE] virtio-blk notify idx=113 used=113
-[RSE] virtio-blk notify idx=114 used=114
-[RSE] virtio-blk notify idx=115 used=115
-[RSE] virtio-blk notify idx=116 used=116
-[RSE] virtio-blk notify idx=117 used=117
-[RSE] virtio-blk notify idx=118 used=118
-[RSE] virtio-blk notify idx=119 used=119
-[RSE] virtio-blk notify idx=120 used=120
-[init] file ops=68 bytes=4096 cycles=1761561656
+[init] file ops=160 bytes=131072 cycles=8672809392
 [init] ls /
 dev/
 persist/
 bin/
 
 [init] ls /persist
-file0000
+ls: empty
 
 stat /dev/blk0 size=0 type=device
 [init] loopback read=13
-[RSE] virtio-blk notify idx=121 used=121
-[RSE] virtio-blk notify idx=122 used=122
-[RSE] virtio-blk notify idx=123 used=123
-[RSE] virtio-blk notify idx=124 used=124
-[RSE] virtio-blk notify idx=125 used=125
-[RSE] virtio-blk notify idx=126 used=126
-[RSE] virtio-blk notify idx=127 used=127
-[RSE] virtio-blk notify idx=128 used=128
-[RSE] virtio-blk notify idx=129 used=129
-[RSE] virtio-blk notify idx=130 used=130
-[RSE] virtio-blk notify idx=131 used=131
-[RSE] virtio-blk notify idx=132 used=132
-[RSE] virtio-blk notify idx=133 used=133
-[RSE] virtio-blk notify idx=134 used=134
-[RSE] virtio-blk notify idx=135 used=135
-[RSE] virtio-blk notify idx=136 used=136
-[RSE] virtio-blk notify idx=137 used=137
-[RSE] virtio-blk notify idx=138 used=138
-[RSE] virtio-blk notify idx=139 used=139
-[RSE] virtio-blk notify idx=140 used=140
-[RSE] virtio-blk notify idx=141 used=141
-[RSE] virtio-blk notify idx=142 used=142
-[RSE] virtio-blk notify idx=143 used=143
-[RSE] virtio-blk notify idx=144 used=144
-[RSE] virtio-blk notify idx=145 used=145
-[RSE] virtio-blk notify idx=146 used=146
-[RSE] virtio-blk notify idx=147 used=147
-[RSE] virtio-blk notify idx=148 used=148
-[RSE] virtio-blk notify idx=149 used=149
-[RSE] virtio-blk notify idx=150 used=150
-[RSE] virtio-blk notify idx=151 used=151
-[RSE] virtio-blk notify idx=152 used=152
-[RSE] virtio-blk notify idx=153 used=153
-[RSE] virtio-blk notify idx=154 used=154
-[RSE] virtio-blk notify idx=155 used=155
-[RSE] virtio-blk notify idx=156 used=156
-[RSE] virtio-blk notify idx=157 used=157
-[RSE] virtio-blk notify idx=158 used=158
-[RSE] virtio-blk notify idx=159 used=159
-[RSE] virtio-blk notify idx=160 used=160
-[RSE] virtio-blk notify idx=161 used=161
-[RSE] virtio-blk notify idx=162 used=162
-[RSE] virtio-blk notify idx=163 used=163
-[RSE] virtio-blk notify idx=164 used=164
-[RSE] virtio-blk notify idx=165 used=165
-[RSE] virtio-blk notify idx=166 used=166
-[RSE] virtio-blk notify idx=167 used=167
-[RSE] virtio-blk notify idx=168 used=168
-[RSE] virtio-blk notify idx=169 used=169
-[RSE] virtio-blk notify idx=170 used=170
-[RSE] virtio-blk notify idx=171 used=171
-[RSE] virtio-blk notify idx=172 used=172
-[RSE] virtio-blk notify idx=173 used=173
-[RSE] virtio-blk notify idx=174 used=174
-[RSE] virtio-blk notify idx=175 used=175
-[RSE] virtio-blk notify idx=176 used=176
-[RSE] virtio-blk notify idx=177 used=177
-[RSE] virtio-blk notify idx=178 used=178
-[RSE] virtio-blk notify idx=179 used=179
-[RSE] virtio-blk notify idx=180 used=180
-[RSE] virtio-blk notify idx=181 used=181
-[RSE] virtio-blk notify idx=182 used=182
-[RSE] virtio-blk notify idx=183 used=183
-[RSE] virtio-blk notify idx=184 used=184
-[RSE] virtio-blk notify idx=185 used=185
-[RSE] virtio-blk notify idx=186 used=186
-[RSE] virtio-blk notify idx=187 used=187
-[RSE] virtio-blk notify idx=188 used=188
-[RSE] virtio-blk notify idx=189 used=189
-[RSE] virtio-blk notify idx=190 used=190
-[RSE] virtio-blk notify idx=191 used=191
-[RSE] virtio-blk notify idx=192 used=192
-[RSE] virtio-blk notify idx=193 used=193
-[RSE] virtio-blk notify idx=194 used=194
-[RSE] virtio-blk notify idx=195 used=195
-[RSE] virtio-blk notify idx=196 used=196
-[RSE] virtio-blk notify idx=197 used=197
-[RSE] virtio-blk notify idx=198 used=198
-[RSE] virtio-blk notify idx=199 used=199
-[RSE] virtio-blk notify idx=200 used=200
-[RSE] virtio-blk notify idx=201 used=201
-[RSE] virtio-blk notify idx=202 used=202
-[RSE] virtio-blk notify idx=203 used=203
-[RSE] virtio-blk notify idx=204 used=204
-[RSE] virtio-blk notify idx=205 used=205
-[RSE] virtio-blk notify idx=206 used=206
-[RSE] virtio-blk notify idx=207 used=207
-[RSE] virtio-blk notify idx=208 used=208
-[RSE] virtio-blk notify idx=209 used=209
-[RSE] virtio-blk notify idx=210 used=210
-[RSE] virtio-blk notify idx=211 used=211
-[RSE] virtio-blk notify idx=212 used=212
-[RSE] virtio-blk notify idx=213 used=213
-[RSE] virtio-blk notify idx=214 used=214
-[RSE] virtio-blk notify idx=215 used=215
-[RSE] virtio-blk notify idx=216 used=216
-[RSE] virtio-blk notify idx=217 used=217
-[RSE] virtio-blk notify idx=218 used=218
-[RSE] virtio-blk notify idx=219 used=219
-[RSE] virtio-blk notify idx=220 used=220
-[RSE] virtio-blk notify idx=221 used=221
-[RSE] virtio-blk notify idx=222 used=222
-[RSE] virtio-blk notify idx=223 used=223
-[RSE] virtio-blk notify idx=224 used=224
-[RSE] virtio-blk notify idx=225 used=225
-[RSE] virtio-blk notify idx=226 used=226
-[RSE] virtio-blk notify idx=227 used=227
-[RSE] virtio-blk notify idx=228 used=228
-[RSE] virtio-blk notify idx=229 used=229
-[RSE] virtio-blk notify idx=230 used=230
-[RSE] virtio-blk notify idx=231 used=231
-[RSE] virtio-blk notify idx=232 used=232
-[RSE] virtio-blk notify idx=233 used=233
-[RSE] virtio-blk notify idx=234 used=234
-[RSE] virtio-blk notify idx=235 used=235
-[RSE] virtio-blk notify idx=236 used=236
-[RSE] virtio-blk notify idx=237 used=237
-[RSE] virtio-blk notify idx=238 used=238
-[RSE] virtio-blk notify idx=239 used=239
-[RSE] virtio-blk notify idx=240 used=240
-[RSE] virtio-blk notify idx=241 used=241
-[RSE] virtio-blk notify idx=242 used=242
-[RSE] virtio-blk notify idx=243 used=243
-[RSE] virtio-blk notify idx=244 used=244
-[RSE] virtio-blk notify idx=245 used=245
-[RSE] virtio-blk notify idx=246 used=246
-[RSE] virtio-blk notify idx=247 used=247
-[RSE] virtio-blk notify idx=248 used=248
-[RSE] virtio-blk notify idx=249 used=249
-[RSE] virtio-blk notify idx=250 used=250
-[RSE] virtio-blk notify idx=251 used=251
-[RSE] virtio-blk notify idx=252 used=252
-[RSE] virtio-blk notify idx=253 used=253
-[RSE] virtio-blk notify idx=254 used=254
-[RSE] virtio-blk notify idx=255 used=255
-[RSE] virtio-blk notify idx=256 used=256
-[RSE] virtio-blk notify idx=257 used=257
-[RSE] virtio-blk notify idx=258 used=258
-[RSE] virtio-blk notify idx=259 used=259
-[RSE] virtio-blk notify idx=260 used=260
-[RSE] virtio-blk notify idx=261 used=261
-[RSE] virtio-blk notify idx=262 used=262
-[RSE] virtio-blk notify idx=263 used=263
-[RSE] virtio-blk notify idx=264 used=264
-[RSE] virtio-blk notify idx=265 used=265
-[RSE] virtio-blk notify idx=266 used=266
-[RSE] virtio-blk notify idx=267 used=267
-[RSE] virtio-blk notify idx=268 used=268
-[RSE] virtio-blk notify idx=269 used=269
-[RSE] virtio-blk notify idx=270 used=270
-[RSE] virtio-blk notify idx=271 used=271
-[RSE] virtio-blk notify idx=272 used=272
-[RSE] virtio-blk notify idx=273 used=273
-[RSE] virtio-blk notify idx=274 used=274
-[RSE] virtio-blk notify idx=275 used=275
-[RSE] virtio-blk notify idx=276 used=276
-[RSE] virtio-blk notify idx=277 used=277
-[RSE] virtio-blk notify idx=278 used=278
-[RSE] virtio-blk notify idx=279 used=279
-[RSE] virtio-blk notify idx=280 used=280
-[RSE] virtio-blk notify idx=281 used=281
-[RSE] virtio-blk notify idx=282 used=282
-[RSE] virtio-blk notify idx=283 used=283
-[RSE] virtio-blk notify idx=284 used=284
-[RSE] virtio-blk notify idx=285 used=285
-[RSE] virtio-blk notify idx=286 used=286
-[RSE] virtio-blk notify idx=287 used=287
-[RSE] virtio-blk notify idx=288 used=288
-[RSE] virtio-blk notify idx=289 used=289
-[RSE] virtio-blk notify idx=290 used=290
-[RSE] virtio-blk notify idx=291 used=291
-[RSE] virtio-blk notify idx=292 used=292
-[RSE] virtio-blk notify idx=293 used=293
-[RSE] virtio-blk notify idx=294 used=294
-[RSE] virtio-blk notify idx=295 used=295
-[RSE] virtio-blk notify idx=296 used=296
-[RSE] virtio-blk notify idx=297 used=297
-[RSE] virtio-blk notify idx=298 used=298
-[RSE] virtio-blk notify idx=299 used=299
-[RSE] virtio-blk notify idx=300 used=300
-[RSE] virtio-blk notify idx=301 used=301
-[RSE] virtio-blk notify idx=302 used=302
-[RSE] virtio-blk notify idx=303 used=303
-[RSE] virtio-blk notify idx=304 used=304
-[RSE] virtio-blk notify idx=305 used=305
-[RSE] virtio-blk notify idx=306 used=306
-[RSE] virtio-blk notify idx=307 used=307
-[RSE] virtio-blk notify idx=308 used=308
-[RSE] virtio-blk notify idx=309 used=309
-[RSE] virtio-blk notify idx=310 used=310
-[RSE] virtio-blk notify idx=311 used=311
-[RSE] virtio-blk notify idx=312 used=312
-[RSE] virtio-blk notify idx=313 used=313
-[RSE] virtio-blk notify idx=314 used=314
-[RSE] virtio-blk notify idx=315 used=315
-[RSE] virtio-blk notify idx=316 used=316
-[RSE] virtio-blk notify idx=317 used=317
-[RSE] virtio-blk notify idx=318 used=318
-[RSE] virtio-blk notify idx=319 used=319
-[RSE] virtio-blk notify idx=320 used=320
-[RSE] virtio-blk notify idx=321 used=321
-[RSE] virtio-blk notify idx=322 used=322
-[RSE] virtio-blk notify idx=323 used=323
-[RSE] virtio-blk notify idx=324 used=324
-[RSE] virtio-blk notify idx=325 used=325
-[RSE] virtio-blk notify idx=326 used=326
-[RSE] virtio-blk notify idx=327 used=327
-[RSE] virtio-blk notify idx=328 used=328
-[RSE] virtio-blk notify idx=329 used=329
-[RSE] virtio-blk notify idx=330 used=330
-[RSE] virtio-blk notify idx=331 used=331
-[RSE] virtio-blk notify idx=332 used=332
-[RSE] virtio-blk notify idx=333 used=333
-[RSE] virtio-blk notify idx=334 used=334
-[RSE] virtio-blk notify idx=335 used=335
-[RSE] virtio-blk notify idx=336 used=336
-[RSE] virtio-blk notify idx=337 used=337
-[RSE] virtio-blk notify idx=338 used=338
-[RSE] virtio-blk notify idx=339 used=339
-[RSE] virtio-blk notify idx=340 used=340
-[RSE] virtio-blk notify idx=341 used=341
-[RSE] virtio-blk notify idx=342 used=342
-[RSE] virtio-blk notify idx=343 used=343
-[RSE] virtio-blk notify idx=344 used=344
-[RSE] virtio-blk notify idx=345 used=345
-[RSE] virtio-blk notify idx=346 used=346
-[RSE] virtio-blk notify idx=347 used=347
-[RSE] virtio-blk notify idx=348 used=348
-[RSE] virtio-blk notify idx=349 used=349
-[RSE] virtio-blk notify idx=350 used=350
-[RSE] virtio-blk notify idx=351 used=351
-[RSE] virtio-blk notify idx=352 used=352
-[RSE] virtio-blk notify idx=353 used=353
-[RSE] virtio-blk notify idx=354 used=354
-[RSE] virtio-blk notify idx=355 used=355
-[RSE] virtio-blk notify idx=356 used=356
-[RSE] virtio-blk notify idx=357 used=357
-[RSE] virtio-blk notify idx=358 used=358
-[RSE] virtio-blk notify idx=359 used=359
-[RSE] virtio-blk notify idx=360 used=360
-[RSE] virtio-blk notify idx=361 used=361
-[RSE] virtio-blk notify idx=362 used=362
-[RSE] virtio-blk notify idx=363 used=363
-[RSE] virtio-blk notify idx=364 used=364
-[RSE] virtio-blk notify idx=365 used=365
-[RSE] virtio-blk notify idx=366 used=366
-[RSE] virtio-blk notify idx=367 used=367
-[RSE] virtio-blk notify idx=368 used=368
-[RSE] virtio-blk notify idx=369 used=369
-[RSE] virtio-blk notify idx=370 used=370
-[RSE] virtio-blk notify idx=371 used=371
-[RSE] virtio-blk notify idx=372 used=372
-[RSE] virtio-blk notify idx=373 used=373
-[RSE] virtio-blk notify idx=374 used=374
-[RSE] virtio-blk notify idx=375 used=375
-[RSE] virtio-blk notify idx=376 used=376
-[init] /dev/blk0 ops=128 bytes=65536 mismatches=56 cycles=2028743967
+[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=507178728
 [RSE] user mode smoke ok
 [RSE] user setup start
 [RSE] user setup ring3 ready torus=1
 [RSE] user map begin
 [RSE] user map page begin
-[RSE] user map page alloc
-[RSE] user map page mapped
+[RSE] user map page existing
 [RSE] user map page begin
-[RSE] user map page alloc
-[RSE] user map page mapped
+[RSE] user map page existing
 [RSE] user map ok
-[RSE] user setup os map ok
 [RSE] user mode smoke begin
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
 [init] ring3 start
 [init] torus=1 pid=2
-[init] compute ops=6000000 cycles=213688979 checksum=8086429594797147306
-[init] memstress bytes=8388608 cycles=217860085 checksum=1069547520
+[init] compute ops=2000000 cycles=32178571 checksum=9791868472914447520
+[init] memstress bytes=2097152 cycles=24363800 checksum=267386880
 [RSE] user mode smoke ok
 [RSE] user setup start
 [RSE] user setup ring3 ready torus=2
 [RSE] user map begin
 [RSE] user map page begin
-[RSE] user map page alloc
-[RSE] user map page mapped
+[RSE] user map page existing
 [RSE] user map page begin
-[RSE] user map page alloc
-[RSE] user map page mapped
+[RSE] user map page existing
 [RSE] user map ok
-[RSE] user setup os map ok
 [RSE] user mode smoke begin
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
 [init] ring3 start
 [init] torus=2 pid=2
-[init] compute ops=2000000 cycles=48453725 checksum=9791868472914447520
-[init] net0 wrote=960 read=8192 cycles=79296530
+[init] compute ops=1000000 cycles=16724736 checksum=13489434137010960902
+[init] net0 wrote=960 read=4096 cycles=33597364
 [RSE] user mode smoke ok
 [RSE] user mode exec smoke done
 [RSE] compute benchmark start
-[RSE] compute ops=400000 cycles=36900949 cycles/op=92 checksum=4180332335208930419
-[RSE] compute ns=12728854 ns/op=31
+[RSE] compute ops=400000 cycles=26718805 cycles/op=66 checksum=4180332335208930419
+[RSE] compute ns=9210205 ns/op=23
 [RSE] memory benchmark start
-[RSE] memory bytes=67108864 cycles=1742778064 cycles/byte=25
-[RSE] memory ns=601165251 ns/byte=8
+[RSE] memory bytes=67108864 cycles=1429078962 cycles/byte=21
+[RSE] memory ns=492615981 ns/byte=7
 [RSE] ramfs benchmark start
-[RSE] ramfs ops=288 cycles=9713287 cycles/op=33726 checksum=12533760 files=0
-[RSE] ramfs ns=3350564 ns/op=11633
+[RSE] ramfs ops=192 cycles=17732898 cycles/op=92358 checksum=8355840 files=0
+[RSE] ramfs ns=6112684 ns/op=31836
 [RSE] fastio benchmark start
-[RSE] fastio bytes=2097152 cycles=67813289 cycles/byte=32
-[RSE] fastio ns=23391958 ns/byte=11
-[RSE] UEFI FS benchmark start
-[RSE] UEFI FS ops=144 cycles=1070050565 cycles/op=7430906 checksum=12533760
-[RSE] UEFI FS ns=369110232 ns/op=2563265
-[RSE] UEFI block benchmark start
-[RSE] UEFI block bytes=524288 write cycles=7357843 write cycles/byte=14 read cycles=25041644 read cycles/byte=47 checksum=66846720
-[RSE] UEFI block ns write=2538062 ns/byte=4 read ns=8638028 ns/byte=16
-[RSE] virtio-blk capacity=131072
-[RSE] virtio-blk modern online
-[RSE] virtio-blk benchmark start
-[RSE] virtio desc req=508989440 data=268611648 status=508989568
-[RSE] virtio-blk notify idx=0 used=0
-[RSE] virtio-blk notify idx=1 used=1
-[RSE] virtio-blk bytes=512 write cycles=32246575 write cycles/byte=62981 read cycles=1356516 read cycles/byte=2649 checksum=65280
-[RSE] virtio-blk ns write=11123344 ns/byte=21725 read ns=467925 ns/byte=913
-[RSE] udp/http server benchmark start
-[RSE] udp/http server rx=0 udp=0 http=0 cycles=342583575
-[RSE] udp/http server ns=118173016
-[RSE] http loopback benchmark start
-[RSE] http requests=50000 cycles=66161371 cycles/req=1323 checksum=218650000
-[RSE] http ns=22822135 ns/req=456
+[RSE] fastio bytes=2097152 cycles=55434165 cycles/byte=26
+[RSE] fastio ns=19108640 ns/byte=9
+[RSE] UEFI FS benchmark skipped (smoke)
+[RSE] UEFI block benchmark skipped (smoke)
+[RSE] virtio-blk benchmark skipped (smoke)
+[RSE] net arp benchmark skipped (smoke)
+[RSE] udp/http server benchmark skipped (smoke)
+[RSE] http loopback benchmark skipped (smoke)
 [RSE] benchmarks end
-[RSE] auto shutdown
-[RSE] run exit rc=0
+qemu-system-x86_64: terminating on signal 15 from pid 780943 (make)
+[RSE] run exit rc=124
+[RSE] run timeout after 90s

@@ -702,6 +702,19 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
     if (!current) {
         return -ESRCH;
     }
+    auto reset_netlite_connect = [](SocketLite* sock) {
+        if (!sock) {
+            return;
+        }
+        sock->state = (sock->port != 0)
+            ? SocketLite::State::BOUND
+            : SocketLite::State::CREATED;
+        sock->peer_port = 0;
+        sock->conn_id = 0;
+        sock->connect_attempts = 0;
+        sock->connect_retry = 0;
+        sock->connect_deadline = 0;
+    };
     if (addr_len < sizeof(rse_sockaddr)) {
         return -EINVAL;
     }
@@ -728,7 +741,43 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
     if (sock->state == SocketLite::State::CONNECTING &&
         sock->backend == SocketLite::Backend::NET_LITE) {
         socket_poll_net();
-        return sock->state == SocketLite::State::CONNECTED ? 0 : -EAGAIN;
+        if (sock->state == SocketLite::State::CONNECTED) {
+            return 0;
+        }
+        if (sock->peer_port == 0 || sock->port == 0 || sock->conn_id == 0) {
+            reset_netlite_connect(sock);
+            return -EINVAL;
+        }
+        uint32_t now = g_socket_net_ticks;
+        if (sock->connect_deadline == 0) {
+            sock->connect_deadline = now + kNetLiteConnectTimeout;
+        }
+        if (sock->connect_retry == 0) {
+            sock->connect_retry = now + kNetLiteRetryTicks;
+        }
+        if (sock->connect_attempts == 0) {
+            sock->connect_attempts = 1;
+        }
+        if (now >= sock->connect_deadline) {
+            reset_netlite_connect(sock);
+            return -ETIMEDOUT;
+        }
+        if (now >= sock->connect_retry) {
+            if (sock->connect_attempts >= kNetLiteMaxRetries) {
+                reset_netlite_connect(sock);
+                return -ETIMEDOUT;
+            }
+            TcpLiteSynPayload syn{ sock->peer_port, sock->port };
+            int rc = net_send_frame(sock->conn_id, kTcpLiteSyn,
+                                    &syn, sizeof(syn));
+            if (rc < 0) {
+                reset_netlite_connect(sock);
+                return rc;
+            }
+            sock->connect_attempts++;
+            sock->connect_retry = now + kNetLiteRetryTicks;
+        }
+        return -EAGAIN;
     }
     if (sock->state == SocketLite::State::LISTENING) {
         return -EOPNOTSUPP;
@@ -751,14 +800,19 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
                 return -EAGAIN;
             }
         }
-        TcpLiteSynPayload syn{ addr.port, sock->port };
+        sock->peer_port = addr.port;
+        sock->state = SocketLite::State::CONNECTING;
+        uint32_t now = g_socket_net_ticks;
+        sock->connect_attempts = 1;
+        sock->connect_retry = now + kNetLiteRetryTicks;
+        sock->connect_deadline = now + kNetLiteConnectTimeout;
+        TcpLiteSynPayload syn{ sock->peer_port, sock->port };
         int rc = net_send_frame(sock->conn_id, kTcpLiteSyn,
                                 &syn, sizeof(syn));
         if (rc < 0) {
+            reset_netlite_connect(sock);
             return rc;
         }
-        sock->peer_port = addr.port;
-        sock->state = SocketLite::State::CONNECTING;
         socket_poll_net();
         return sock->state == SocketLite::State::CONNECTED ? 0 : -EAGAIN;
     }

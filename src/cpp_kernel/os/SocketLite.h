@@ -20,6 +20,11 @@ static constexpr uint16_t kTcpLiteSyn = 1u << 0;
 static constexpr uint16_t kTcpLiteAck = 1u << 1;
 static constexpr uint16_t kTcpLiteFin = 1u << 2;
 static constexpr uint16_t kTcpLiteData = 1u << 3;
+static constexpr uint32_t kNetLiteRetryTicks = 8u;
+static constexpr uint32_t kNetLiteConnectTimeout = 64u;
+static constexpr uint8_t kNetLiteMaxRetries = 3u;
+
+inline uint32_t g_socket_net_ticks = 0;
 
 struct TcpLiteSynPayload {
     uint16_t dest_port;
@@ -48,6 +53,9 @@ struct SocketLite {
     uint16_t port;
     uint16_t peer_port;
     uint16_t conn_id;
+    uint32_t connect_deadline;
+    uint32_t connect_retry;
+    uint8_t connect_attempts;
     SocketLite* peer;
     SocketLite* pending;
     Device device;
@@ -62,6 +70,9 @@ struct SocketLite {
           port(0),
           peer_port(0),
           conn_id(0),
+          connect_deadline(0),
+          connect_retry(0),
+          connect_attempts(0),
           peer(nullptr),
           pending(nullptr),
           head(0),
@@ -372,6 +383,9 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
         SocketLite* sock = mgr.find_by_conn(header.conn);
         if (sock && sock->state == SocketLite::State::CONNECTING) {
             sock->state = SocketLite::State::CONNECTED;
+            sock->connect_attempts = 0;
+            sock->connect_retry = 0;
+            sock->connect_deadline = 0;
         }
         return;
     }
@@ -407,6 +421,7 @@ inline void socket_poll_net() {
     if (!mgr.net_online()) {
         return;
     }
+    g_socket_net_ticks++;
     uint8_t scratch[256];
     while (true) {
         int got = rse_net_read(scratch, sizeof(scratch));
@@ -466,6 +481,9 @@ inline ssize_t socket_read(Device* dev, void* buf, size_t count) {
     }
     SocketLite* sock = static_cast<SocketLite*>(dev->private_data);
     if (!sock || sock->state != SocketLite::State::CONNECTED) {
+        if (sock && sock->state == SocketLite::State::CLOSED) {
+            return -ECONNRESET;
+        }
         return -ENOTCONN;
     }
     if (sock->backend == SocketLite::Backend::NET_LITE) {
@@ -490,6 +508,9 @@ inline ssize_t socket_write(Device* dev, const void* buf, size_t count) {
     }
     SocketLite* sock = static_cast<SocketLite*>(dev->private_data);
     if (!sock || sock->state != SocketLite::State::CONNECTED) {
+        if (sock && sock->state == SocketLite::State::CLOSED) {
+            return -ECONNRESET;
+        }
         return -ENOTCONN;
     }
     if (sock->backend == SocketLite::Backend::NET_LITE) {

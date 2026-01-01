@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: January 01, 2026 (user ELF range enforcement; full system test logged)
+Last Updated: January 01, 2026 (ring3 timeslice + NET_LITE connect retries; init boot.rc runner; full system test logged)
 
 ---
 
@@ -27,13 +27,15 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - In-kernel benchmarks (compute, memory, RAMFS, UEFI FS/block, fastio, HTTP loopback).
 - MemFS + BlockFS with per-process file descriptors, `/persist` directories, MemFS nested paths, and permission checks on open/list/mkdir/unlink (including parent exec/write).
 - BlockFS persistence with checksum + journal + corruption detection (flat table, directory paths), with mount-time sanitize for duplicates/invalid entries and journal write checks.
-- TCP-lite framing over `/dev/net0` for loopback handshake/data tests.
+- TCP-lite framing over `/dev/net0` for loopback handshake/data tests with NET_LITE connect retries/timeouts.
 - In-kernel socket syscalls (`socket/bind/listen/accept/connect`) with loopback buffers and NET_LITE framing over the net device path.
 - Syscall dispatcher with user-range validation (including nanosleep/pipe/time pointers) and per-torus dispatch.
 - ELF loader enforces the user virtual address window; out-of-range segments are rejected.
 - User mmap rejects overlaps; mmap/mprotect/munmap validate zero/unaligned sizes; PROT_EXEC blocked for anonymous mmap and limited to code pages; stack guard pages widened; mmap uses guard pages by default; read/write reject oversized counts; mprotect refuses unmapped ranges; VFS reserves `/dev` and rejects invalid `/persist` subpaths; net loopback backpressure returns `-EAGAIN`.
 - Ring3 exec smoke (UEFI): exec path works; isolation still evolving.
 - Ring3 init now loads a real freestanding ELF at `/bin/init` (no synthetic payloads).
+- Ring3 init supports script-driven workloads via `/persist/boot.rc` or `/boot.rc`.
+- Ring3 scheduling rotates across multiple ring3 slots on syscall boundaries with per-process time slices.
 - UEFI kernel build is freestanding and provides minimal string/mem shims for kernel C++ code.
 - Projection exchange across 3 VMs via IVSHMEM shared memory.
 - BraidShell demo with telemetry sourced from real logs.
@@ -56,10 +58,10 @@ Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal a
 
 ### Known Limitations
 
-- User-mode isolation/permissions are still evolving; ring3 runs a single user process sequentially (no preemptive scheduling yet).
+- User-mode isolation/permissions are still evolving; ring3 time slicing is syscall-boundary only and limited to a small slot count.
 - Network stack is minimal (ARP/UDP parsing + loopback); NET_LITE framing is not full TCP.
 - BlockFS uses fixed slots; permissions are basic (no user ownership model yet).
-- Workload init is one-shot per boot.
+- Workload init is script-driven but still one-shot per boot (no interactive console input yet).
 
 ---
 

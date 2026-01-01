@@ -119,6 +119,12 @@ constexpr int ENOTCONN  = 107; // Transport endpoint is not connected
 #ifndef ECONNREFUSED
 constexpr int ECONNREFUSED = 111; // Connection refused
 #endif
+#ifndef ECONNRESET
+constexpr int ECONNRESET = 104; // Connection reset
+#endif
+#ifndef ETIMEDOUT
+constexpr int ETIMEDOUT = 110; // Connection timed out
+#endif
 #ifndef ENOSYS
 constexpr int ENOSYS    = 38;  // Function not implemented
 #endif

@@ -47,7 +47,8 @@ static size_t heap_offset;
 alignas(4096) static uint8_t phys_mem[16 * 1024 * 1024];
 static constexpr uint32_t kTorusCount = 3;
 static constexpr uint32_t kExtraProcs = 4;
-static constexpr uint32_t kRing3Slots = 1;
+static constexpr uint32_t kRing3Slots = 2;
+static constexpr uint64_t kRing3TimeSlice = 64;
 static constexpr uint64_t kKernelUserBase = 0x40000000ull;
 static constexpr uint64_t kKernelUserWindow = 0x200000ull;
 static constexpr uint64_t kKernelUserStackSize = 64 * 1024ull;
@@ -1063,6 +1064,9 @@ static void ring3_set_active(uint32_t torus_id, uint32_t slot) {
     }
     g_ring3_active[torus_id] = slot;
     g_ring3_proc = g_ring3_procs[torus_id][slot];
+    if (g_ring3_proc) {
+        g_ring3_proc->resetTimeSlice(kRing3TimeSlice);
+    }
     TorusRuntime& rt = g_runtimes[torus_id];
     current_torus_id = torus_id;
     os::current_torus_context = &rt.ctx;
@@ -1180,6 +1184,24 @@ extern "C" int rse_os_ring3_yield(uint64_t* entry_out, uint64_t* stack_out) {
     }
     ring3_set_active(torus_id, slot);
     return rse_os_ring3_context(entry_out, stack_out);
+}
+
+extern "C" int rse_os_ring3_tick(void) {
+    if (!g_runtimes_ready || !g_ring3_proc) {
+        return 0;
+    }
+    g_ring3_proc->tick();
+    if (!g_ring3_proc->timeSliceExpired()) {
+        return 0;
+    }
+    uint32_t torus_id = g_ring3_proc->torus_id;
+    uint32_t slot = 0;
+    os::OSProcess* next = ring3_pick_next(torus_id, &slot);
+    if (!next || next == g_ring3_proc) {
+        g_ring3_proc->resetTimeSlice(kRing3TimeSlice);
+        return 0;
+    }
+    return 1;
 }
 
 extern "C" int64_t rse_os_syscall_dispatch(int64_t num,
@@ -1756,6 +1778,7 @@ extern "C" void rse_os_run(void) {
             g_ring3_procs[torus_id][slot] =
                 create_ring3_process(torus_id, slot, rt.ctx.next_pid++, 0);
             g_ring3_procs[torus_id][slot]->initMemory(rt.phys_alloc);
+            g_ring3_procs[torus_id][slot]->resetTimeSlice(kRing3TimeSlice);
             configure_ring3_memory(g_ring3_procs[torus_id][slot]);
             g_ring3_procs[torus_id][slot]->fd_table.bindStandardDevices(rt.console);
             rt.scheduler->addProcess(g_ring3_procs[torus_id][slot]);

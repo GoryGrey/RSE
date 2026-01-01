@@ -129,6 +129,20 @@ static uint32_t cstr_len(const char* s) {
     return len;
 }
 
+static int cstr_eq(const char* a, const char* b) {
+    if (!a || !b) {
+        return 0;
+    }
+    uint32_t idx = 0;
+    while (a[idx] && b[idx]) {
+        if (a[idx] != b[idx]) {
+            return 0;
+        }
+        idx++;
+    }
+    return a[idx] == '\0' && b[idx] == '\0';
+}
+
 static void write_str(const char* msg) {
     if (!msg) {
         return;
@@ -227,20 +241,83 @@ static void log_list(const char* path) {
     sys_write(1, buf, (uint32_t)got);
 }
 
-static void init_main(void) {
-    write_str("[init] ring3 start\n");
-    int64_t torus = sys_torus_id();
-    if (torus < 0) {
-        torus = 0;
+static uint64_t parse_u64(const char* s, uint64_t fallback) {
+    if (!s || *s == '\0') {
+        return fallback;
     }
-    write_str("[init] torus=");
-    write_u64((uint64_t)torus);
-    write_str(" pid=");
-    write_u64((uint64_t)sys_getpid());
-    write_str("\n");
+    uint64_t value = 0;
+    const char* p = s;
+    while (*p >= '0' && *p <= '9') {
+        value = (value * 10u) + (uint64_t)(*p - '0');
+        ++p;
+    }
+    return (p == s) ? fallback : value;
+}
 
+static const char* skip_ws(const char* s) {
+    if (!s) {
+        return s;
+    }
+    while (*s == ' ' || *s == '\t' || *s == '\r') {
+        ++s;
+    }
+    return s;
+}
+
+static const char* next_token(const char* s, char* out, uint32_t cap) {
+    if (!out || cap == 0) {
+        return s;
+    }
+    out[0] = '\0';
+    s = skip_ws(s);
+    if (!s || *s == '\0') {
+        return s;
+    }
+    uint32_t idx = 0;
+    while (*s && *s != ' ' && *s != '\t' && *s != '\r') {
+        if (idx + 1 < cap) {
+            out[idx++] = *s;
+        }
+        ++s;
+    }
+    out[idx] = '\0';
+    return s;
+}
+
+static int read_file(const char* path, char* out, uint32_t cap) {
+    if (!path || !out || cap == 0) {
+        return -1;
+    }
+    int fd = sys_open(path, O_RDONLY, 0);
+    if (fd < 0) {
+        return -1;
+    }
+    uint32_t used = 0;
+    while (used + 1 < cap) {
+        int64_t got = sys_read(fd, out + used, cap - 1 - used);
+        if (got <= 0) {
+            break;
+        }
+        used += (uint32_t)got;
+    }
+    out[used] = '\0';
+    sys_close(fd);
+    return (int)used;
+}
+
+static int detect_persist(void) {
+    int persist_mode = 0;
+    int probe = sys_open("/persist/.probe", O_CREAT | O_WRONLY, 0644);
+    if (probe >= 0) {
+        sys_close(probe);
+        sys_unlink("/persist/.probe");
+        persist_mode = 1;
+    }
+    return persist_mode;
+}
+
+static void run_compute(uint64_t iters) {
     uint64_t seed = 0xfeedbeefcafebabeULL;
-    uint64_t iters = (torus == 1) ? INIT_TORUS1_COMPUTE_ITERS : INIT_TORUS0_COMPUTE_ITERS;
     uint64_t acc = 0;
     uint64_t start = rdtsc();
     for (uint64_t i = 0; i < iters; ++i) {
@@ -254,204 +331,349 @@ static void init_main(void) {
     write_str(" checksum=");
     write_u64(acc);
     write_str("\n");
+}
+
+static void run_memstress(uint64_t passes) {
+    for (uint32_t i = 0; i < sizeof(mem_a); ++i) {
+        mem_a[i] = (uint8_t)(i ^ 0x5a);
+    }
+    uint64_t checksum = 0;
+    uint64_t mem_start = rdtsc();
+    for (uint64_t p = 0; p < passes; ++p) {
+        for (uint32_t i = 0; i < sizeof(mem_a); ++i) {
+            mem_b[i] = (uint8_t)(mem_a[i] + (uint8_t)p);
+            checksum += mem_b[i];
+        }
+    }
+    uint64_t mem_end = rdtsc();
+    write_str("[init] memstress bytes=");
+    write_u64((uint64_t)sizeof(mem_a) * passes);
+    write_str(" cycles=");
+    write_u64(mem_end - mem_start);
+    write_str(" checksum=");
+    write_u64(checksum);
+    write_str("\n");
+}
+
+static void run_file_io(uint32_t file_count, int persist_mode) {
+    for (uint32_t i = 0; i < sizeof(io_buf); ++i) {
+        io_buf[i] = (uint8_t)(i ^ 0x5a);
+    }
+    uint64_t ops = 0;
+    uint64_t bytes = 0;
+    uint64_t io_start = rdtsc();
+    char name[32];
+    for (uint32_t i = 0; i < file_count; ++i) {
+        format_path(name, i, persist_mode);
+        int fd = sys_open(name, O_CREAT | O_TRUNC | O_RDWR, 0644);
+        if (fd < 0) {
+            continue;
+        }
+        ops++;
+        int64_t wrote = sys_write(fd, io_buf, sizeof(io_buf));
+        if (wrote > 0) {
+            bytes += (uint64_t)wrote;
+        }
+        ops++;
+        int64_t read = sys_read(fd, io_buf, sizeof(io_buf));
+        if (read > 0) {
+            bytes += (uint64_t)read;
+        }
+        ops++;
+        sys_close(fd);
+        ops++;
+    }
+    for (uint32_t i = 0; i < file_count; ++i) {
+        format_path(name, i, persist_mode);
+        sys_unlink(name);
+        ops++;
+    }
+    uint64_t io_end = rdtsc();
+    write_str("[init] file ops=");
+    write_u64(ops);
+    write_str(" bytes=");
+    write_u64(bytes);
+    write_str(" cycles=");
+    write_u64(io_end - io_start);
+    write_str("\n");
+}
+
+static void run_loopback(void) {
+    int loop_fd = sys_open("/dev/loopback", O_RDWR, 0);
+    if (loop_fd >= 0) {
+        const char* msg = "loopback-test";
+        sys_write(loop_fd, msg, cstr_len(msg));
+        char buf[32];
+        int64_t got = sys_read(loop_fd, buf, sizeof(buf));
+        sys_close(loop_fd);
+        write_str("[init] loopback read=");
+        write_u64((uint64_t)(got > 0 ? got : 0));
+        write_str("\n");
+    } else {
+        write_str("[init] /dev/loopback unavailable\n");
+    }
+}
+
+static void run_blk0(uint32_t blocks) {
+    int fd = sys_open("/dev/blk0", O_RDWR, 0);
+    if (fd >= 0) {
+        const uint32_t blk_size = sizeof(blk_buf);
+        const uint64_t start_lba = 2048;
+        uint64_t mismatches = 0;
+        uint64_t bytes = 0;
+        uint64_t ops = 0;
+        uint64_t blk_start = rdtsc();
+        int64_t seek_start = sys_lseek(fd, (int64_t)(start_lba * blk_size), 0);
+        if (seek_start < 0) {
+            write_str("[init] /dev/blk0 seek start failed\n");
+        }
+        for (uint32_t i = 0; i < blocks; ++i) {
+            for (uint32_t j = 0; j < blk_size; ++j) {
+                blk_buf[j] = (uint8_t)(j ^ (i & 0xFFu) ^ 0xA5u);
+            }
+            int64_t w = sys_write(fd, blk_buf, blk_size);
+            if (w == (int64_t)blk_size) {
+                bytes += (uint64_t)w;
+                ops++;
+            }
+        }
+        int64_t seek_read = sys_lseek(fd, (int64_t)(start_lba * blk_size), 0);
+        if (seek_read < 0) {
+            write_str("[init] /dev/blk0 seek read failed\n");
+        }
+        for (uint32_t i = 0; i < blocks; ++i) {
+            int64_t r = sys_read(fd, blk_buf, blk_size);
+            if (r == (int64_t)blk_size) {
+                bytes += (uint64_t)r;
+                ops++;
+                for (uint32_t j = 0; j < blk_size; ++j) {
+                    uint8_t expect = (uint8_t)(j ^ (i & 0xFFu) ^ 0xA5u);
+                    if (blk_buf[j] != expect) {
+                        mismatches++;
+                        break;
+                    }
+                }
+            }
+        }
+        uint64_t blk_end = rdtsc();
+        sys_close(fd);
+        write_str("[init] /dev/blk0 ops=");
+        write_u64(ops);
+        write_str(" bytes=");
+        write_u64(bytes);
+        write_str(" mismatches=");
+        write_u64(mismatches);
+        write_str(" cycles=");
+        write_u64(blk_end - blk_start);
+        write_str("\n");
+    } else {
+        write_str("[init] /dev/blk0 unavailable\n");
+    }
+}
+
+static void run_net0(uint32_t iters) {
+    int net_fd = sys_open("/dev/net0", O_RDWR, 0);
+    if (net_fd >= 0) {
+        uint8_t pkt[64];
+        for (uint32_t i = 0; i < sizeof(pkt); ++i) {
+            pkt[i] = (uint8_t)(i ^ 0x3c);
+        }
+        uint64_t wrote = 0;
+        uint64_t read = 0;
+        uint64_t net_start = rdtsc();
+        for (uint32_t i = 0; i < iters; ++i) {
+            int64_t w = sys_write(net_fd, pkt, sizeof(pkt));
+            if (w > 0) {
+                wrote += (uint64_t)w;
+            }
+            int64_t r = sys_read(net_fd, pkt, sizeof(pkt));
+            if (r > 0) {
+                read += (uint64_t)r;
+            }
+        }
+        uint64_t net_end = rdtsc();
+        sys_close(net_fd);
+        write_str("[init] net0 wrote=");
+        write_u64(wrote);
+        write_str(" read=");
+        write_u64(read);
+        write_str(" cycles=");
+        write_u64(net_end - net_start);
+        write_str("\n");
+    } else {
+        write_str("[init] /dev/net0 unavailable\n");
+    }
+}
+
+static void run_help(void) {
+    write_str("commands: help, compute, memstress, fileio, ls, cat, stat, blk, net, loop, run, yield, exit\n");
+}
+
+static void run_command(const char* line, int persist_mode) {
+    char cmd[16];
+    char arg[64];
+    const char* rest = next_token(line, cmd, sizeof(cmd));
+    if (cmd[0] == '\0') {
+        return;
+    }
+    rest = next_token(rest, arg, sizeof(arg));
+    if (cmd[0] == '#') {
+        return;
+    }
+    if (!cstr_len(cmd)) {
+        return;
+    }
+    if (cstr_eq(cmd, "help")) {
+        run_help();
+    } else if (cstr_eq(cmd, "compute")) {
+        uint64_t iters = parse_u64(arg, 1000000ULL);
+        run_compute(iters);
+    } else if (cstr_eq(cmd, "memstress")) {
+        uint64_t passes = parse_u64(arg, INIT_MEMSTRESS_PASSES);
+        run_memstress(passes);
+    } else if (cstr_eq(cmd, "fileio")) {
+        uint32_t count = (uint32_t)parse_u64(arg, INIT_FILE_BENCH_FILES);
+        run_file_io(count, persist_mode);
+    } else if (cstr_eq(cmd, "ls")) {
+        const char* path = (arg[0] != '\0') ? arg : "/";
+        log_list(path);
+        write_str("\n");
+    } else if (cstr_eq(cmd, "cat")) {
+        if (arg[0] == '\0') {
+            write_str("cat: missing path\n");
+            return;
+        }
+        int fd = sys_open(arg, O_RDONLY, 0);
+        if (fd < 0) {
+            write_str("cat: open failed\n");
+            return;
+        }
+        char buf[256];
+        int64_t got = sys_read(fd, buf, sizeof(buf));
+        if (got > 0) {
+            sys_write(1, buf, (uint32_t)got);
+        }
+        sys_close(fd);
+        write_str("\n");
+    } else if (cstr_eq(cmd, "stat")) {
+        if (arg[0] == '\0') {
+            write_str("stat: missing path\n");
+            return;
+        }
+        log_stat(arg);
+    } else if (cstr_eq(cmd, "blk")) {
+        run_blk0(INIT_BLOCK_BENCH_BLOCKS);
+    } else if (cstr_eq(cmd, "net")) {
+        run_net0(INIT_NET_BENCH_ITERS);
+    } else if (cstr_eq(cmd, "loop")) {
+        run_loopback();
+    } else if (cstr_eq(cmd, "run")) {
+        if (arg[0] == '\0') {
+            write_str("run: missing path\n");
+            return;
+        }
+        int64_t rc = sys_exec(arg);
+        write_str("run rc=");
+        if (rc < 0) {
+            write_str("-");
+            write_u64((uint64_t)(-rc));
+        } else {
+            write_u64((uint64_t)rc);
+        }
+        write_str("\n");
+    } else if (cstr_eq(cmd, "yield")) {
+        sys_yield();
+    } else if (cstr_eq(cmd, "exit")) {
+        sys_exit(0);
+    } else {
+        write_str("unknown command: ");
+        write_str(cmd);
+        write_str("\n");
+    }
+}
+
+static int run_script(const char* path, int persist_mode) {
+    char script[2048];
+    int got = read_file(path, script, sizeof(script));
+    if (got <= 0) {
+        return 0;
+    }
+    write_str("[init] script ");
+    write_str(path);
+    write_str("\n");
+    const char* p = script;
+    const char* end = script + got;
+    char line[128];
+    while (p < end) {
+        uint32_t len = 0;
+        while (p < end && *p != '\n') {
+            if (len + 1 < sizeof(line)) {
+                line[len++] = *p;
+            }
+            ++p;
+        }
+        if (p < end && *p == '\n') {
+            ++p;
+        }
+        line[len] = '\0';
+        const char* trimmed = skip_ws(line);
+        if (!trimmed || *trimmed == '\0') {
+            continue;
+        }
+        if (*trimmed == '#') {
+            continue;
+        }
+        run_command(trimmed, persist_mode);
+        sys_yield();
+    }
+    return 1;
+}
+
+static void init_main(void) {
+    write_str("[init] ring3 start\n");
+    int64_t torus = sys_torus_id();
+    if (torus < 0) {
+        torus = 0;
+    }
+    write_str("[init] torus=");
+    write_u64((uint64_t)torus);
+    write_str(" pid=");
+    write_u64((uint64_t)sys_getpid());
+    write_str("\n");
+
+    uint64_t iters = (torus == 1) ? INIT_TORUS1_COMPUTE_ITERS : INIT_TORUS0_COMPUTE_ITERS;
+    run_compute(iters);
     for (uint32_t i = 0; i < 2; ++i) {
         sys_yield();
     }
 
     if (torus == 1) {
-        for (uint32_t i = 0; i < sizeof(mem_a); ++i) {
-            mem_a[i] = (uint8_t)(i ^ 0x5a);
-        }
-        const uint64_t passes = INIT_MEMSTRESS_PASSES;
-        uint64_t checksum = 0;
-        uint64_t mem_start = rdtsc();
-        for (uint64_t p = 0; p < passes; ++p) {
-            for (uint32_t i = 0; i < sizeof(mem_a); ++i) {
-                mem_b[i] = (uint8_t)(mem_a[i] + (uint8_t)p);
-                checksum += mem_b[i];
-            }
-        }
-        uint64_t mem_end = rdtsc();
-        write_str("[init] memstress bytes=");
-        write_u64((uint64_t)sizeof(mem_a) * passes);
-        write_str(" cycles=");
-        write_u64(mem_end - mem_start);
-        write_str(" checksum=");
-        write_u64(checksum);
-        write_str("\n");
+        run_memstress(INIT_MEMSTRESS_PASSES);
         for (uint32_t i = 0; i < 2; ++i) {
             sys_yield();
         }
     }
 
-    for (uint32_t i = 0; i < sizeof(io_buf); ++i) {
-        io_buf[i] = (uint8_t)(i ^ 0x5a);
-    }
-
     if (torus == 0) {
-        int persist_mode = 0;
-        int probe = sys_open("/persist/.probe", O_CREAT | O_WRONLY, 0644);
-        if (probe >= 0) {
-            sys_close(probe);
-            sys_unlink("/persist/.probe");
-            persist_mode = 1;
-        }
+        int persist_mode = detect_persist();
         write_str(persist_mode ? "[init] using /persist\n" : "[init] using memfs\n");
-
-        uint64_t ops = 0;
-        uint64_t bytes = 0;
-        uint64_t io_start = rdtsc();
-        const uint32_t file_count = INIT_FILE_BENCH_FILES;
-        char name[32];
-        for (uint32_t i = 0; i < file_count; ++i) {
-            format_path(name, i, persist_mode);
-            int fd = sys_open(name, O_CREAT | O_TRUNC | O_RDWR, 0644);
-            if (fd < 0) {
-                continue;
-            }
-            ops++;
-            int64_t wrote = sys_write(fd, io_buf, sizeof(io_buf));
-            if (wrote > 0) {
-                bytes += (uint64_t)wrote;
-            }
-            ops++;
-            int64_t read = sys_read(fd, io_buf, sizeof(io_buf));
-            if (read > 0) {
-                bytes += (uint64_t)read;
-            }
-            ops++;
-            sys_close(fd);
-            ops++;
-        }
-        for (uint32_t i = 0; i < file_count; ++i) {
-            format_path(name, i, persist_mode);
-            sys_unlink(name);
-            ops++;
-        }
-        uint64_t io_end = rdtsc();
-        write_str("[init] file ops=");
-        write_u64(ops);
-        write_str(" bytes=");
-        write_u64(bytes);
-        write_str(" cycles=");
-        write_u64(io_end - io_start);
-        write_str("\n");
-
-        write_str("[init] ls /\n");
-        log_list("/");
-        write_str("\n");
-        write_str("[init] ls /persist\n");
-        log_list("/persist");
-        write_str("\n");
-        log_stat("/dev/blk0");
-    }
-
-    if (torus == 0) {
-        int loop_fd = sys_open("/dev/loopback", O_RDWR, 0);
-        if (loop_fd >= 0) {
-            const char* msg = "loopback-test";
-            sys_write(loop_fd, msg, cstr_len(msg));
-            char buf[32];
-            int64_t got = sys_read(loop_fd, buf, sizeof(buf));
-            sys_close(loop_fd);
-            write_str("[init] loopback read=");
-            write_u64((uint64_t)(got > 0 ? got : 0));
+        if (!run_script("/persist/boot.rc", persist_mode) &&
+            !run_script("/boot.rc", persist_mode)) {
+            run_file_io(INIT_FILE_BENCH_FILES, persist_mode);
+            write_str("[init] ls /\n");
+            log_list("/");
             write_str("\n");
-        } else {
-            write_str("[init] /dev/loopback unavailable\n");
-        }
-    }
-
-    if (torus == 0) {
-        int fd = sys_open("/dev/blk0", O_RDWR, 0);
-        if (fd >= 0) {
-            const uint32_t blk_size = sizeof(blk_buf);
-            const uint32_t blocks = INIT_BLOCK_BENCH_BLOCKS;
-            const uint64_t start_lba = 2048;
-            uint64_t mismatches = 0;
-            uint64_t bytes = 0;
-            uint64_t ops = 0;
-            uint64_t blk_start = rdtsc();
-            int64_t seek_start = sys_lseek(fd, (int64_t)(start_lba * blk_size), 0);
-            if (seek_start < 0) {
-                write_str("[init] /dev/blk0 seek start failed\n");
-            }
-            for (uint32_t i = 0; i < blocks; ++i) {
-                for (uint32_t j = 0; j < blk_size; ++j) {
-                    blk_buf[j] = (uint8_t)(j ^ (i & 0xFFu) ^ 0xA5u);
-                }
-                int64_t w = sys_write(fd, blk_buf, blk_size);
-                if (w == (int64_t)blk_size) {
-                    bytes += (uint64_t)w;
-                    ops++;
-                }
-            }
-            int64_t seek_read = sys_lseek(fd, (int64_t)(start_lba * blk_size), 0);
-            if (seek_read < 0) {
-                write_str("[init] /dev/blk0 seek read failed\n");
-            }
-            for (uint32_t i = 0; i < blocks; ++i) {
-                int64_t r = sys_read(fd, blk_buf, blk_size);
-                if (r == (int64_t)blk_size) {
-                    bytes += (uint64_t)r;
-                    ops++;
-                    for (uint32_t j = 0; j < blk_size; ++j) {
-                        uint8_t expect = (uint8_t)(j ^ (i & 0xFFu) ^ 0xA5u);
-                        if (blk_buf[j] != expect) {
-                            mismatches++;
-                            break;
-                        }
-                    }
-                }
-            }
-            uint64_t blk_end = rdtsc();
-            sys_close(fd);
-            write_str("[init] /dev/blk0 ops=");
-            write_u64(ops);
-            write_str(" bytes=");
-            write_u64(bytes);
-            write_str(" mismatches=");
-            write_u64(mismatches);
-            write_str(" cycles=");
-            write_u64(blk_end - blk_start);
+            write_str("[init] ls /persist\n");
+            log_list("/persist");
             write_str("\n");
-        } else {
-            write_str("[init] /dev/blk0 unavailable\n");
+            log_stat("/dev/blk0");
+            run_loopback();
+            run_blk0(INIT_BLOCK_BENCH_BLOCKS);
         }
     }
 
     if (torus == 2) {
-        int net_fd = sys_open("/dev/net0", O_RDWR, 0);
-        if (net_fd >= 0) {
-            uint8_t pkt[64];
-            for (uint32_t i = 0; i < sizeof(pkt); ++i) {
-                pkt[i] = (uint8_t)(i ^ 0x3c);
-            }
-            uint64_t wrote = 0;
-            uint64_t read = 0;
-            uint64_t net_start = rdtsc();
-            for (uint32_t i = 0; i < INIT_NET_BENCH_ITERS; ++i) {
-                int64_t w = sys_write(net_fd, pkt, sizeof(pkt));
-                if (w > 0) {
-                    wrote += (uint64_t)w;
-                }
-                int64_t r = sys_read(net_fd, pkt, sizeof(pkt));
-                if (r > 0) {
-                    read += (uint64_t)r;
-                }
-            }
-            uint64_t net_end = rdtsc();
-            sys_close(net_fd);
-            write_str("[init] net0 wrote=");
-            write_u64(wrote);
-            write_str(" read=");
-            write_u64(read);
-            write_str(" cycles=");
-            write_u64(net_end - net_start);
-            write_str("\n");
-        } else {
-            write_str("[init] /dev/net0 unavailable\n");
-        }
+        run_net0(INIT_NET_BENCH_ITERS);
     }
     for (uint32_t i = 0; i < 2; ++i) {
         sys_yield();

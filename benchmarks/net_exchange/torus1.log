@@ -1,4 +1,4 @@
-[RSE] run start torus=1 ts=1767281296
+[RSE] run start torus=1 ts=1767282157
 [RSE] run cfg net_mode=none timeout=60 shm_size=65536
 [RSE] run build_dir=/home/gorygrey/Apps/RSE/build/net_exchange/torus1
 [RSE] run shm_path=/home/gorygrey/Apps/RSE/build/net_exchange/ivshmem.bin
@@ -51,7 +51,8 @@ Added to ISO image: directory '/'='/home/gorygrey/Apps/RSE/build/net_exchange/to
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : WARNING : Boot image load size exceeds 65535 blocks of 512 bytes. Will record 0 in El Torito to extend ESP to end-of-medium.
-xorriso : UPDATE :  40.58% done
+xorriso : UPDATE :  27.43% done
+xorriso : UPDATE : Thank you for being patient. Working since 1 seconds.
 ISO image produced: 66274 sectors
 Written to medium : 66274 sectors at LBA 0
 Writing to 'stdio:/home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_efi.iso' completed successfully.
@@ -63,12 +64,12 @@ rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_raw.img
 dd if=/dev/zero of=/home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_raw.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.0534814 s, 1.3 GB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.0601271 s, 1.1 GB/s
 rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_virtio.img
 dd if=/dev/zero of=/home/gorygrey/Apps/RSE/build/net_exchange/torus1/rse_virtio.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.0509952 s, 1.3 GB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.0819855 s, 819 MB/s
 cp /usr/share/OVMF/OVMF_VARS_4M.fd /home/gorygrey/Apps/RSE/build/net_exchange/torus1/OVMF_VARS.fd
 qemu-system-x86_64 -machine q35 -m 512M \
 	-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
@@ -112,7 +113,7 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] UEFI pointer online
 [RSE] UEFI keyboard online
 [RSE] benchmarks begin
-[RSE] tsc cycles/us=2912 delay_us=100000
+[RSE] tsc cycles/us=2903 delay_us=100000
 [RSE] init workloads start
 [RSE] braided smoke start
 [RSE] braid cycles=3 ticks=300
@@ -145,7 +146,6 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] user mode smoke begin
 [init] ring3 start
 [init] torus=0 pid=6
-[init] compute ops=1000000 cycles=10010952 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -154,7 +154,188 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] user map ok
 [init] ring3 start
 [init] torus=0 pid=7
-[init] compute ops=1000000 cycles=15469006 checksum=13489434137010960902
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] compute ops=1000000 cycles=136087378 checksum=13489434137010960902
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] compute ops=1000000 cycles=132505268 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -187,7 +368,163 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] file ops=160 bytes=126989 cycles=10222972302
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] file ops=160 bytes=131072 cycles=10639617731
 [init] ls /
 dev/
 persist/
@@ -204,7 +541,7 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] file ops=160 bytes=126989 cycles=8921775729
+[init] file ops=160 bytes=131072 cycles=9932733727
 [init] ls /
 dev/
 persist/
@@ -221,14 +558,170 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] /dev/blk0 ops=63 bytes=32256 mismatches=0 cycles=2578839490
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] /dev/blk0 ops=63 bytes=32256 mismatches=0 cycles=1101601189
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=988095385
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=917807110
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -265,7 +758,6 @@ stat /dev/blk0 size=0 type=device
 [RSE] user mode smoke begin
 [init] ring3 start
 [init] torus=1 pid=2
-[init] compute ops=2000000 cycles=34157703 checksum=9791868472914447520
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -274,7 +766,6 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map ok
 [init] ring3 start
 [init] torus=1 pid=3
-[init] compute ops=2000000 cycles=32039594 checksum=9791868472914447520
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -293,14 +784,556 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] memstress bytes=2097152 cycles=24841147 checksum=267386880
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] memstress bytes=2097152 cycles=27534542 checksum=267386880
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] compute ops=2000000 cycles=338448414 checksum=9791868472914447520
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] compute ops=2000000 cycles=337953509 checksum=9791868472914447520
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] memstress bytes=2097152 cycles=214135258 checksum=267386880
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] memstress bytes=2097152 cycles=208366276 checksum=267386880
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -361,7 +1394,6 @@ stat /dev/blk0 size=0 type=device
 [RSE] user mode smoke begin
 [init] ring3 start
 [init] torus=2 pid=2
-[init] compute ops=1000000 cycles=15304182 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -370,7 +1402,6 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map ok
 [init] ring3 start
 [init] torus=2 pid=3
-[init] compute ops=1000000 cycles=16768569 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -401,14 +1432,268 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] net0 wrote=973 read=4096 cycles=45358656
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] net0 wrote=13 read=4096 cycles=27055419
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] compute ops=1000000 cycles=182653268 checksum=13489434137010960902
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] compute ops=1000000 cycles=182644390 checksum=13489434137010960902
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] net0 wrote=576 read=4096 cycles=101198137
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] net0 wrote=384 read=4096 cycles=93568460
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -436,17 +1721,17 @@ stat /dev/blk0 size=0 type=device
 [RSE] user mode smoke ok
 [RSE] user mode exec smoke done
 [RSE] compute benchmark start
-[RSE] compute ops=400000 cycles=20974671 cycles/op=52 checksum=4180332335208930419
-[RSE] compute ns=7202840 ns/op=18
+[RSE] compute ops=400000 cycles=34786578 cycles/op=86 checksum=4180332335208930419
+[RSE] compute ns=11982975 ns/op=29
 [RSE] memory benchmark start
-[RSE] memory bytes=67108864 cycles=1716742867 cycles/byte=25
-[RSE] memory ns=589540819 ns/byte=8
+[RSE] memory bytes=67108864 cycles=2113720366 cycles/byte=31
+[RSE] memory ns=728115868 ns/byte=10
 [RSE] ramfs benchmark start
-[RSE] ramfs ops=192 cycles=5820392 cycles/op=30314 checksum=8355840 files=0
-[RSE] ramfs ns=1998760 ns/op=10410
+[RSE] ramfs ops=192 cycles=6254247 cycles/op=32574 checksum=8355840 files=0
+[RSE] ramfs ns=2154408 ns/op=11220
 [RSE] fastio benchmark start
-[RSE] fastio bytes=2097152 cycles=67617493 cycles/byte=32
-[RSE] fastio ns=23220292 ns/byte=11
+[RSE] fastio bytes=2097152 cycles=57380505 cycles/byte=27
+[RSE] fastio ns=19765933 ns/byte=9
 [RSE] UEFI FS benchmark skipped (smoke)
 [RSE] UEFI block benchmark skipped (smoke)
 [RSE] virtio-blk benchmark skipped (smoke)
@@ -454,6 +1739,6 @@ stat /dev/blk0 size=0 type=device
 [RSE] udp/http server benchmark skipped (smoke)
 [RSE] http loopback benchmark skipped (smoke)
 [RSE] benchmarks end
-qemu-system-x86_64: terminating on signal 15 from pid 789813 (timeout)
+qemu-system-x86_64: terminating on signal 15 from pid 793245 (timeout)
 [RSE] run exit rc=124
 [RSE] run timeout after 60s

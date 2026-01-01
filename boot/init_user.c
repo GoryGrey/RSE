@@ -22,6 +22,11 @@
 #define INIT_FILE_BENCH_FILES 32U
 #define INIT_BLOCK_BENCH_BLOCKS 32U
 #define INIT_NET_BENCH_ITERS 64U
+#define INIT_COMPUTE_YIELD_STRIDE 65536ULL
+#define INIT_MEMSTRESS_YIELD_PASSES 8U
+#define INIT_FILEIO_YIELD_STRIDE 4U
+#define INIT_BLOCK_YIELD_STRIDE 4U
+#define INIT_NET_YIELD_STRIDE 8U
 
 #define O_RDONLY  0x0000
 #define O_WRONLY  0x0001
@@ -109,6 +114,12 @@ static inline int64_t sys_torus_id(void) {
 
 static inline int64_t sys_yield(void) {
     return rse_syscall6(SYS_YIELD, 0, 0, 0, 0, 0, 0);
+}
+
+static inline void maybe_yield(uint64_t step, uint64_t stride) {
+    if (stride != 0 && step != 0 && (step % stride) == 0) {
+        sys_yield();
+    }
 }
 
 static inline uint64_t rdtsc(void) {
@@ -322,6 +333,7 @@ static void run_compute(uint64_t iters) {
     uint64_t start = rdtsc();
     for (uint64_t i = 0; i < iters; ++i) {
         acc ^= xorshift64(&seed) + (i << 1);
+        maybe_yield(i, INIT_COMPUTE_YIELD_STRIDE);
     }
     uint64_t end = rdtsc();
     write_str("[init] compute ops=");
@@ -344,6 +356,7 @@ static void run_memstress(uint64_t passes) {
             mem_b[i] = (uint8_t)(mem_a[i] + (uint8_t)p);
             checksum += mem_b[i];
         }
+        maybe_yield(p, INIT_MEMSTRESS_YIELD_PASSES);
     }
     uint64_t mem_end = rdtsc();
     write_str("[init] memstress bytes=");
@@ -382,11 +395,13 @@ static void run_file_io(uint32_t file_count, int persist_mode) {
         ops++;
         sys_close(fd);
         ops++;
+        maybe_yield(i, INIT_FILEIO_YIELD_STRIDE);
     }
     for (uint32_t i = 0; i < file_count; ++i) {
         format_path(name, i, persist_mode);
         sys_unlink(name);
         ops++;
+        maybe_yield(i, INIT_FILEIO_YIELD_STRIDE);
     }
     uint64_t io_end = rdtsc();
     write_str("[init] file ops=");
@@ -436,6 +451,7 @@ static void run_blk0(uint32_t blocks) {
                 bytes += (uint64_t)w;
                 ops++;
             }
+            maybe_yield(i, INIT_BLOCK_YIELD_STRIDE);
         }
         int64_t seek_read = sys_lseek(fd, (int64_t)(start_lba * blk_size), 0);
         if (seek_read < 0) {
@@ -454,6 +470,7 @@ static void run_blk0(uint32_t blocks) {
                     }
                 }
             }
+            maybe_yield(i, INIT_BLOCK_YIELD_STRIDE);
         }
         uint64_t blk_end = rdtsc();
         sys_close(fd);
@@ -490,6 +507,7 @@ static void run_net0(uint32_t iters) {
             if (r > 0) {
                 read += (uint64_t)r;
             }
+            maybe_yield(i, INIT_NET_YIELD_STRIDE);
         }
         uint64_t net_end = rdtsc();
         sys_close(net_fd);

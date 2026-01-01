@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: January 01, 2026 (ring3 timeslice + NET_LITE connect retries; init boot.rc runner; full system test logged)
+Last Updated: January 01, 2026 (ring3 timeslice + NET_LITE connect retries; init boot.rc runner; workload yields; NET_LITE FIN close; full system test logged)
 
 ---
 
@@ -27,7 +27,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - In-kernel benchmarks (compute, memory, RAMFS, UEFI FS/block, fastio, HTTP loopback).
 - MemFS + BlockFS with per-process file descriptors, `/persist` directories, MemFS nested paths, and permission checks on open/list/mkdir/unlink (including parent exec/write).
 - BlockFS persistence with checksum + journal + corruption detection (flat table, directory paths), with mount-time sanitize for duplicates/invalid entries and journal write checks.
-- TCP-lite framing over `/dev/net0` for loopback handshake/data tests with NET_LITE connect retries/timeouts.
+- TCP-lite framing over `/dev/net0` for loopback handshake/data tests with NET_LITE connect retries/timeouts and FIN-on-close.
 - In-kernel socket syscalls (`socket/bind/listen/accept/connect`) with loopback buffers and NET_LITE framing over the net device path.
 - Syscall dispatcher with user-range validation (including nanosleep/pipe/time pointers) and per-torus dispatch.
 - ELF loader enforces the user virtual address window; out-of-range segments are rejected.
@@ -35,6 +35,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - Ring3 exec smoke (UEFI): exec path works; isolation still evolving.
 - Ring3 init now loads a real freestanding ELF at `/bin/init` (no synthetic payloads).
 - Ring3 init supports script-driven workloads via `/persist/boot.rc` or `/boot.rc`.
+- Ring3 init yields during long loops to avoid starving other ring3 slots.
 - Ring3 scheduling rotates across multiple ring3 slots on syscall boundaries with per-process time slices.
 - UEFI kernel build is freestanding and provides minimal string/mem shims for kernel C++ code.
 - Projection exchange across 3 VMs via IVSHMEM shared memory.

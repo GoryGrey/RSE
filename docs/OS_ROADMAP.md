@@ -17,9 +17,9 @@ This roadmap tracks the path from the current prototype to a production-grade OS
 - Syscall dispatcher with user-pointer validation and per-torus dispatch.
 - ELF loader enforces the user virtual address window (rejects out-of-range segments).
 - MemFS + BlockFS with checksum journal; /persist mounted with directory paths; MemFS supports nested paths and basic permission checks; BlockFS sanitizes invalid entries on mount.
-- Minimal network stack (ARP/UDP parsing + loopback) with NET_LITE socket syscalls over the net device path.
+- Minimal network stack (ARP/UDP parsing + loopback) with NET_LITE socket syscalls over the net device path (connect retries/timeouts, FIN on close).
 - UEFI kernel build is freestanding with minimal string/mem shims for kernel C++ code.
-- Ring3 init loads a real freestanding user ELF at `/bin/init`.
+- Ring3 init loads a real freestanding user ELF at `/bin/init` and can run `/persist/boot.rc` or `/boot.rc` scripts.
 - IVSHMEM projection exchange across 3 VMs.
 - Ring3 exec smoke path works (isolation still evolving).
 

@@ -471,6 +471,10 @@ inline int socket_close(Device* dev) {
         return -1;
     }
     SocketLite* sock = static_cast<SocketLite*>(dev->private_data);
+    if (sock && sock->backend == SocketLite::Backend::NET_LITE &&
+        sock->state == SocketLite::State::CONNECTED && sock->conn_id != 0) {
+        (void)net_send_frame(sock->conn_id, kTcpLiteFin, nullptr, 0);
+    }
     socket_manager().release(sock);
     return 0;
 }

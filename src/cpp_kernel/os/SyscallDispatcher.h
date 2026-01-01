@@ -620,6 +620,17 @@ inline int64_t sys_listen(uint64_t fd, uint64_t backlog, uint64_t,
     }
     sock->state = SocketLite::State::LISTENING;
     sock->pending = nullptr;
+    sock->pending_next = nullptr;
+    sock->pending_count = 0;
+    if (sock->backend == SocketLite::Backend::NET_LITE) {
+        uint64_t clamped = backlog == 0 ? 1 : backlog;
+        if (clamped > kNetLiteMaxBacklog) {
+            clamped = kNetLiteMaxBacklog;
+        }
+        sock->backlog = (uint8_t)clamped;
+    } else {
+        sock->backlog = 1;
+    }
     return 0;
 }
 
@@ -636,10 +647,14 @@ inline int64_t sys_accept(uint64_t fd, uint64_t addr_ptr, uint64_t addrlen_ptr,
     if (listener->state != SocketLite::State::LISTENING) {
         return -EINVAL;
     }
+    SocketLite* server_sock = nullptr;
     if (listener->backend == SocketLite::Backend::NET_LITE) {
         socket_poll_net();
+        server_sock = socket_pop_pending(listener);
+    } else {
+        server_sock = listener->pending;
+        listener->pending = nullptr;
     }
-    SocketLite* server_sock = listener->pending;
     if (!server_sock) {
         return -EAGAIN;
     }
@@ -675,7 +690,13 @@ inline int64_t sys_accept(uint64_t fd, uint64_t addr_ptr, uint64_t addrlen_ptr,
         return -1;
     }
 
-    listener->pending = nullptr;
+    if (listener->backend == SocketLite::Backend::NET_LITE) {
+        if (listener->pending_count == 0) {
+            listener->pending = nullptr;
+        }
+    } else {
+        listener->pending = nullptr;
+    }
 
     if (addr_ptr != 0) {
         rse_sockaddr out{};

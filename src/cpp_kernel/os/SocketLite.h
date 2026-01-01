@@ -23,6 +23,7 @@ static constexpr uint16_t kTcpLiteData = 1u << 3;
 static constexpr uint32_t kNetLiteRetryTicks = 8u;
 static constexpr uint32_t kNetLiteConnectTimeout = 64u;
 static constexpr uint8_t kNetLiteMaxRetries = 3u;
+static constexpr uint8_t kNetLiteMaxBacklog = 4u;
 
 inline uint32_t g_socket_net_ticks = 0;
 
@@ -56,8 +57,11 @@ struct SocketLite {
     uint32_t connect_deadline;
     uint32_t connect_retry;
     uint8_t connect_attempts;
+    uint8_t backlog;
+    uint8_t pending_count;
     SocketLite* peer;
     SocketLite* pending;
+    SocketLite* pending_next;
     Device device;
     uint8_t buffer[kBufferSize];
     size_t head;
@@ -73,8 +77,11 @@ struct SocketLite {
           connect_deadline(0),
           connect_retry(0),
           connect_attempts(0),
+          backlog(0),
+          pending_count(0),
           peer(nullptr),
           pending(nullptr),
+          pending_next(nullptr),
           head(0),
           tail(0),
           size(0) {
@@ -125,9 +132,15 @@ public:
             if (&sockets_[i] == sock) {
                 SocketLite* pending = sock->pending;
                 detach_peers(sock);
-                if (pending && pending != sock) {
-                    sock->pending = nullptr;
-                    release(pending);
+                sock->pending = nullptr;
+                sock->pending_count = 0;
+                while (pending) {
+                    SocketLite* next = pending->pending_next;
+                    pending->pending_next = nullptr;
+                    if (pending != sock) {
+                        release(pending);
+                    }
+                    pending = next;
                 }
                 in_use_[i] = false;
                 sockets_[i] = SocketLite();
@@ -237,8 +250,25 @@ private:
                 other.peer = nullptr;
                 other.state = SocketLite::State::CLOSED;
             }
-            if (other.pending == sock) {
-                other.pending = nullptr;
+            if (other.pending) {
+                SocketLite* prev = nullptr;
+                SocketLite* node = other.pending;
+                while (node) {
+                    if (node == sock) {
+                        if (prev) {
+                            prev->pending_next = node->pending_next;
+                        } else {
+                            other.pending = node->pending_next;
+                        }
+                        node->pending_next = nullptr;
+                        if (other.pending_count > 0) {
+                            other.pending_count--;
+                        }
+                        break;
+                    }
+                    prev = node;
+                    node = node->pending_next;
+                }
             }
         }
     }
@@ -253,6 +283,38 @@ private:
 inline SocketManager& socket_manager() {
     static SocketManager mgr;
     return mgr;
+}
+
+inline void socket_append_pending(SocketLite* listener, SocketLite* pending) {
+    if (!listener || !pending) {
+        return;
+    }
+    pending->pending_next = nullptr;
+    if (!listener->pending) {
+        listener->pending = pending;
+    } else {
+        SocketLite* tail = listener->pending;
+        while (tail->pending_next) {
+            tail = tail->pending_next;
+        }
+        tail->pending_next = pending;
+    }
+    if (listener->pending_count < UINT8_MAX) {
+        listener->pending_count++;
+    }
+}
+
+inline SocketLite* socket_pop_pending(SocketLite* listener) {
+    if (!listener || !listener->pending) {
+        return nullptr;
+    }
+    SocketLite* head = listener->pending;
+    listener->pending = head->pending_next;
+    head->pending_next = nullptr;
+    if (listener->pending_count > 0) {
+        listener->pending_count--;
+    }
+    return head;
 }
 
 inline NetWireState& net_wire_state() {
@@ -363,7 +425,13 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
         TcpLiteSynPayload syn{};
         std::memcpy(&syn, payload, sizeof(syn));
         SocketLite* listener = mgr.find_listener(syn.dest_port, SocketLite::Backend::NET_LITE);
-        if (!listener || listener->pending) {
+        if (!listener) {
+            return;
+        }
+        if (listener->backlog == 0) {
+            listener->backlog = 1;
+        }
+        if (listener->pending_count >= listener->backlog) {
             return;
         }
         SocketLite* server_sock = mgr.allocate(SocketLite::Backend::NET_LITE);
@@ -374,7 +442,7 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
         server_sock->port = syn.dest_port;
         server_sock->peer_port = syn.src_port;
         server_sock->conn_id = header.conn;
-        listener->pending = server_sock;
+        socket_append_pending(listener, server_sock);
         (void)net_send_frame(header.conn, kTcpLiteAck, nullptr, 0);
         return;
     }

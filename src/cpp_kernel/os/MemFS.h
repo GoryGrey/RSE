@@ -496,6 +496,15 @@ public:
                 ++seen_count;
             }
         }
+        for (uint32_t i = 0; i + 1 < seen_count; ++i) {
+            for (uint32_t j = i + 1; j < seen_count; ++j) {
+                if (std::strcmp(seen[j].name, seen[i].name) < 0) {
+                    SeenEntry tmp = seen[i];
+                    seen[i] = seen[j];
+                    seen[j] = tmp;
+                }
+            }
+        }
 
         uint32_t written = 0;
         for (uint32_t i = 0; i < seen_count; ++i) {

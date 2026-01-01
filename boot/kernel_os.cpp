@@ -47,7 +47,7 @@ static size_t heap_offset;
 alignas(4096) static uint8_t phys_mem[16 * 1024 * 1024];
 static constexpr uint32_t kTorusCount = 3;
 static constexpr uint32_t kExtraProcs = 4;
-static constexpr uint32_t kRing3Slots = 2;
+static constexpr uint32_t kRing3Slots = 3;
 static constexpr uint64_t kRing3TimeSlice = 64;
 static constexpr uint64_t kKernelUserBase = 0x40000000ull;
 static constexpr uint64_t kKernelUserWindow = 0x200000ull;

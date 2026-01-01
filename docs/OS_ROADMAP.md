@@ -98,6 +98,7 @@ Success criteria:
 
 - Use real logs only; no synthetic numbers.
 - Run `./scripts/run_full_system_test.sh` and `./scripts/run_linux_baseline.sh` for snapshots.
+- Quick UEFI boot check: `./scripts/run_quick_system_test.sh` (smoke benchmarks only).
 - Default runs use smoke mode (`RSE_BENCH_SMOKE=1`) to validate real workloads; set `RSE_BENCH_SMOKE=0` for full UEFI/virtio/net micro-benchmarks.
 - Keep benchmarks apples-to-apples before claiming comparisons.
 

@@ -1,4 +1,4 @@
-[RSE] run start torus=2 ts=1767285740
+[RSE] run start torus=2 ts=1767287943
 [RSE] run cfg net_mode=none timeout=60 shm_size=65536
 [RSE] run build_dir=/home/gorygrey/Apps/RSE/build/net_exchange/torus2
 [RSE] run shm_path=/home/gorygrey/Apps/RSE/build/net_exchange/ivshmem.bin
@@ -6,14 +6,14 @@ mkdir -p /home/gorygrey/Apps/RSE/build/net_exchange/torus2
 gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -fno-builtin -nostdlib -std=c11 -nostdlib -Wl,-T,/home/gorygrey/Apps/RSE/boot/init_user.ld -no-pie -o /home/gorygrey/Apps/RSE/build/net_exchange/torus2/init_user.elf /home/gorygrey/Apps/RSE/boot/init_user.c
 cd /home/gorygrey/Apps/RSE/build/net_exchange/torus2 && objcopy -I binary -O elf64-x86-64 -B i386:x86-64 init_user.elf init_user_blob.o
 gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=2 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=1 -DRSE_AUTO_EXIT=1 -DRSE_BENCH_SMOKE=1 -c /home/gorygrey/Apps/RSE/boot/kernel.c -o /home/gorygrey/Apps/RSE/build/net_exchange/torus2/kernel.o
-/home/gorygrey/Apps/RSE/boot/kernel.c:4505:13: warning: ‘bench_virtio_block’ defined but not used [-Wunused-function]
- 4505 | static void bench_virtio_block(void) {
+/home/gorygrey/Apps/RSE/boot/kernel.c:4514:13: warning: ‘bench_virtio_block’ defined but not used [-Wunused-function]
+ 4514 | static void bench_virtio_block(void) {
       |             ^~~~~~~~~~~~~~~~~~
-/home/gorygrey/Apps/RSE/boot/kernel.c:4388:13: warning: ‘bench_uefi_block’ defined but not used [-Wunused-function]
- 4388 | static void bench_uefi_block(struct rse_boot_info *boot_info) {
+/home/gorygrey/Apps/RSE/boot/kernel.c:4397:13: warning: ‘bench_uefi_block’ defined but not used [-Wunused-function]
+ 4397 | static void bench_uefi_block(struct rse_boot_info *boot_info) {
       |             ^~~~~~~~~~~~~~~~
-/home/gorygrey/Apps/RSE/boot/kernel.c:4287:13: warning: ‘bench_uefi_fs’ defined but not used [-Wunused-function]
- 4287 | static void bench_uefi_fs(struct rse_boot_info *boot_info) {
+/home/gorygrey/Apps/RSE/boot/kernel.c:4296:13: warning: ‘bench_uefi_fs’ defined but not used [-Wunused-function]
+ 4296 | static void bench_uefi_fs(struct rse_boot_info *boot_info) {
       |             ^~~~~~~~~~~~~
 gcc -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c11 -I/usr/include/efi -I/usr/include/efi/x86_64 -DHAVE_USE_MS_ABI -DRSE_TORUS_ID=2 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=1 -DRSE_AUTO_EXIT=1 -DRSE_BENCH_SMOKE=1 -c /home/gorygrey/Apps/RSE/boot/init.c -o /home/gorygrey/Apps/RSE/build/net_exchange/torus2/init.o
 g++ -Wall -Wextra -O2 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone -mcmodel=kernel -nostdlib -nostartfiles -fno-builtin -std=c++20 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -DRSE_KERNEL -DRSE_TORUS_ID=2 -DRSE_NET_EXCHANGE=0 -DRSE_SHM_EXCHANGE=1 -DRSE_NET_RAW=0 -DRSE_ENABLE_USERMODE=1 -DRSE_AUTO_EXIT=1 -DRSE_BENCH_SMOKE=1 -c /home/gorygrey/Apps/RSE/boot/kernel_os.cpp -o /home/gorygrey/Apps/RSE/build/net_exchange/torus2/kernel_os.o
@@ -51,7 +51,7 @@ Added to ISO image: directory '/'='/home/gorygrey/Apps/RSE/build/net_exchange/to
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : WARNING : Boot image load size exceeds 65535 blocks of 512 bytes. Will record 0 in El Torito to extend ESP to end-of-medium.
-xorriso : UPDATE :  28.12% done
+xorriso : UPDATE :  30.12% done
 ISO image produced: 66276 sectors
 Written to medium : 66276 sectors at LBA 0
 Writing to 'stdio:/home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_efi.iso' completed successfully.
@@ -63,12 +63,12 @@ rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_raw.img
 dd if=/dev/zero of=/home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_raw.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.114402 s, 587 MB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.0745838 s, 900 MB/s
 rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_virtio.img
 dd if=/dev/zero of=/home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_virtio.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.0809636 s, 829 MB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.0654069 s, 1.0 GB/s
 cp /usr/share/OVMF/OVMF_VARS_4M.fd /home/gorygrey/Apps/RSE/build/net_exchange/torus2/OVMF_VARS.fd
 qemu-system-x86_64 -machine q35 -m 512M \
 	-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
@@ -420,21 +420,21 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=1000000 cycles=222747434 checksum=13489434137010960902
+[init] compute ops=1000000 cycles=229313627 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=1000000 cycles=218832303 checksum=13489434137010960902
+[init] compute ops=1000000 cycles=223466533 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=1000000 cycles=216233176 checksum=13489434137010960902
+[init] compute ops=1000000 cycles=218425332 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -714,7 +714,7 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] file ops=160 bytes=131072 cycles=16166844345
+[init] file ops=160 bytes=131072 cycles=17195023338
 [init] ls /
 dev/
 persist/
@@ -731,7 +731,7 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] file ops=160 bytes=131072 cycles=15012221399
+[init] file ops=160 bytes=131072 cycles=16281852824
 [init] ls /
 dev/
 persist/
@@ -748,7 +748,7 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] file ops=160 bytes=131072 cycles=14328464340
+[init] file ops=160 bytes=131072 cycles=15725490178
 [init] ls /
 dev/
 persist/
@@ -999,21 +999,21 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=1655317155
+[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=1958042416
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=1571224316
+[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=1807751067
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=1481323889
+[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=1596826133
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -1606,33 +1606,21 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=2000000 cycles=418907024 checksum=9791868472914447520
+[init] compute ops=2000000 cycles=533944386 checksum=9791868472914447520
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=2000000 cycles=418295133 checksum=9791868472914447520
+[init] compute ops=2000000 cycles=533322592 checksum=9791868472914447520
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=2000000 cycles=417063262 checksum=9791868472914447520
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
+[init] compute ops=2000000 cycles=532017766 checksum=9791868472914447520
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -1915,21 +1903,33 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] memstress bytes=2097152 cycles=258699137 checksum=267386880
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] memstress bytes=2097152 cycles=255029523 checksum=14757395259421174205
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] memstress bytes=2097152 cycles=253262181 checksum=267386880
+[init] memstress bytes=2097152 cycles=225874398 checksum=7378697629981289401
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] memstress bytes=2097152 cycles=220825363 checksum=7378697629842319097
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] memstress bytes=2097152 cycles=216375399 checksum=267386880
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -2288,33 +2288,21 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=1000000 cycles=272506449 checksum=13489434137010960902
+[init] compute ops=1000000 cycles=213035731 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=1000000 cycles=279635757 checksum=13489434137010960902
+[init] compute ops=1000000 cycles=214693197 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=1000000 cycles=277939742 checksum=13489434137010960902
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
+[init] compute ops=1000000 cycles=215652499 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -2447,77 +2435,22 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
-[init] net0 wrote=576 read=4096 cycles=187059888
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
-[init] net0 wrote=384 read=4096 cycles=159747068
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
-[init] net0 wrote=0 read=4096 cycles=153545790
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
-[RSE] user mode smoke ok
+[RSE] #PF fault
+  rip=1073745441 cs=27 err=21 cr2=1073745441
+[RSE] user mode smoke fault
 [RSE] user mode exec smoke done
 [RSE] compute benchmark start
-[RSE] compute ops=400000 cycles=38565693 cycles/op=96 checksum=4180332335208930419
-[RSE] compute ns=13289349 ns/op=33
+[RSE] compute ops=400000 cycles=25752574 cycles/op=64 checksum=4180332335208930419
+[RSE] compute ns=8874077 ns/op=22
 [RSE] memory benchmark start
-[RSE] memory bytes=67108864 cycles=2275051355 cycles/byte=33
-[RSE] memory ns=783959805 ns/byte=11
+[RSE] memory bytes=67108864 cycles=1000894528 cycles/byte=14
+[RSE] memory ns=344898183 ns/byte=5
 [RSE] ramfs benchmark start
-[RSE] ramfs ops=192 cycles=6311032 cycles/op=32869 checksum=8355840 files=0
-[RSE] ramfs ns=2174718 ns/op=11326
+[RSE] ramfs ops=192 cycles=10295568 cycles/op=53622 checksum=8355840 files=0
+[RSE] ramfs ns=3547749 ns/op=18477
 [RSE] fastio benchmark start
-[RSE] fastio bytes=2097152 cycles=70182512 cycles/byte=33
-[RSE] fastio ns=24184187 ns/byte=11
+[RSE] fastio bytes=2097152 cycles=40253244 cycles/byte=19
+[RSE] fastio ns=13870862 ns/byte=6
 [RSE] UEFI FS benchmark skipped (smoke)
 [RSE] UEFI block benchmark skipped (smoke)
 [RSE] virtio-blk benchmark skipped (smoke)
@@ -2525,8 +2458,5 @@ stat /dev/blk0 size=0 type=device
 [RSE] udp/http server benchmark skipped (smoke)
 [RSE] http loopback benchmark skipped (smoke)
 [RSE] benchmarks end
-[RSE] #PF fault
-  rip=268442832 cs=8 err=2 cr2=2147483648
-qemu-system-x86_64: terminating on signal 15 from pid 805733 (timeout)
-[RSE] run exit rc=124
-[RSE] run timeout after 60s
+[RSE] auto shutdown
+[RSE] run exit rc=0

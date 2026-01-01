@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: January 01, 2026 (PIT timer preemption; ring3 sleep/yield + timeslice; NET_LITE connect retries/backlog/FIN handling; workload yields; directory listing sort; ISO workflow scripts; full system test logged)
+Last Updated: January 01, 2026 (PIT timer preemption; ring3 sleep/yield + timeslice; NET_LITE connect retries/backlog/FIN handling; workload yields; directory listing sort; ISO workflow scripts; logged test heartbeat; quick boot test runner)
 
 ---
 
@@ -48,6 +48,7 @@ Design guardrail:
 ### Verified Test Coverage
 
 - `./scripts/run_full_system_test.sh` (build + native tests + UEFI boot + IVSHMEM exchange).
+- `./scripts/run_quick_system_test.sh` (UEFI boot + smoke benchmarks only).
 - `./scripts/run_linux_baseline.sh` (host baseline).
 - Latest full system run log: `build/boot/full_test.log` (Jan 01, 2026).
 - Syscall + OS tests: `sys_wait_test`, `sys_ps_test`, `sys_stat_test`, `sys_memfs_dir_test`,
@@ -125,6 +126,8 @@ Notes:
 
 - Full system verification: `./scripts/run_full_system_test.sh`
 - Full system verification (logged): `LOG_PATH=/tmp/rse_full_test.log ./scripts/run_full_system_test_logged.sh`
+- Quick UEFI verification: `./scripts/run_quick_system_test.sh`
+- Logged runs can show liveness: `LIVE_TAIL=1 HEARTBEAT_SECS=15 ./scripts/run_full_system_test_logged.sh`
 - Smoke benchmark default: `RSE_BENCH_SMOKE=1` (set `RSE_BENCH_SMOKE=0` for full UEFI/virtio/net micro-benchmarks).
 - Projection exchange only: `./scripts/run_projection_exchange.sh`
 - Host baseline: `./scripts/run_linux_baseline.sh`

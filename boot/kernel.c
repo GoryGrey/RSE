@@ -602,10 +602,11 @@ __attribute__((used)) static void irq0_handler(struct int80_frame* frame) {
     if (kernel_cr3 && user_cr3 != kernel_cr3) {
         write_cr3(kernel_cr3);
     }
-    if (!frame || (frame->cs & 0x3) != 0x3) {
+    bool in_user = frame && ((frame->cs & 0x3) == 0x3);
+    if (!in_user) {
         pic_eoi();
         if (kernel_cr3) {
-            write_cr3(user_cr3);
+            write_cr3(kernel_cr3);
         }
         return;
     }
@@ -1139,7 +1140,12 @@ static bool setup_user_pages(uint32_t torus_id, uint64_t *entry_out, uint64_t *s
         serial_write_u64(torus_id);
         serial_write("\n");
         if (rse_os_ring3_context(&ring3_entry, &ring3_stack)) {
-            if (refresh_user_page_table(ring3_entry, ring3_stack)) {
+            uint64_t saved_cr3 = read_cr3();
+            bool refreshed = refresh_user_page_table(ring3_entry, ring3_stack);
+            if (saved_cr3 != read_cr3()) {
+                write_cr3(saved_cr3);
+            }
+            if (refreshed) {
                 *entry_out = ring3_entry;
                 *stack_out = ring3_stack ? ring3_stack : USER_STACK_TOP;
                 return true;
@@ -1195,7 +1201,7 @@ static bool setup_user_pages(uint32_t torus_id, uint64_t *entry_out, uint64_t *s
 __attribute__((noinline, unused)) static void enter_user_mode(uint64_t entry, uint64_t user_stack) {
     uint64_t rflags = 0;
     __asm__ volatile("pushfq; pop %0" : "=r"(rflags));
-    rflags &= ~0x200;
+    rflags |= 0x200;
     uint64_t cs = GDT_USER_CODE | 0x3;
     uint64_t ss = GDT_USER_DATA | 0x3;
     __asm__ volatile(
@@ -1239,10 +1245,13 @@ __attribute__((unused)) static void run_user_mode_smoke(uint32_t torus_id) {
           "=m"(g_saved_r15)
         :
         : "memory");
+    uint64_t saved_flags = read_rflags();
+    __asm__ volatile("cli" ::: "memory");
     g_saved_cr3 = read_cr3();
     write_cr3(g_user_cr3);
     enter_user_mode(entry, user_stack);
     write_cr3(g_saved_cr3);
+    write_rflags(saved_flags);
     if (g_user_mode_exited == 1) {
         serial_write("[RSE] user mode smoke ok\n");
     } else if (g_user_mode_exited < 0) {

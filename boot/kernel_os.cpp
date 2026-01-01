@@ -181,6 +181,10 @@ extern "C" uint64_t rse_os_user_translate(uint64_t vaddr) {
     if (!proc->vmem->isUserRange(page, os::PAGE_SIZE)) {
         return 0;
     }
+    const os::PageTableEntry* pte = proc->memory.page_table->getPTE(page);
+    if (!pte || !pte->isPresent() || !pte->isUser()) {
+        return 0;
+    }
     return proc->memory.page_table->translate(page);
 }
 
@@ -194,7 +198,7 @@ extern "C" uint64_t rse_os_user_flags(uint64_t vaddr) {
         return 0;
     }
     const os::PageTableEntry* pte = proc->memory.page_table->getPTE(page);
-    if (!pte || !pte->isPresent()) {
+    if (!pte || !pte->isPresent() || !pte->isUser()) {
         return 0;
     }
     uint64_t flags = 1;

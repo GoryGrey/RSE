@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: January 01, 2026 (PIT timer preemption; ring3 sleep/yield + timeslice; user-pointer bounds tightened; NET_LITE connect retries/backlog/FIN handling; workload yields; directory listing sort; ISO workflow scripts; logged test heartbeat; quick boot test runner)
+Last Updated: January 01, 2026 (PIT timer preemption; ring3 sleep/yield + timeslice; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + overflow drops; workload yields; directory listing sort; ISO workflow scripts; logged test heartbeat; quick boot test runner)
 
 ---
 
@@ -25,11 +25,12 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 
 - Bootable UEFI kernel (serial + framebuffer) with dashboard and input.
 - In-kernel benchmarks (compute, memory, RAMFS, UEFI FS/block, fastio, HTTP loopback).
-- MemFS + BlockFS with per-process file descriptors, `/persist` directories, MemFS nested paths, deterministic list ordering, and permission checks on open/list/mkdir/unlink (including parent exec/write).
+- MemFS + BlockFS with per-process file descriptors, `/persist` directories, MemFS nested paths, deterministic list ordering, and permission checks on open/list/mkdir/unlink (including parent exec/write) with `.`/`..` path segments rejected.
 - BlockFS persistence with checksum + journal + corruption detection (flat table, directory paths), with mount-time sanitize for duplicates/invalid entries and journal write checks; remove fully resets entry metadata.
-- TCP-lite framing over `/dev/net0` for loopback handshake/data tests with NET_LITE connect retries/timeouts, FIN-on-close, and queued pending accepts.
+- TCP-lite framing over `/dev/net0` for loopback handshake/data tests with NET_LITE connect retries/timeouts, FIN-on-close, queued pending accepts, and overflow-safe wire buffering.
 - In-kernel socket syscalls (`socket/bind/listen/accept/connect`) with loopback buffers and NET_LITE framing over the net device path.
 - Syscall dispatcher with user-range validation anchored to per-process code/stack bounds (including nanosleep/pipe/time pointers) and per-torus dispatch.
+- Ring3 page table mirroring only maps pages flagged as user in the process page tables.
 - ELF loader enforces the user virtual address window; out-of-range segments are rejected.
 - User mmap rejects overlaps; mmap/mprotect/munmap validate zero/unaligned sizes; PROT_EXEC blocked for anonymous mmap and limited to code pages; stack guard pages widened; mmap uses guard pages by default; read/write reject oversized counts; mprotect refuses unmapped ranges; VFS reserves `/dev` and rejects invalid `/persist` subpaths; net loopback backpressure returns `-EAGAIN`.
 - Ring3 exec smoke (UEFI): exec path works; isolation still evolving.

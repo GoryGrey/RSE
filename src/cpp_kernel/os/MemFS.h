@@ -151,17 +151,30 @@ private:
         }
         uint32_t len = 0;
         bool in_segment = false;
-        for (const char* p = path + 1; *p; ++p) {
-            if (*p == '\\') {
-                return false;
-            }
-            if (*p == '/') {
+        const char* seg_start = path + 1;
+        uint32_t seg_len = 0;
+        for (const char* p = path + 1; ; ++p) {
+            char c = *p;
+            if (c == '/' || c == '\0') {
                 if (!in_segment) {
                     return false;
                 }
+                if ((seg_len == 1 && seg_start[0] == '.') ||
+                    (seg_len == 2 && seg_start[0] == '.' && seg_start[1] == '.')) {
+                    return false;
+                }
+                if (c == '\0') {
+                    break;
+                }
                 in_segment = false;
+                seg_start = p + 1;
+                seg_len = 0;
             } else {
                 in_segment = true;
+                seg_len++;
+            }
+            if (*p == '\\') {
+                return false;
             }
             if (++len > kNameMax) {
                 return false;

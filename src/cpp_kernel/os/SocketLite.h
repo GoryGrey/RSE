@@ -95,8 +95,9 @@ struct NetWireState {
     size_t head;
     size_t tail;
     size_t size;
+    uint32_t drops;
 
-    NetWireState() : head(0), tail(0), size(0) {
+    NetWireState() : head(0), tail(0), size(0), drops(0) {
         std::memset(buffer, 0, sizeof(buffer));
     }
 };
@@ -322,11 +323,16 @@ inline NetWireState& net_wire_state() {
     return state;
 }
 
-inline void net_wire_push(const uint8_t* data, size_t len) {
+inline bool net_wire_push(const uint8_t* data, size_t len) {
     if (!data || len == 0) {
-        return;
+        return false;
     }
     NetWireState& wire = net_wire_state();
+    size_t free_space = NetWireState::kCapacity - wire.size;
+    if (len > free_space) {
+        wire.drops++;
+        return false;
+    }
     size_t remaining = len;
     const uint8_t* src = data;
     while (remaining > 0 && wire.size < NetWireState::kCapacity) {
@@ -335,6 +341,7 @@ inline void net_wire_push(const uint8_t* data, size_t len) {
         wire.size++;
         remaining--;
     }
+    return remaining == 0;
 }
 
 inline bool net_wire_peek(uint8_t* out, size_t len) {
@@ -500,7 +507,9 @@ inline void socket_poll_net() {
         if (got <= 0) {
             break;
         }
-        net_wire_push(scratch, static_cast<size_t>(got));
+        if (!net_wire_push(scratch, static_cast<size_t>(got))) {
+            break;
+        }
     }
 
     while (net_wire_state().size >= sizeof(TcpLiteHeader)) {

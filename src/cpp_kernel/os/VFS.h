@@ -186,11 +186,48 @@ private:
         if (!blockfs_ || !blockfs_->isMounted()) {
             return false;
         }
-        uint16_t mode = 0;
-        if (!persist_dir_mode(path, &mode)) {
-            return false;
+        if (!path || path[0] == '\0') {
+            return check_mode(kPersistRootMode, needed);
         }
-        return check_mode(mode, needed);
+        char prefix[BlockFS::kNameMax + 1] = {};
+        size_t prefix_len = 0;
+        const char* cursor = path;
+        while (*cursor) {
+            const char* slash = std::strchr(cursor, '/');
+            size_t seg_len = slash ? static_cast<size_t>(slash - cursor)
+                                   : std::strlen(cursor);
+            if (seg_len == 0) {
+                return false;
+            }
+            size_t needed_len = prefix_len + (prefix_len ? 1 : 0) + seg_len;
+            if (needed_len > BlockFS::kNameMax) {
+                return false;
+            }
+            if (prefix_len) {
+                prefix[prefix_len++] = '/';
+            }
+            std::memcpy(prefix + prefix_len, cursor, seg_len);
+            prefix_len += seg_len;
+            prefix[prefix_len] = '\0';
+            uint32_t size = 0;
+            uint8_t type = 0;
+            uint16_t mode = 0;
+            if (!blockfs_->stat(prefix, &size, &type, &mode)) {
+                return false;
+            }
+            if (type != BlockFS::kEntryDir) {
+                return false;
+            }
+            uint16_t need = slash ? kPermExec : needed;
+            if (!check_mode(mode, need)) {
+                return false;
+            }
+            if (!slash) {
+                break;
+            }
+            cursor = slash + 1;
+        }
+        return true;
     }
     
 public:

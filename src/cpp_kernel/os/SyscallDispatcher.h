@@ -914,6 +914,16 @@ inline int64_t sys_nanosleep(uint64_t req_ptr, uint64_t rem_ptr, uint64_t,
     return scheduler->sleepCurrent(ticks) ? 0 : -EAGAIN;
 }
 
+inline int64_t sys_yield(uint64_t, uint64_t, uint64_t,
+                         uint64_t, uint64_t, uint64_t) {
+    TorusScheduler* scheduler = get_current_scheduler();
+    if (!scheduler) {
+        return -ESRCH;
+    }
+    (void)scheduler->yieldCurrent();
+    return 0;
+}
+
 /**
  * sys_exec: Replace current process image with a new ELF binary.
  */
@@ -1081,7 +1091,7 @@ inline int64_t sys_write(uint64_t fd, uint64_t buf_addr, uint64_t count,
         return -EFAULT;
     }
     if (enforce_user_memory(current)) {
-        static constexpr uint32_t kScratch = 256;
+        static constexpr uint32_t kScratch = 4096;
         uint8_t scratch[kScratch];
         uint64_t remaining = count;
         uint64_t addr = buf_addr;
@@ -1132,7 +1142,7 @@ inline int64_t sys_read(uint64_t fd, uint64_t buf_addr, uint64_t count,
         return -EFAULT;
     }
     if (enforce_user_memory(current)) {
-        static constexpr uint32_t kScratch = 256;
+        static constexpr uint32_t kScratch = 4096;
         uint8_t scratch[kScratch];
         uint64_t remaining = count;
         uint64_t addr = buf_addr;
@@ -1629,6 +1639,7 @@ public:
         register_handler(SYS_TIME, sys_time);
         register_handler(SYS_SLEEP, sys_sleep);
         register_handler(SYS_NANOSLEEP, sys_nanosleep);
+        register_handler(SYS_YIELD, sys_yield);
     }
     
     /**

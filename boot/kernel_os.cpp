@@ -47,6 +47,14 @@ static size_t heap_offset;
 alignas(4096) static uint8_t phys_mem[16 * 1024 * 1024];
 static constexpr uint32_t kTorusCount = 3;
 static constexpr uint32_t kExtraProcs = 4;
+static constexpr uint32_t kRing3Slots = 1;
+static constexpr uint64_t kKernelUserBase = 0x40000000ull;
+static constexpr uint64_t kKernelUserWindow = 0x200000ull;
+static constexpr uint64_t kKernelUserStackSize = 64 * 1024ull;
+static constexpr uint64_t kKernelUserStackTop = kKernelUserBase + kKernelUserWindow - os::PAGE_SIZE;
+static constexpr uint64_t kKernelUserStackBase = kKernelUserStackTop - kKernelUserStackSize;
+static constexpr uint64_t kKernelUserHeapBase = kKernelUserBase;
+static constexpr uint64_t kKernelUserHeapLimit = kKernelUserStackBase;
 
 struct UserProgramState {
     uint32_t phase;
@@ -59,7 +67,8 @@ static os::OSProcess* user_procs[kTorusCount][1 + kExtraProcs] = {};
 static UserProgramState user_states[kTorusCount][1 + kExtraProcs] = {};
 #endif
 static os::OSProcess* g_ring3_proc = nullptr;
-static os::OSProcess* g_ring3_procs[kTorusCount] = {};
+static os::OSProcess* g_ring3_procs[kTorusCount][kRing3Slots] = {};
+static uint32_t g_ring3_active[kTorusCount] = {};
 
 static bool map_user_page(os::OSProcess* proc, uint64_t vaddr, uint64_t flags, uint64_t* phys_out) {
     if (!proc || !phys_out || !proc->memory.page_table || !proc->vmem) {
@@ -647,9 +656,10 @@ static os::OSProcess* create_process(uint32_t torus_id, uint32_t slot, uint32_t 
     return new (storage[torus_id][slot]) os::OSProcess(pid, parent_pid, torus_id);
 }
 
-static os::OSProcess* create_ring3_process(uint32_t torus_id, uint32_t pid, uint32_t parent_pid) {
-    alignas(os::OSProcess) static uint8_t storage[kTorusCount][sizeof(os::OSProcess)];
-    return new (storage[torus_id]) os::OSProcess(pid, parent_pid, torus_id);
+static os::OSProcess* create_ring3_process(uint32_t torus_id, uint32_t slot,
+                                           uint32_t pid, uint32_t parent_pid) {
+    alignas(os::OSProcess) static uint8_t storage[kTorusCount][kRing3Slots][sizeof(os::OSProcess)];
+    return new (storage[torus_id][slot]) os::OSProcess(pid, parent_pid, torus_id);
 }
 
 
@@ -818,6 +828,26 @@ static bool load_init_elf_payload(const uint8_t** data_out, size_t* size_out) {
     *data_out = start;
     *size_out = static_cast<size_t>(end - start);
     return true;
+}
+
+static void configure_ring3_memory(os::OSProcess* proc) {
+    if (!proc || !proc->vmem) {
+        return;
+    }
+    proc->vmem->setStackBounds(kKernelUserStackBase, kKernelUserStackTop);
+    proc->vmem->setHeapBounds(kKernelUserHeapBase, kKernelUserHeapLimit);
+}
+
+static bool load_init_elf_image(os::OSProcess* proc) {
+    if (!proc) {
+        return false;
+    }
+    const uint8_t* image = nullptr;
+    size_t image_size = 0;
+    if (!load_init_elf_payload(&image, &image_size)) {
+        return false;
+    }
+    return proc->loadElfImageWithArgs(image, image_size, nullptr, nullptr);
 }
 
 static bool install_init_elf(TorusRuntime& rt, os::OSProcess* proc) {
@@ -1002,6 +1032,45 @@ static int os_ps_dump(char *buf, uint32_t len) {
 }
 #endif
 
+static bool ring3_alive(const os::OSProcess* proc) {
+    return proc && !proc->isZombie();
+}
+
+static os::OSProcess* ring3_pick_next(uint32_t torus_id, uint32_t* out_slot) {
+    if (torus_id >= kTorusCount || !out_slot) {
+        return nullptr;
+    }
+    uint32_t start = g_ring3_active[torus_id] % kRing3Slots;
+    for (uint32_t offset = 1; offset <= kRing3Slots; ++offset) {
+        uint32_t idx = (start + offset) % kRing3Slots;
+        os::OSProcess* proc = g_ring3_procs[torus_id][idx];
+        if (ring3_alive(proc)) {
+            *out_slot = idx;
+            return proc;
+        }
+    }
+    os::OSProcess* current = g_ring3_procs[torus_id][start];
+    if (ring3_alive(current)) {
+        *out_slot = start;
+        return current;
+    }
+    return nullptr;
+}
+
+static void ring3_set_active(uint32_t torus_id, uint32_t slot) {
+    if (torus_id >= kTorusCount || slot >= kRing3Slots) {
+        return;
+    }
+    g_ring3_active[torus_id] = slot;
+    g_ring3_proc = g_ring3_procs[torus_id][slot];
+    TorusRuntime& rt = g_runtimes[torus_id];
+    current_torus_id = torus_id;
+    os::current_torus_context = &rt.ctx;
+    if (rt.scheduler && g_ring3_proc) {
+        rt.scheduler->forceCurrentProcess(g_ring3_proc);
+    }
+}
+
 extern "C" int rse_os_prepare_ring3(uint32_t torus_id) {
     if (!g_runtimes_ready) {
         return 0;
@@ -1013,15 +1082,104 @@ extern "C" int rse_os_prepare_ring3(uint32_t torus_id) {
     if (!rt.scheduler || !rt.dispatcher) {
         return 0;
     }
-    os::OSProcess* proc = g_ring3_procs[torus_id];
+    uint32_t slot = g_ring3_active[torus_id] % kRing3Slots;
+    os::OSProcess* proc = g_ring3_procs[torus_id][slot];
+    if (!ring3_alive(proc)) {
+        proc = ring3_pick_next(torus_id, &slot);
+    }
     if (!proc) {
         return 0;
     }
-    g_ring3_proc = proc;
-    current_torus_id = torus_id;
-    os::current_torus_context = &rt.ctx;
-    rt.scheduler->forceCurrentProcess(g_ring3_proc);
+    ring3_set_active(torus_id, slot);
     return 1;
+}
+
+extern "C" int rse_os_ring3_context(uint64_t* entry_out, uint64_t* stack_out);
+
+struct Ring3Frame {
+    uint64_t rax, rbx, rcx, rdx;
+    uint64_t rsi, rdi, rbp;
+    uint64_t r8, r9, r10, r11, r12, r13, r14, r15;
+    uint64_t rip, cs, rflags, rsp, ss;
+};
+
+extern "C" void rse_os_sync_ring3_frame(const void* frame_ptr) {
+    if (!g_ring3_proc || !frame_ptr) {
+        return;
+    }
+    const Ring3Frame* frame = static_cast<const Ring3Frame*>(frame_ptr);
+    os::CPUContext& ctx = g_ring3_proc->context;
+    ctx.rax = frame->rax;
+    ctx.rbx = frame->rbx;
+    ctx.rcx = frame->rcx;
+    ctx.rdx = frame->rdx;
+    ctx.rsi = frame->rsi;
+    ctx.rdi = frame->rdi;
+    ctx.rbp = frame->rbp;
+    ctx.r8 = frame->r8;
+    ctx.r9 = frame->r9;
+    ctx.r10 = frame->r10;
+    ctx.r11 = frame->r11;
+    ctx.r12 = frame->r12;
+    ctx.r13 = frame->r13;
+    ctx.r14 = frame->r14;
+    ctx.r15 = frame->r15;
+    ctx.rip = frame->rip;
+    ctx.rsp = frame->rsp;
+    ctx.rflags = frame->rflags;
+}
+
+extern "C" int rse_os_ring3_load_frame(void* frame_ptr) {
+    if (!g_ring3_proc || !frame_ptr) {
+        return 0;
+    }
+    Ring3Frame* frame = static_cast<Ring3Frame*>(frame_ptr);
+    const os::CPUContext& ctx = g_ring3_proc->context;
+    frame->rax = ctx.rax;
+    frame->rbx = ctx.rbx;
+    frame->rcx = ctx.rcx;
+    frame->rdx = ctx.rdx;
+    frame->rsi = ctx.rsi;
+    frame->rdi = ctx.rdi;
+    frame->rbp = ctx.rbp;
+    frame->r8 = ctx.r8;
+    frame->r9 = ctx.r9;
+    frame->r10 = ctx.r10;
+    frame->r11 = ctx.r11;
+    frame->r12 = ctx.r12;
+    frame->r13 = ctx.r13;
+    frame->r14 = ctx.r14;
+    frame->r15 = ctx.r15;
+    frame->rip = ctx.rip;
+    if (ctx.rsp != 0) {
+        frame->rsp = ctx.rsp;
+    } else if (g_ring3_proc->memory.stack_pointer != 0) {
+        frame->rsp = g_ring3_proc->memory.stack_pointer;
+    }
+    if (ctx.rflags != 0) {
+        frame->rflags = ctx.rflags;
+    }
+    return 1;
+}
+
+extern "C" int rse_os_ring3_yield(uint64_t* entry_out, uint64_t* stack_out) {
+    if (!entry_out || !stack_out) {
+        return 0;
+    }
+    if (!g_runtimes_ready || !g_ring3_proc) {
+        return 0;
+    }
+    uint32_t torus_id = g_ring3_proc->torus_id;
+    if (torus_id >= kTorusCount) {
+        return 0;
+    }
+    uint32_t slot = 0;
+    os::OSProcess* next = ring3_pick_next(torus_id, &slot);
+    if (!next) {
+        return 0;
+    }
+    ring3_set_active(torus_id, slot);
+    return rse_os_ring3_context(entry_out, stack_out);
 }
 
 extern "C" int64_t rse_os_syscall_dispatch(int64_t num,
@@ -1590,20 +1748,28 @@ extern "C" void rse_os_run(void) {
     }
 
     for (uint32_t torus_id = 0; torus_id < kTorusCount; ++torus_id) {
-        if (g_ring3_procs[torus_id]) {
-            continue;
-        }
         TorusRuntime& rt = runtimes[torus_id];
-        g_ring3_procs[torus_id] = create_ring3_process(torus_id, rt.ctx.next_pid++, 0);
-        g_ring3_procs[torus_id]->initMemory(rt.phys_alloc);
-        g_ring3_procs[torus_id]->fd_table.bindStandardDevices(rt.console);
-        rt.scheduler->addProcess(g_ring3_procs[torus_id]);
-        if (!install_init_elf(rt, g_ring3_procs[torus_id])) {
-            serial_write("[RSE] init elf install failed\n");
+        for (uint32_t slot = 0; slot < kRing3Slots; ++slot) {
+            if (g_ring3_procs[torus_id][slot]) {
+                continue;
+            }
+            g_ring3_procs[torus_id][slot] =
+                create_ring3_process(torus_id, slot, rt.ctx.next_pid++, 0);
+            g_ring3_procs[torus_id][slot]->initMemory(rt.phys_alloc);
+            configure_ring3_memory(g_ring3_procs[torus_id][slot]);
+            g_ring3_procs[torus_id][slot]->fd_table.bindStandardDevices(rt.console);
+            rt.scheduler->addProcess(g_ring3_procs[torus_id][slot]);
+            if (!install_init_elf(rt, g_ring3_procs[torus_id][slot])) {
+                serial_write("[RSE] init elf install failed\n");
+            }
+            if (!load_init_elf_image(g_ring3_procs[torus_id][slot])) {
+                serial_write("[RSE] init elf load failed\n");
+            }
         }
+        g_ring3_active[torus_id] = 0;
     }
     if (!g_ring3_proc) {
-        g_ring3_proc = g_ring3_procs[0];
+        g_ring3_proc = g_ring3_procs[0][0];
     }
 
     #if !RSE_ENABLE_USERMODE

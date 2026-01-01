@@ -121,6 +121,7 @@ Notes:
 
 - Full system verification: `./scripts/run_full_system_test.sh`
 - Full system verification (logged): `LOG_PATH=/tmp/rse_full_test.log ./scripts/run_full_system_test_logged.sh`
+- Smoke benchmark default: `RSE_BENCH_SMOKE=1` (set `RSE_BENCH_SMOKE=0` for full UEFI/virtio/net micro-benchmarks).
 - Projection exchange only: `./scripts/run_projection_exchange.sh`
 - Host baseline: `./scripts/run_linux_baseline.sh`
 - BraidShell telemetry: set `RSE_METRICS_PATH` to a real metrics log.

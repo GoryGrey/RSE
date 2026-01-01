@@ -46,6 +46,7 @@ constexpr int SYS_PIPE      = 30;
 constexpr int SYS_DUP       = 31;
 constexpr int SYS_DUP2      = 32;
 constexpr int SYS_SIGNAL    = 33;
+constexpr int SYS_YIELD     = 34;
 
 // Time
 constexpr int SYS_TIME      = 40;
@@ -310,6 +311,10 @@ inline int64_t sleep(uint64_t seconds) {
 
 inline int64_t nanosleep(const rse_timespec* req, rse_timespec* rem) {
     return syscall(SYS_NANOSLEEP, (uint64_t)req, (uint64_t)rem);
+}
+
+inline int64_t sched_yield() {
+    return syscall(SYS_YIELD);
 }
 
 /**

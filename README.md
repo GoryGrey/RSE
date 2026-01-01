@@ -82,6 +82,7 @@ Metrics are captured per run. Use logs to inspect real values:
 
 - Kernel + UEFI benchmarks: `./scripts/run_full_system_test.sh` (see `build/boot/boot.log` or `/tmp` overrides).
 - Host baseline: `./scripts/run_linux_baseline.sh`.
+- Default smoke mode: `RSE_BENCH_SMOKE=1` (set `RSE_BENCH_SMOKE=0` to run full UEFI/virtio/net micro-benchmarks).
 
 Latest snapshot (Dec 28, 2025):
 

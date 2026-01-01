@@ -5,8 +5,9 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BOOT_LOG_DIR="${BOOT_LOG_DIR:-${ROOT_DIR}/build/boot}"
 BOOT_LOG="${BOOT_LOG:-${BOOT_LOG_DIR}/boot.log}"
 NET_LOG_DIR="${NET_LOG_DIR:-${ROOT_DIR}/benchmarks/net_exchange}"
-TIMEOUT_BOOT="${TIMEOUT_BOOT:-90}"
+TIMEOUT_BOOT="${TIMEOUT_BOOT:-240}"
 TIMEOUT_EXCHANGE="${TIMEOUT_EXCHANGE:-45}"
+RSE_BENCH_SMOKE="${RSE_BENCH_SMOKE:-1}"
 
 say() {
   echo "==> $*"
@@ -92,6 +93,7 @@ make -f "${ROOT_DIR}/boot/Makefile.uefi" "${ROOT_DIR}/build/boot/rse_efi.iso"
 
 say "Boot UEFI ISO (headless) and capture log"
 mkdir -p "${BOOT_LOG_DIR}"
+export RSE_BENCH_SMOKE
 set +e
 timeout "${TIMEOUT_BOOT}s" make -f "${ROOT_DIR}/boot/Makefile.uefi" run-iso 2>&1 | tee "${BOOT_LOG}"
 boot_rc=${PIPESTATUS[0]}

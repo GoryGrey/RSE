@@ -440,6 +440,32 @@ public:
         return true;
     }
 
+    bool yieldCurrent() {
+        if (!current_process_) {
+            return false;
+        }
+        OSProcess* prev = current_process_;
+        prev->saveContext();
+        prev->setReady();
+        if (!ready_queue_.push_back(prev)) {
+            prev->setRunning();
+            current_process_ = prev;
+            return false;
+        }
+        current_process_ = schedule();
+        if (!current_process_) {
+            current_process_ = prev;
+            current_process_->setRunning();
+            return false;
+        }
+        current_process_->setRunning();
+        current_process_->resetTimeSlice();
+        current_process_->restoreContext();
+        current_process_->last_scheduled = total_ticks_;
+        context_switches_++;
+        return true;
+    }
+
     template <typename Fn>
     void forEachProcess(Fn&& fn) const {
         if (current_process_) {

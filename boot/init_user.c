@@ -14,6 +14,14 @@
 #define SYS_MKDIR     18
 #define SYS_GETPID    5
 #define SYS_TORUS_ID  9
+#define SYS_YIELD     34
+
+#define INIT_TORUS0_COMPUTE_ITERS 1000000ULL
+#define INIT_TORUS1_COMPUTE_ITERS 2000000ULL
+#define INIT_MEMSTRESS_PASSES 128U
+#define INIT_FILE_BENCH_FILES 32U
+#define INIT_BLOCK_BENCH_BLOCKS 32U
+#define INIT_NET_BENCH_ITERS 64U
 
 #define O_RDONLY  0x0000
 #define O_WRONLY  0x0001
@@ -38,7 +46,11 @@ static inline int64_t rse_syscall6(uint64_t num, uint64_t a1, uint64_t a2,
         "int $0x80"
         : "=a"(ret)
         : "a"(num), "D"(a1), "S"(a2), "d"(a3), "r"(r10), "r"(r8), "r"(r9)
-        : "rcx", "r11", "memory");
+        : "rcx", "r11", "memory",
+          "xmm0", "xmm1", "xmm2", "xmm3",
+          "xmm4", "xmm5", "xmm6", "xmm7",
+          "xmm8", "xmm9", "xmm10", "xmm11",
+          "xmm12", "xmm13", "xmm14", "xmm15");
     return ret;
 }
 
@@ -93,6 +105,10 @@ static inline int64_t sys_getpid(void) {
 
 static inline int64_t sys_torus_id(void) {
     return rse_syscall6(SYS_TORUS_ID, 0, 0, 0, 0, 0, 0);
+}
+
+static inline int64_t sys_yield(void) {
+    return rse_syscall6(SYS_YIELD, 0, 0, 0, 0, 0, 0);
 }
 
 static inline uint64_t rdtsc(void) {
@@ -224,7 +240,7 @@ static void init_main(void) {
     write_str("\n");
 
     uint64_t seed = 0xfeedbeefcafebabeULL;
-    uint64_t iters = (torus == 1) ? 6000000ULL : 2000000ULL;
+    uint64_t iters = (torus == 1) ? INIT_TORUS1_COMPUTE_ITERS : INIT_TORUS0_COMPUTE_ITERS;
     uint64_t acc = 0;
     uint64_t start = rdtsc();
     for (uint64_t i = 0; i < iters; ++i) {
@@ -238,12 +254,15 @@ static void init_main(void) {
     write_str(" checksum=");
     write_u64(acc);
     write_str("\n");
+    for (uint32_t i = 0; i < 2; ++i) {
+        sys_yield();
+    }
 
     if (torus == 1) {
         for (uint32_t i = 0; i < sizeof(mem_a); ++i) {
             mem_a[i] = (uint8_t)(i ^ 0x5a);
         }
-        const uint64_t passes = 512;
+        const uint64_t passes = INIT_MEMSTRESS_PASSES;
         uint64_t checksum = 0;
         uint64_t mem_start = rdtsc();
         for (uint64_t p = 0; p < passes; ++p) {
@@ -260,6 +279,9 @@ static void init_main(void) {
         write_str(" checksum=");
         write_u64(checksum);
         write_str("\n");
+        for (uint32_t i = 0; i < 2; ++i) {
+            sys_yield();
+        }
     }
 
     for (uint32_t i = 0; i < sizeof(io_buf); ++i) {
@@ -279,7 +301,7 @@ static void init_main(void) {
         uint64_t ops = 0;
         uint64_t bytes = 0;
         uint64_t io_start = rdtsc();
-        const uint32_t file_count = 64;
+        const uint32_t file_count = INIT_FILE_BENCH_FILES;
         char name[32];
         for (uint32_t i = 0; i < file_count; ++i) {
             format_path(name, i, persist_mode);
@@ -344,13 +366,16 @@ static void init_main(void) {
         int fd = sys_open("/dev/blk0", O_RDWR, 0);
         if (fd >= 0) {
             const uint32_t blk_size = sizeof(blk_buf);
-            const uint32_t blocks = 64;
+            const uint32_t blocks = INIT_BLOCK_BENCH_BLOCKS;
             const uint64_t start_lba = 2048;
             uint64_t mismatches = 0;
             uint64_t bytes = 0;
             uint64_t ops = 0;
             uint64_t blk_start = rdtsc();
-            sys_lseek(fd, (int64_t)(start_lba * blk_size), 0);
+            int64_t seek_start = sys_lseek(fd, (int64_t)(start_lba * blk_size), 0);
+            if (seek_start < 0) {
+                write_str("[init] /dev/blk0 seek start failed\n");
+            }
             for (uint32_t i = 0; i < blocks; ++i) {
                 for (uint32_t j = 0; j < blk_size; ++j) {
                     blk_buf[j] = (uint8_t)(j ^ (i & 0xFFu) ^ 0xA5u);
@@ -361,7 +386,10 @@ static void init_main(void) {
                     ops++;
                 }
             }
-            sys_lseek(fd, (int64_t)(start_lba * blk_size), 0);
+            int64_t seek_read = sys_lseek(fd, (int64_t)(start_lba * blk_size), 0);
+            if (seek_read < 0) {
+                write_str("[init] /dev/blk0 seek read failed\n");
+            }
             for (uint32_t i = 0; i < blocks; ++i) {
                 int64_t r = sys_read(fd, blk_buf, blk_size);
                 if (r == (int64_t)blk_size) {
@@ -402,7 +430,7 @@ static void init_main(void) {
             uint64_t wrote = 0;
             uint64_t read = 0;
             uint64_t net_start = rdtsc();
-            for (uint32_t i = 0; i < 128; ++i) {
+            for (uint32_t i = 0; i < INIT_NET_BENCH_ITERS; ++i) {
                 int64_t w = sys_write(net_fd, pkt, sizeof(pkt));
                 if (w > 0) {
                     wrote += (uint64_t)w;
@@ -424,6 +452,9 @@ static void init_main(void) {
         } else {
             write_str("[init] /dev/net0 unavailable\n");
         }
+    }
+    for (uint32_t i = 0; i < 2; ++i) {
+        sys_yield();
     }
 }
 

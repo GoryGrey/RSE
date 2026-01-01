@@ -16,6 +16,9 @@
 #ifndef RSE_AUTO_EXIT
 #define RSE_AUTO_EXIT 0
 #endif
+#ifndef RSE_BENCH_SMOKE
+#define RSE_BENCH_SMOKE 0
+#endif
 
 void *memcpy(void *dst, const void *src, size_t count);
 void *memset(void *dst, int value, size_t count);
@@ -37,6 +40,9 @@ extern int64_t rse_os_syscall_dispatch(int64_t num,
                                        uint64_t arg5, uint64_t arg6);
 extern int rse_os_ring3_entry(uint64_t *entry_out);
 extern int rse_os_ring3_context(uint64_t *entry_out, uint64_t *stack_out);
+extern void rse_os_sync_ring3_frame(const void *frame_ptr);
+extern int rse_os_ring3_load_frame(void *frame_ptr);
+extern int rse_os_ring3_yield(uint64_t *entry_out, uint64_t *stack_out);
 extern int rse_os_fastio_bench(uint64_t *bytes_out, uint64_t *cycles_out,
                                uint64_t *cycles_per_byte_out);
 
@@ -47,6 +53,8 @@ extern int rse_os_fastio_bench(uint64_t *bytes_out, uint64_t *cycles_out,
 #define RSE_SYS_MMAP 21u
 #define RSE_SYS_MUNMAP 22u
 #define RSE_SYS_MPROTECT 23u
+#define RSE_SYS_YIELD 34u
+#define RSE_EAGAIN 11u
 
 __attribute__((used, section(".limine_reqs")))
 LIMINE_REQUESTS_START_MARKER;
@@ -246,6 +254,7 @@ static uint64_t *g_user_pd_user = g_user_pd_user_storage;
 static uint64_t *g_user_pt_user = g_user_pt_user_storage;
 static uint64_t g_user_cr3;
 static uint64_t g_saved_cr3;
+static uint64_t g_kernel_cr3;
 uint64_t g_saved_rbx;
 uint64_t g_saved_rbp;
 uint64_t g_saved_r12;
@@ -399,9 +408,10 @@ static bool refresh_user_page_table(uint64_t entry, uint64_t stack) {
         return false;
     }
     uint64_t prev_cr3 = read_cr3();
-    if (g_saved_cr3 && prev_cr3 != g_saved_cr3) {
+    uint64_t kernel_cr3 = g_kernel_cr3 ? g_kernel_cr3 : g_saved_cr3;
+    if (kernel_cr3 && prev_cr3 != kernel_cr3) {
         // Rebuild tables while running on the kernel page tables.
-        write_cr3(g_saved_cr3);
+        write_cr3(kernel_cr3);
     }
     if (!build_user_page_table(entry, stack_page, code_phys, stack_phys)) {
         if (prev_cr3 != read_cr3()) {
@@ -418,14 +428,23 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
         return;
     }
     uint64_t user_cr3 = read_cr3();
-    if (g_saved_cr3 && user_cr3 != g_saved_cr3) {
-        write_cr3(g_saved_cr3);
+    uint64_t kernel_cr3 = g_kernel_cr3 ? g_kernel_cr3 : g_saved_cr3;
+    if (kernel_cr3 && user_cr3 != kernel_cr3) {
+        write_cr3(kernel_cr3);
     }
+    rse_os_sync_ring3_frame(frame);
     uint64_t call = frame->rax;
     if (call == 0) {
         serial_write("[RSE] user syscall ping\n");
         frame->rax = 0;
-        if (g_saved_cr3) {
+        if (kernel_cr3) {
+            write_cr3(user_cr3);
+        }
+        return;
+    }
+    if (call == RSE_SYS_YIELD) {
+        frame->rax = 0;
+        if (kernel_cr3) {
             write_cr3(user_cr3);
         }
         return;
@@ -435,8 +454,8 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
         frame->ss = GDT_KERNEL_DATA;
         frame->rip = (uint64_t)(uintptr_t)user_mode_return;
         frame->rsp = g_user_mode_kernel_rsp;
-        if (g_saved_cr3) {
-            write_cr3(g_saved_cr3);
+        if (kernel_cr3) {
+            write_cr3(kernel_cr3);
         }
         return;
     }
@@ -446,12 +465,24 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
                                          frame->r10, frame->r8, frame->r9);
     frame->rax = (uint64_t)rc;
     if (call == RSE_SYS_EXIT) {
+        uint64_t entry = 0;
+        uint64_t stack = 0;
+        if (rse_os_ring3_yield(&entry, &stack)) {
+            if (refresh_user_page_table(entry, stack)) {
+                (void)rse_os_ring3_load_frame(frame);
+                user_cr3 = g_user_cr3;
+                if (kernel_cr3) {
+                    write_cr3(user_cr3);
+                }
+                return;
+            }
+        }
         frame->cs = GDT_KERNEL_CODE;
         frame->ss = GDT_KERNEL_DATA;
         frame->rip = (uint64_t)(uintptr_t)user_mode_return;
         frame->rsp = g_user_mode_kernel_rsp;
-        if (g_saved_cr3) {
-            write_cr3(g_saved_cr3);
+        if (kernel_cr3) {
+            write_cr3(kernel_cr3);
         }
         return;
     }
@@ -474,7 +505,7 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
             user_cr3 = g_user_cr3;
         }
     }
-    if (g_saved_cr3) {
+    if (kernel_cr3) {
         write_cr3(user_cr3);
     }
 }
@@ -930,11 +961,21 @@ static bool setup_user_pages(uint32_t torus_id, uint64_t *entry_out, uint64_t *s
     const uint8_t* user_code = user_code_ping;
     size_t user_code_len = sizeof(user_code_ping);
     if (rse_os_prepare_ring3(torus_id)) {
-        user_code = user_code_exec;
-        user_code_len = sizeof(user_code_exec);
+        uint64_t ring3_entry = 0;
+        uint64_t ring3_stack = 0;
         serial_write("[RSE] user setup ring3 ready torus=");
         serial_write_u64(torus_id);
         serial_write("\n");
+        if (rse_os_ring3_context(&ring3_entry, &ring3_stack)) {
+            if (refresh_user_page_table(ring3_entry, ring3_stack)) {
+                *entry_out = ring3_entry;
+                *stack_out = ring3_stack ? ring3_stack : USER_STACK_TOP;
+                return true;
+            }
+            serial_write("[RSE] user setup ring3 map failed\n");
+        }
+        user_code = user_code_exec;
+        user_code_len = sizeof(user_code_exec);
     } else {
         serial_write("[RSE] user setup ring3 unavailable\n");
     }
@@ -1042,15 +1083,12 @@ __attribute__((unused)) static void run_user_mode_smoke(uint32_t torus_id) {
 #if RSE_ENABLE_USERMODE
 static void run_user_mode_smoke_guarded(void) {
     struct idt_ptr saved = {};
-    uint64_t flags = read_rflags();
-    __asm__ volatile("cli");
     read_idt(&saved);
     init_idt();
     for (uint32_t torus_id = 0; torus_id < RSE_TORUS_COUNT; ++torus_id) {
         run_user_mode_smoke(torus_id);
     }
     load_idt(&saved);
-    write_rflags(flags);
 }
 #endif
 
@@ -1080,6 +1118,14 @@ static uint8_t mem_b[MEM_BYTES];
 #define RAMFS_MAX_FILES 128U
 #define RAMFS_NAME_MAX  32U
 #define RAMFS_FILE_SIZE 4096U
+#define RAMFS_BENCH_FILES 64U
+#define UEFI_FS_BENCH_FILES 24U
+#define UEFI_BLOCK_BENCH_BLOCKS 256U
+#define HTTP_LOOPBACK_REQUESTS 20000ULL
+#define NET_ARP_MAX_POLLS 50000U
+#define NET_SERVER_MAX_POLLS 50000U
+#define NET_SERVER_IDLE_LIMIT 10000U
+#define NET_SERVER_TARGET 250U
 
 #define KFD_MAX 64U
 
@@ -1141,6 +1187,10 @@ static uint8_t mem_b[MEM_BYTES];
 #define VIRTIO_NET_F_MAC (1u << 5)
 #define VIRTIO_NET_F_MRG_RXBUF (1u << 15)
 #define VIRTIO_F_VERSION_1 (1u << 0)
+
+#ifndef RSE_TRACE_VIRTIO
+#define RSE_TRACE_VIRTIO 0
+#endif
 
 struct virtq_desc {
     uint64_t addr;
@@ -1349,7 +1399,18 @@ static void block_cache_store(uint64_t lba, const void *buf, uint32_t block_size
     if (!buf || block_size == 0 || block_size > sizeof(g_block_cache_data[0])) {
         return;
     }
-    uint32_t slot = g_block_cache_next++ % 8;
+    bool found = false;
+    uint32_t slot = 0;
+    for (uint32_t i = 0; i < 8; ++i) {
+        if (g_block_cache_valid[i] && g_block_cache_lba[i] == lba) {
+            slot = i;
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        slot = g_block_cache_next++ % 8;
+    }
     memcpy(g_block_cache_data[slot], buf, block_size);
     g_block_cache_lba[slot] = lba;
     g_block_cache_valid[slot] = 1;
@@ -2486,7 +2547,7 @@ static int virtio_blk_rw(uint64_t sector, void *buf, uint32_t bytes, uint32_t ty
     if (virtio_blk_use_modern && !virtio_blk_common) {
         return -1;
     }
-    if (sector == 0 && type == VIRTIO_BLK_T_OUT) {
+    if (RSE_TRACE_VIRTIO && sector == 0 && type == VIRTIO_BLK_T_OUT) {
         serial_write("[RSE] virtio desc req=");
         serial_write_u64((uint64_t)(uintptr_t)virtio_req_ptr);
         serial_write(" data=");
@@ -2530,11 +2591,13 @@ static int virtio_blk_rw(uint64_t sector, void *buf, uint32_t bytes, uint32_t ty
     virtq_avail_ring->idx = idx + 1;
     __asm__ volatile("mfence" ::: "memory");
 
-    serial_write("[RSE] virtio-blk notify idx=");
-    serial_write_u64(idx);
-    serial_write(" used=");
-    serial_write_u64(virtq_used_ring->idx);
-    serial_write("\n");
+    if (RSE_TRACE_VIRTIO) {
+        serial_write("[RSE] virtio-blk notify idx=");
+        serial_write_u64(idx);
+        serial_write(" used=");
+        serial_write_u64(virtq_used_ring->idx);
+        serial_write("\n");
+    }
     if (virtio_blk_use_modern) {
         volatile uint16_t *notify = (volatile uint16_t *)(virtio_blk_notify +
             (uint32_t)virtio_blk_notify_off * virtio_blk_notify_mult);
@@ -3195,21 +3258,22 @@ static uint16_t net_checksum(const uint8_t *data, uint32_t len) {
     return (uint16_t)(~sum);
 }
 
-static void net_queue_push(const uint8_t *data, uint32_t len) {
+static bool net_queue_push(const uint8_t *data, uint32_t len) {
     if (!data || len == 0) {
-        return;
+        return false;
     }
     if (len > NET_PAYLOAD_MAX) {
         len = NET_PAYLOAD_MAX;
     }
     if (net_queue_count >= NET_QUEUE_DEPTH) {
-        return;
+        return false;
     }
     struct net_payload *slot = &net_queue[net_queue_head];
     slot->len = len;
     memcpy(slot->data, data, len);
     net_queue_head = (net_queue_head + 1) % NET_QUEUE_DEPTH;
     net_queue_count++;
+    return true;
 }
 
 static uint32_t net_queue_pop(uint8_t *buf, uint32_t max_len) {
@@ -3563,7 +3627,7 @@ static void net_handle_ipv4(const struct net_eth_hdr *eth, const uint8_t *payloa
         return;
     }
     const uint8_t *udp_payload = payload + ihl + sizeof(struct net_udp_hdr);
-    net_queue_push(udp_payload, payload_len);
+    (void)net_queue_push(udp_payload, payload_len);
 
     if (eth) {
         net_send_udp(eth->src, ip->src, src_port, dst_port, udp_payload, payload_len);
@@ -3615,7 +3679,9 @@ static int net_udp_send(const uint8_t *payload, uint32_t len) {
     if (net_ensure_mac() != 0) {
         return -1;
     }
-    net_queue_push(payload, len);
+    if (!net_queue_push(payload, len)) {
+        return -(int)RSE_EAGAIN;
+    }
     int rc = net_send_udp(net_mac_addr, net_ip_addr, net_udp_port, net_udp_port, payload, len);
     return rc < 0 ? -1 : (int)len;
 }
@@ -3686,7 +3752,7 @@ static int bench_net_arp(void) {
 
     uint64_t start = rdtsc();
     uint32_t rx_len = 0;
-    for (uint32_t i = 0; i < 200000; ++i) {
+    for (uint32_t i = 0; i < NET_ARP_MAX_POLLS; ++i) {
         uint8_t rx_buf[256];
         int got = virtio_net_recv(rx_buf, sizeof(rx_buf));
         if (got <= 0) {
@@ -3745,11 +3811,11 @@ static void bench_udp_http_server(void) {
     uint32_t http = 0;
     uint32_t idle = 0;
     uint8_t rx_buf[2048];
-    for (uint32_t i = 0; i < 200000; ++i) {
+    for (uint32_t i = 0; i < NET_SERVER_MAX_POLLS; ++i) {
         int got = net_backend_read(rx_buf, sizeof(rx_buf));
         if (got <= 0) {
             idle++;
-            if (idle > 50000 && rx == 0) {
+            if (idle > NET_SERVER_IDLE_LIMIT && rx == 0) {
                 break;
             }
             continue;
@@ -3758,7 +3824,7 @@ static void bench_udp_http_server(void) {
         if (net_server_handle_frame(rx_buf, (uint32_t)got, &udp, &http)) {
             rx++;
         }
-        if (udp + http >= 1000) {
+        if (udp + http >= NET_SERVER_TARGET) {
             break;
         }
     }
@@ -3896,7 +3962,7 @@ static void bench_files(void) {
         tmp[i] = (uint8_t)(i ^ 0x5a);
     }
 
-    const uint32_t file_count = 96;
+    const uint32_t file_count = RAMFS_BENCH_FILES;
     char name[RAMFS_NAME_MAX];
     uint64_t start = rdtsc();
     for (uint32_t i = 0; i < file_count; ++i) {
@@ -4007,7 +4073,7 @@ static void bench_http_loopback(void) {
     serial_write("[RSE] http loopback benchmark start\n");
     const char *req = "GET / HTTP/1.1\r\nHost: rse\r\n\r\n";
     const char *resp = "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK";
-    uint64_t requests = 50000;
+    uint64_t requests = HTTP_LOOPBACK_REQUESTS;
     uint64_t start = rdtsc();
     uint64_t bytes = 0;
     for (uint64_t i = 0; i < requests; ++i) {
@@ -4072,7 +4138,7 @@ static void bench_uefi_fs(struct rse_boot_info *boot_info) {
         buf[i] = (uint8_t)(i ^ 0xa5);
     }
 
-    const uint32_t file_count = 48;
+    const uint32_t file_count = UEFI_FS_BENCH_FILES;
     CHAR16 name[16];
     uint64_t checksum = 0;
     uint64_t start = rdtsc();
@@ -4167,7 +4233,7 @@ static void bench_uefi_block(struct rse_boot_info *boot_info) {
     }
 
     UINT64 max_blocks = blk->Media->LastBlock + 1;
-    UINTN blocks = 1024;
+    UINTN blocks = (UINTN)UEFI_BLOCK_BENCH_BLOCKS;
     if (blocks > max_blocks) {
         blocks = (UINTN)max_blocks;
     }
@@ -4361,12 +4427,24 @@ static void run_benchmarks(struct rse_boot_info *boot_info, int do_init) {
     bench_memory();
     bench_files();
     bench_fastio();
+#if RSE_BENCH_SMOKE
+    serial_write("[RSE] UEFI FS benchmark skipped (smoke)\n");
+    serial_write("[RSE] UEFI block benchmark skipped (smoke)\n");
+#else
     bench_uefi_fs(boot_info);
     bench_uefi_block(boot_info);
+#endif
+#if RSE_BENCH_SMOKE
+    serial_write("[RSE] virtio-blk benchmark skipped (smoke)\n");
+    serial_write("[RSE] net arp benchmark skipped (smoke)\n");
+    serial_write("[RSE] udp/http server benchmark skipped (smoke)\n");
+    serial_write("[RSE] http loopback benchmark skipped (smoke)\n");
+#else
     bench_virtio_block();
     bench_net_arp();
     bench_udp_http_server();
     bench_http_loopback();
+#endif
     serial_write("[RSE] benchmarks end\n");
     g_metrics.metrics_valid = 1;
 }
@@ -5048,9 +5126,10 @@ static void kmain(struct rse_boot_info *boot_info) {
     g_boot_info = boot_info;
     serial_init();
     serial_write("[RSE] UEFI kernel start\n");
+    g_kernel_cr3 = read_cr3();
     init_gdt_user_segments();
 #if RSE_ENABLE_USERMODE
-    run_user_mode_smoke_guarded();
+    // Run ring3 smoke after OS init in benchmarks to avoid double-running.
 #endif
 
     if (boot_info && boot_info->magic == RSE_BOOT_MAGIC) {

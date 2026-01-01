@@ -109,6 +109,14 @@ inline bool write_user_bytes(OSProcess* proc, uint64_t addr, const void* src, ui
     return proc->vmem->writeUser(addr, src, size);
 }
 
+#ifdef RSE_KERNEL
+extern "C" uint64_t rse_os_ring3_now(uint32_t torus_id);
+#else
+inline uint64_t rse_os_ring3_now(uint32_t) {
+    return 0;
+}
+#endif
+
 inline bool read_user_u32(OSProcess* proc, uint64_t addr, uint32_t* out) {
     if (!out) {
         return false;
@@ -939,6 +947,15 @@ inline int64_t sys_sleep(uint64_t seconds, uint64_t, uint64_t,
     if (ticks == 0) {
         ticks = 1;
     }
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    if (enforce_user_memory(current)) {
+        uint64_t now = rse_os_ring3_now(current->torus_id);
+        current->sleep_until_tick = now + ticks;
+        return 0;
+    }
     return scheduler->sleepCurrent(ticks) ? 0 : -EAGAIN;
 }
 
@@ -985,6 +1002,11 @@ inline int64_t sys_nanosleep(uint64_t req_ptr, uint64_t rem_ptr, uint64_t,
         if (!write_user_bytes(current, rem_ptr, &rem, sizeof(rem))) {
             return -EFAULT;
         }
+    }
+    if (enforce_user_memory(current)) {
+        uint64_t now = rse_os_ring3_now(current->torus_id);
+        current->sleep_until_tick = now + ticks;
+        return 0;
     }
     return scheduler->sleepCurrent(ticks) ? 0 : -EAGAIN;
 }

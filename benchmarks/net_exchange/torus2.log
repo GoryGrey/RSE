@@ -1,4 +1,4 @@
-[RSE] run start torus=2 ts=1767283101
+[RSE] run start torus=2 ts=1767284313
 [RSE] run cfg net_mode=none timeout=60 shm_size=65536
 [RSE] run build_dir=/home/gorygrey/Apps/RSE/build/net_exchange/torus2
 [RSE] run shm_path=/home/gorygrey/Apps/RSE/build/net_exchange/ivshmem.bin
@@ -51,9 +51,9 @@ Added to ISO image: directory '/'='/home/gorygrey/Apps/RSE/build/net_exchange/to
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : UPDATE :       6 files added in 1 seconds
 xorriso : WARNING : Boot image load size exceeds 65535 blocks of 512 bytes. Will record 0 in El Torito to extend ESP to end-of-medium.
-xorriso : UPDATE :  28.20% done
-ISO image produced: 66273 sectors
-Written to medium : 66273 sectors at LBA 0
+xorriso : UPDATE :  29.82% done
+ISO image produced: 66274 sectors
+Written to medium : 66274 sectors at LBA 0
 Writing to 'stdio:/home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_efi.iso' completed successfully.
 
 rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_data.img
@@ -63,12 +63,12 @@ rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_raw.img
 dd if=/dev/zero of=/home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_raw.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.0702195 s, 956 MB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.0786561 s, 853 MB/s
 rm -f /home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_virtio.img
 dd if=/dev/zero of=/home/gorygrey/Apps/RSE/build/net_exchange/torus2/rse_virtio.img bs=1M count=64
 64+0 records in
 64+0 records out
-67108864 bytes (67 MB, 64 MiB) copied, 0.0616414 s, 1.1 GB/s
+67108864 bytes (67 MB, 64 MiB) copied, 0.0628768 s, 1.1 GB/s
 cp /usr/share/OVMF/OVMF_VARS_4M.fd /home/gorygrey/Apps/RSE/build/net_exchange/torus2/OVMF_VARS.fd
 qemu-system-x86_64 -machine q35 -m 512M \
 	-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE_4M.fd \
@@ -112,7 +112,7 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] UEFI pointer online
 [RSE] UEFI keyboard online
 [RSE] benchmarks begin
-[RSE] tsc cycles/us=2939 delay_us=100000
+[RSE] tsc cycles/us=2928 delay_us=100000
 [RSE] init workloads start
 [RSE] braided smoke start
 [RSE] braid cycles=3 ticks=300
@@ -419,21 +419,21 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=1000000 cycles=235085111 checksum=13489434137010960902
+[init] compute ops=1000000 cycles=234391911 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=1000000 cycles=230434427 checksum=13489434137010960902
+[init] compute ops=1000000 cycles=232233829 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=1000000 cycles=234884041 checksum=13489434137010960902
+[init] compute ops=1000000 cycles=237557764 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -713,7 +713,7 @@ BdsDxe: starting Boot0001 "UEFI QEMU DVD-ROM QM00005 " from PciRoot(0x0)/Pci(0x1
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] file ops=160 bytes=131072 cycles=15357000171
+[init] file ops=160 bytes=131072 cycles=15077924237
 [init] ls /
 dev/
 persist/
@@ -730,7 +730,7 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] file ops=160 bytes=131072 cycles=14675966682
+[init] file ops=160 bytes=131072 cycles=14374777611
 [init] ls /
 dev/
 persist/
@@ -747,7 +747,7 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] file ops=160 bytes=131072 cycles=14203195632
+[init] file ops=160 bytes=131072 cycles=13864593395
 [init] ls /
 dev/
 persist/
@@ -998,21 +998,21 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=1760425723
+[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=1034612120
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=1637617918
+[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=981265017
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=1520850459
+[init] /dev/blk0 ops=64 bytes=32768 mismatches=0 cycles=925981493
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -1605,33 +1605,21 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=2000000 cycles=782299555 checksum=9791868472914447520
+[init] compute ops=2000000 cycles=511147675 checksum=9791868472914447520
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=2000000 cycles=779434721 checksum=9791868472914447520
+[init] compute ops=2000000 cycles=510787388 checksum=9791868472914447520
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=2000000 cycles=773760924 checksum=9791868472914447520
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
+[init] compute ops=2000000 cycles=509367490 checksum=9791868472914447520
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -1914,21 +1902,33 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] memstress bytes=2097152 cycles=389818516 checksum=267386880
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] memstress bytes=2097152 cycles=403904268 checksum=267386880
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] memstress bytes=2097152 cycles=405262313 checksum=267386880
+[init] memstress bytes=2097152 cycles=276439426 checksum=267386880
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] memstress bytes=2097152 cycles=276272731 checksum=267386880
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] memstress bytes=2097152 cycles=280823432 checksum=267386880
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -2287,33 +2287,21 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=1000000 cycles=307361998 checksum=13489434137010960902
+[init] compute ops=1000000 cycles=262140857 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=1000000 cycles=305854794 checksum=13489434137010960902
+[init] compute ops=1000000 cycles=260280159 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] compute ops=1000000 cycles=291789737 checksum=13489434137010960902
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
-[RSE] user map begin
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map page begin
-[RSE] user map page existing
-[RSE] user map ok
+[init] compute ops=1000000 cycles=259890216 checksum=13489434137010960902
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -2452,21 +2440,33 @@ stat /dev/blk0 size=0 type=device
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] net0 wrote=576 read=4096 cycles=169840222
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] net0 wrote=384 read=4096 cycles=153046978
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map page begin
 [RSE] user map page existing
 [RSE] user map ok
-[init] net0 wrote=0 read=4096 cycles=149336171
+[init] net0 wrote=576 read=4096 cycles=140281206
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] net0 wrote=384 read=4096 cycles=132578003
+[RSE] user map begin
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map page begin
+[RSE] user map page existing
+[RSE] user map ok
+[init] net0 wrote=0 read=4096 cycles=132734932
 [RSE] user map begin
 [RSE] user map page begin
 [RSE] user map page existing
@@ -2506,17 +2506,17 @@ stat /dev/blk0 size=0 type=device
 [RSE] user mode smoke ok
 [RSE] user mode exec smoke done
 [RSE] compute benchmark start
-[RSE] compute ops=400000 cycles=39942780 cycles/op=99 checksum=4180332335208930419
-[RSE] compute ns=13590602 ns/op=33
+[RSE] compute ops=400000 cycles=25813953 cycles/op=64 checksum=4180332335208930419
+[RSE] compute ns=8816240 ns/op=22
 [RSE] memory benchmark start
-[RSE] memory bytes=67108864 cycles=2005611649 cycles/byte=29
-[RSE] memory ns=682412946 ns/byte=10
+[RSE] memory bytes=67108864 cycles=1709319308 cycles/byte=25
+[RSE] memory ns=583783916 ns/byte=8
 [RSE] ramfs benchmark start
-[RSE] ramfs ops=192 cycles=6976515 cycles/op=36336 checksum=8355840 files=0
-[RSE] ramfs ns=2373771 ns/op=12363
+[RSE] ramfs ops=192 cycles=5210055 cycles/op=27135 checksum=8355840 files=0
+[RSE] ramfs ns=1779390 ns/op=9267
 [RSE] fastio benchmark start
-[RSE] fastio bytes=2097152 cycles=66642464 cycles/byte=31
-[RSE] fastio ns=22675217 ns/byte=10
+[RSE] fastio bytes=2097152 cycles=61395188 cycles/byte=29
+[RSE] fastio ns=20968301 ns/byte=9
 [RSE] UEFI FS benchmark skipped (smoke)
 [RSE] UEFI block benchmark skipped (smoke)
 [RSE] virtio-blk benchmark skipped (smoke)
@@ -2524,6 +2524,6 @@ stat /dev/blk0 size=0 type=device
 [RSE] udp/http server benchmark skipped (smoke)
 [RSE] http loopback benchmark skipped (smoke)
 [RSE] benchmarks end
-qemu-system-x86_64: terminating on signal 15 from pid 797037 (timeout)
+qemu-system-x86_64: terminating on signal 15 from pid 800218 (timeout)
 [RSE] run exit rc=124
 [RSE] run timeout after 60s

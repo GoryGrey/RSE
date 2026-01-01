@@ -70,6 +70,7 @@ static UserProgramState user_states[kTorusCount][1 + kExtraProcs] = {};
 static os::OSProcess* g_ring3_proc = nullptr;
 static os::OSProcess* g_ring3_procs[kTorusCount][kRing3Slots] = {};
 static uint32_t g_ring3_active[kTorusCount] = {};
+static uint64_t g_ring3_ticks[kTorusCount] = {};
 
 static bool map_user_page(os::OSProcess* proc, uint64_t vaddr, uint64_t flags, uint64_t* phys_out) {
     if (!proc || !phys_out || !proc->memory.page_table || !proc->vmem) {
@@ -1033,8 +1034,21 @@ static int os_ps_dump(char *buf, uint32_t len) {
 }
 #endif
 
-static bool ring3_alive(const os::OSProcess* proc) {
-    return proc && !proc->isZombie();
+static bool ring3_ready(os::OSProcess* proc) {
+    if (!proc || proc->isZombie()) {
+        return false;
+    }
+    uint32_t torus_id = proc->torus_id;
+    if (torus_id >= kTorusCount) {
+        return false;
+    }
+    if (proc->sleep_until_tick != 0) {
+        if (g_ring3_ticks[torus_id] < proc->sleep_until_tick) {
+            return false;
+        }
+        proc->sleep_until_tick = 0;
+    }
+    return true;
 }
 
 static os::OSProcess* ring3_pick_next(uint32_t torus_id, uint32_t* out_slot) {
@@ -1045,13 +1059,13 @@ static os::OSProcess* ring3_pick_next(uint32_t torus_id, uint32_t* out_slot) {
     for (uint32_t offset = 1; offset <= kRing3Slots; ++offset) {
         uint32_t idx = (start + offset) % kRing3Slots;
         os::OSProcess* proc = g_ring3_procs[torus_id][idx];
-        if (ring3_alive(proc)) {
+        if (ring3_ready(proc)) {
             *out_slot = idx;
             return proc;
         }
     }
     os::OSProcess* current = g_ring3_procs[torus_id][start];
-    if (ring3_alive(current)) {
+    if (ring3_ready(current)) {
         *out_slot = start;
         return current;
     }
@@ -1088,7 +1102,7 @@ extern "C" int rse_os_prepare_ring3(uint32_t torus_id) {
     }
     uint32_t slot = g_ring3_active[torus_id] % kRing3Slots;
     os::OSProcess* proc = g_ring3_procs[torus_id][slot];
-    if (!ring3_alive(proc)) {
+    if (!ring3_ready(proc)) {
         proc = ring3_pick_next(torus_id, &slot);
     }
     if (!proc) {
@@ -1186,15 +1200,37 @@ extern "C" int rse_os_ring3_yield(uint64_t* entry_out, uint64_t* stack_out) {
     return rse_os_ring3_context(entry_out, stack_out);
 }
 
+extern "C" uint64_t rse_os_ring3_now(uint32_t torus_id) {
+    if (torus_id >= kTorusCount) {
+        return 0;
+    }
+    return g_ring3_ticks[torus_id];
+}
+
 extern "C" int rse_os_ring3_tick(void) {
     if (!g_runtimes_ready || !g_ring3_proc) {
         return 0;
+    }
+    uint32_t torus_id = g_ring3_proc->torus_id;
+    if (torus_id < kTorusCount) {
+        g_ring3_ticks[torus_id]++;
+    }
+    uint64_t now = torus_id < kTorusCount ? g_ring3_ticks[torus_id] : 0;
+    if (g_ring3_proc->sleep_until_tick != 0) {
+        if (now < g_ring3_proc->sleep_until_tick) {
+            uint32_t slot = 0;
+            os::OSProcess* next = ring3_pick_next(torus_id, &slot);
+            if (next && next != g_ring3_proc) {
+                return 1;
+            }
+            return 0;
+        }
+        g_ring3_proc->sleep_until_tick = 0;
     }
     g_ring3_proc->tick();
     if (!g_ring3_proc->timeSliceExpired()) {
         return 0;
     }
-    uint32_t torus_id = g_ring3_proc->torus_id;
     uint32_t slot = 0;
     os::OSProcess* next = ring3_pick_next(torus_id, &slot);
     if (!next || next == g_ring3_proc) {

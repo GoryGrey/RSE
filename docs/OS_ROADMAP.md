@@ -19,7 +19,7 @@ This roadmap tracks the path from the current prototype to a production-grade OS
 - MemFS + BlockFS with checksum journal; /persist mounted with directory paths; MemFS supports nested paths, deterministic list order, and basic permission checks; BlockFS sanitizes invalid entries on mount.
 - Minimal network stack (ARP/UDP parsing + loopback) with NET_LITE socket syscalls over the net device path (connect retries/timeouts, queued accepts, FIN on close).
 - UEFI kernel build is freestanding with minimal string/mem shims for kernel C++ code.
-- Ring3 init loads a real freestanding user ELF at `/bin/init` and can run `/persist/boot.rc` or `/boot.rc` scripts.
+- Ring3 init loads a real freestanding user ELF at `/bin/init`, can run `/persist/boot.rc` or `/boot.rc` scripts, and yields/sleeps across ring3 slots on syscall ticks.
 - IVSHMEM projection exchange across 3 VMs.
 - Ring3 exec smoke path works (isolation still evolving).
 

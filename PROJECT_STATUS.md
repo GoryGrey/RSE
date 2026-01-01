@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: December 28, 2025 (FS permissions + BlockFS sanitize hardening)
+Last Updated: January 01, 2026 (UEFI kernel build fixes)
 
 ---
 
@@ -32,6 +32,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - Syscall dispatcher with user-range validation (including nanosleep/pipe/time pointers) and per-torus dispatch.
 - User mmap rejects overlaps; mmap/mprotect/munmap validate zero/unaligned sizes; PROT_EXEC blocked for anonymous mmap and limited to code pages; stack guard pages widened; mmap uses guard pages by default; read/write reject oversized counts; mprotect refuses unmapped ranges; VFS reserves `/dev` and rejects invalid `/persist` subpaths; net loopback backpressure returns `-EAGAIN`.
 - Ring3 exec smoke (UEFI): exec path works; isolation still evolving.
+- UEFI kernel build is freestanding and provides minimal string/mem shims for kernel C++ code.
 - Projection exchange across 3 VMs via IVSHMEM shared memory.
 - BraidShell demo with telemetry sourced from real logs.
 

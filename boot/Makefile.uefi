@@ -1,5 +1,7 @@
-BOOT_DIR := boot
-BUILD_DIR := build/boot
+MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+ROOT_DIR := $(abspath $(MAKEFILE_DIR)/..)
+BOOT_DIR := $(ROOT_DIR)/boot
+BUILD_DIR := $(ROOT_DIR)/build/boot
 DISK := $(BUILD_DIR)/rse_disk.img
 DISK_MBR := $(BUILD_DIR)/rse_disk_mbr.img
 ISO_EFI := $(BUILD_DIR)/rse_efi.iso

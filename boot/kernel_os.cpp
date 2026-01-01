@@ -414,6 +414,12 @@ extern "C" int strcmp(const char* lhs, const char* rhs) {
     if (lhs == rhs) {
         return 0;
     }
+    if (!lhs) {
+        return -1;
+    }
+    if (!rhs) {
+        return 1;
+    }
     while (*lhs && (*lhs == *rhs)) {
         ++lhs;
         ++rhs;
@@ -421,18 +427,96 @@ extern "C" int strcmp(const char* lhs, const char* rhs) {
     return (unsigned char)*lhs - (unsigned char)*rhs;
 }
 
+extern "C" int strncmp(const char* lhs, const char* rhs, size_t n) {
+    if (n == 0 || lhs == rhs) {
+        return 0;
+    }
+    if (!lhs) {
+        return -1;
+    }
+    if (!rhs) {
+        return 1;
+    }
+    for (size_t i = 0; i < n; ++i) {
+        unsigned char lc = (unsigned char)lhs[i];
+        unsigned char rc = (unsigned char)rhs[i];
+        if (lc != rc || lc == '\0' || rc == '\0') {
+            return lc - rc;
+        }
+    }
+    return 0;
+}
+
 extern "C" char* strncpy(char* dst, const char* src, size_t n) {
     if (n == 0) {
         return dst;
     }
     size_t i = 0;
-    for (; i < n && src[i] != '\0'; ++i) {
-        dst[i] = src[i];
+    if (src) {
+        for (; i < n && src[i] != '\0'; ++i) {
+            dst[i] = src[i];
+        }
     }
     for (; i < n; ++i) {
         dst[i] = '\0';
     }
     return dst;
+}
+
+extern "C" size_t strlen(const char* str) {
+    if (!str) {
+        return 0;
+    }
+    size_t len = 0;
+    while (str[len] != '\0') {
+        ++len;
+    }
+    return len;
+}
+
+extern "C" int memcmp(const void* lhs, const void* rhs, size_t count) {
+    const uint8_t* a = static_cast<const uint8_t*>(lhs);
+    const uint8_t* b = static_cast<const uint8_t*>(rhs);
+    for (size_t i = 0; i < count; ++i) {
+        if (a[i] != b[i]) {
+            return (a[i] < b[i]) ? -1 : 1;
+        }
+    }
+    return 0;
+}
+
+const char* strchr(const char* str, int ch) __asm("strchr");
+const char* strchr(const char* str, int ch) {
+    if (!str) {
+        return nullptr;
+    }
+    char target = static_cast<char>(ch);
+    for (const char* p = str; ; ++p) {
+        if (*p == target) {
+            return p;
+        }
+        if (*p == '\0') {
+            return nullptr;
+        }
+    }
+}
+
+const char* strrchr(const char* str, int ch) __asm("strrchr");
+const char* strrchr(const char* str, int ch) {
+    if (!str) {
+        return nullptr;
+    }
+    char target = static_cast<char>(ch);
+    const char* last = nullptr;
+    for (const char* p = str; ; ++p) {
+        if (*p == target) {
+            last = p;
+        }
+        if (*p == '\0') {
+            break;
+        }
+    }
+    return last;
 }
 
 extern "C" int __cxa_guard_acquire(long long* guard) {

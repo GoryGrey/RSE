@@ -1625,6 +1625,7 @@ struct rse_bench_metrics {
     uint64_t virtio_blk_read_cycles_per_byte;
     uint64_t net_arp_bytes;
     uint64_t net_arp_cycles;
+    uint64_t net_queue_drops;
     uint64_t udp_rx;
     uint64_t udp_udp;
     uint64_t udp_http;
@@ -3469,6 +3470,7 @@ static bool net_queue_push(const uint8_t *data, uint32_t len) {
         len = NET_PAYLOAD_MAX;
     }
     if (net_queue_count >= NET_QUEUE_DEPTH) {
+        g_metrics.net_queue_drops++;
         return false;
     }
     struct net_payload *slot = &net_queue[net_queue_head];
@@ -5067,6 +5069,8 @@ static void fb_draw_dashboard(struct limine_framebuffer *fb) {
                  g_metrics.net_arp_bytes ? UI_OK : UI_WARN);
     line += line_step;
     fb_draw_label_u64(fb, left_x + 12, line, "PROOF RX:", g_metrics.udp_rx, UI_MUTED, UI_TEXT);
+    line += line_step;
+    fb_draw_label_u64(fb, left_x + 12, line, "NET DROP:", g_metrics.net_queue_drops, UI_MUTED, UI_TEXT);
     line += line_step;
     fb_draw_label_u64(fb, left_x + 12, line, "ARP RX:", g_metrics.net_arp_bytes, UI_MUTED, UI_TEXT);
     line += line_step;

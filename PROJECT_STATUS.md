@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: January 01, 2026 (PIT timer preemption; ring3 sleep/yield + timeslice; W^X mprotect checks; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + EOF/EPIPE + RST refused + seq/ack retransmit + outbound queue + overflow drops + conn collision checks; virtio-net TX backpressure returns EAGAIN; virtio-net RX length/id guards; net reads return EAGAIN on empty; net queue drops + RX/TX error counters surfaced; mergeable RX disabled pending reassembly; virtio-net UEFI fallback only on hard errors; BlockFS checksum recovery + slot zeroing on create/remove; CLOEXEC dup hygiene; persist dir open returns EISDIR; exec requires exec-bit; ancestor exec enforced for memfs/persist path traversal; signal ignore/default; stat parent-exec gating; workload yields; directory listing sort; ISO workflow scripts; logged test heartbeat; quick boot test runner)
+Last Updated: January 01, 2026 (PIT timer preemption; ring3 sleep/yield + timeslice; W^X mprotect checks; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + EOF/EPIPE + RST refused + seq/ack retransmit + outbound queue + overflow drops + conn collision checks; virtio-net TX backpressure returns EAGAIN; virtio-net RX length/id guards; net reads return EAGAIN on empty; net queue drops + RX/TX error counters surfaced; mergeable RX disabled pending reassembly; virtio-net UEFI fallback only on hard errors; BlockFS checksum recovery + slot zeroing on create/remove; uid/gid ownership enforced for MemFS/BlockFS with stat reporting; CLOEXEC dup hygiene; persist dir open returns EISDIR; exec requires exec-bit; ancestor exec enforced for memfs/persist path traversal; signal ignore/default; stat parent-exec gating; workload yields; directory listing sort; ISO workflow scripts; logged test heartbeat; quick boot test runner)
 
 ---
 
@@ -25,7 +25,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 
 - Bootable UEFI kernel (serial + framebuffer) with dashboard and input.
 - In-kernel benchmarks (compute, memory, RAMFS, UEFI FS/block, fastio, HTTP loopback).
-- MemFS + BlockFS with per-process file descriptors, `/persist` directories, MemFS nested paths, deterministic list ordering, permission checks on open/list/mkdir/unlink (including parent exec/write), `.`/`..` path segments rejected, and `-EISDIR` on directory open.
+- MemFS + BlockFS with per-process file descriptors, `/persist` directories, MemFS nested paths, deterministic list ordering, permission checks on open/list/mkdir/unlink (including parent exec/write), uid/gid ownership enforcement, `.`/`..` path segments rejected, and `-EISDIR` on directory open.
 - MemFS/persist path traversal now enforces execute permission on all ancestor directories for open/list/mkdir/unlink.
 - BlockFS persistence with checksum + journal + corruption detection (flat table, directory paths), with mount-time sanitize for duplicates/invalid entries and journal write checks; remove resets entry metadata and zeroes slot data; new files zero their slots before use.
 - TCP-lite framing over `/dev/net0` for loopback handshake/data tests with NET_LITE connect retries/timeouts, FIN-on-close (EOF for reads, EPIPE on write), RST refused handling, seq/ack retransmit (stop-and-wait), outbound queue with flush, queued pending accepts, overflow-safe wire buffering, stricter FIN state handling, and conn-id collision checks.
@@ -66,7 +66,7 @@ Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal a
 
 - User-mode isolation/permissions are still evolving; ring3 time slicing is syscall-boundary only and limited to a small slot count.
 - Network stack is minimal (ARP/UDP parsing + loopback); NET_LITE framing is not full TCP.
-- BlockFS uses fixed slots; permissions are basic (no user ownership model yet).
+- BlockFS uses fixed slots; ownership uses 8-bit uid/gid (single group, no ACLs).
 - Workload init is script-driven but still one-shot per boot (no interactive console input yet).
 
 ---

@@ -33,12 +33,21 @@ struct MemFSFile {
     uint8_t* data;             // File contents
     uint32_t size;             // Current size
     uint32_t capacity;         // Allocated capacity
-    uint32_t mode;             // Permissions (not enforced yet)
+    uint32_t mode;             // Permissions
+    uint16_t uid;              // Owner user id
+    uint16_t gid;              // Owner group id
     bool in_use;               // Is this file slot used?
     bool is_dir;               // Directory entry
     
     MemFSFile() 
-        : data(nullptr), size(0), capacity(0), mode(0644), in_use(false), is_dir(false) {
+        : data(nullptr),
+          size(0),
+          capacity(0),
+          mode(0644),
+          uid(0),
+          gid(0),
+          in_use(false),
+          is_dir(false) {
         name[0] = '\0';
     }
     
@@ -283,7 +292,7 @@ public:
      * Create a new file.
      * Returns pointer to file, or nullptr if failed.
      */
-    MemFSFile* create(const char* path, uint32_t mode) {
+    MemFSFile* create(const char* path, uint32_t mode, uint16_t uid = 0, uint16_t gid = 0) {
         char name[kNameMax + 1];
         if (!normalize_path(path, name, sizeof(name), false)) {
             return nullptr;
@@ -307,6 +316,8 @@ public:
                 std::memcpy(files_[i].name, name, name_len);
                 files_[i].name[name_len] = '\0';
                 files_[i].mode = mode != 0 ? mode : default_mode(false);
+                files_[i].uid = uid;
+                files_[i].gid = gid;
                 files_[i].in_use = true;
                 files_[i].is_dir = false;
                 files_[i].size = 0;
@@ -344,7 +355,7 @@ public:
         return lookup_internal(name);
     }
 
-    bool mkdir(const char* path, uint32_t mode) {
+    bool mkdir(const char* path, uint32_t mode, uint16_t uid = 0, uint16_t gid = 0) {
         char name[kNameMax + 1];
         if (!normalize_path(path, name, sizeof(name), false)) {
             return false;
@@ -364,6 +375,8 @@ public:
                 std::memcpy(files_[i].name, name, name_len);
                 files_[i].name[name_len] = '\0';
                 files_[i].mode = mode != 0 ? mode : default_mode(true);
+                files_[i].uid = uid;
+                files_[i].gid = gid;
                 files_[i].in_use = true;
                 files_[i].is_dir = true;
                 files_[i].size = 0;
@@ -401,6 +414,8 @@ public:
                 files_[i].size = 0;
                 files_[i].capacity = 0;
                 files_[i].mode = default_mode(false);
+                files_[i].uid = 0;
+                files_[i].gid = 0;
                 files_[i].name[0] = '\0';
                 num_files_--;
 
@@ -537,7 +552,8 @@ public:
         return (int32_t)written;
     }
 
-    bool stat(const char* path, uint32_t* size, bool* is_dir, uint32_t* mode) const {
+    bool stat(const char* path, uint32_t* size, bool* is_dir, uint32_t* mode,
+              uint16_t* uid, uint16_t* gid) const {
         if (!path || !size || !is_dir || !mode) {
             return false;
         }
@@ -545,6 +561,12 @@ public:
             *size = 0;
             *is_dir = true;
             *mode = 0755u;
+            if (uid) {
+                *uid = 0;
+            }
+            if (gid) {
+                *gid = 0;
+            }
             return true;
         }
         char name[kNameMax + 1];
@@ -558,6 +580,12 @@ public:
         *size = entry->is_dir ? 0u : entry->size;
         *is_dir = entry->is_dir;
         *mode = entry->mode != 0 ? entry->mode : default_mode(entry->is_dir);
+        if (uid) {
+            *uid = entry->uid;
+        }
+        if (gid) {
+            *gid = entry->gid;
+        }
         return true;
     }
 };

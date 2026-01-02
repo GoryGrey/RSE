@@ -38,6 +38,8 @@ struct rse_stat {
     uint64_t size;
     uint32_t mode;
     uint32_t type;
+    uint32_t uid;
+    uint32_t gid;
 };
 
 static inline int64_t rse_syscall6(uint64_t num, uint64_t a1, uint64_t a2,

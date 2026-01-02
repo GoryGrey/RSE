@@ -53,7 +53,7 @@ Key properties:
 - MemFS/persist path traversal enforces execute permission on all ancestor directories.
 - Braided runtime (single-node projections + constraint application).
 - Projection exchange across 3 VMs via IVSHMEM shared memory.
-- Block-backed persistence via BlockFS mounted at /persist with directories and basic permission checks.
+- Block-backed persistence via BlockFS mounted at /persist with directories and owner/group/other permission enforcement.
 - BlockFS zeroes slot data on create/remove to avoid stale payload leakage.
 
 ## Known Limitations
@@ -61,7 +61,7 @@ Key properties:
 - User-mode isolation and permissions are still evolving.
 - Custom signal handlers are not wired yet (default/ignore only).
 - Network stack remains minimal (UDP loopback/NET_LITE; no TCP yet).
-- BlockFS is fixed-slot; ownership model is still missing and permissions are basic.
+- BlockFS is fixed-slot; ownership uses 8-bit uid/gid (single group, no ACLs).
 - Workload init is one-shot per boot.
 
 ---
@@ -79,7 +79,7 @@ Key properties:
 - Driver hardening (virtio-net).
 
 3) Filesystem
-- BlockFS permissions/ownership model.
+- BlockFS permissions/ownership expansion (multi-group/ACL).
 - Stronger journaling and recovery.
 
 ---

@@ -160,6 +160,30 @@ int main() {
     int64_t ro_open_write = os::syscall(os::SYS_OPEN, ro_addr, os::O_WRONLY);
     assert(ro_open_write == -os::EACCES);
 
+    const char shared_path[] = "/shared";
+    uint64_t shared_addr = write_user_string(proc, shared_path);
+    int64_t shared_mkdir = os::syscall(os::SYS_MKDIR, shared_addr, 0777);
+    assert(shared_mkdir == 0);
+
+    proc.uid = 1000;
+    proc.gid = 1000;
+    const char user_only_path[] = "/shared/user_only";
+    uint64_t user_only_addr = write_user_string(proc, user_only_path);
+    int64_t user_only_mkdir = os::syscall(os::SYS_MKDIR, user_only_addr, 0700);
+    assert(user_only_mkdir == 0);
+
+    proc.uid = 1001;
+    proc.gid = 1001;
+    int64_t user_only_list = os::syscall(os::SYS_LIST, user_only_addr,
+                                         perm_list_addr, perm_list_buf.size());
+    assert(user_only_list == -os::EACCES);
+
+    proc.uid = 1000;
+    proc.gid = 1000;
+    int64_t user_only_list_ok = os::syscall(os::SYS_LIST, user_only_addr,
+                                            perm_list_addr, perm_list_buf.size());
+    assert(user_only_list_ok >= 0);
+
     std::cout << "  ✓ all tests passed" << std::endl;
     return 0;
 }

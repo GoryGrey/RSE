@@ -155,6 +155,8 @@ struct rse_stat {
     uint64_t size;
     uint32_t mode;
     uint32_t type;
+    uint32_t uid;
+    uint32_t gid;
 };
 
 struct rse_timespec {

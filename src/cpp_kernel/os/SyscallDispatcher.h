@@ -1128,7 +1128,8 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
     }
 
     rse_stat info = {};
-    int32_t stat_rc = current_torus_context->vfs->stat(path_buf, &info);
+    int32_t stat_rc = current_torus_context->vfs->stat(path_buf, &info,
+                                                       current->uid, current->gid);
     if (stat_rc != 0) {
         return stat_rc;
     }
@@ -1138,11 +1139,16 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
     if (info.type != RSE_STAT_FILE) {
         return -EACCES;
     }
-    if ((info.mode & 0111u) == 0) {
+    static constexpr uint16_t kExecPerm = 0100;
+    if (!os::VFS::hasAccess(static_cast<uint16_t>(info.mode), kExecPerm,
+                            current->uid, current->gid,
+                            static_cast<uint16_t>(info.uid),
+                            static_cast<uint16_t>(info.gid))) {
         return -EACCES;
     }
 
-    int32_t fd = current_torus_context->vfs->open(fdt, path_buf, O_RDONLY);
+    int32_t fd = current_torus_context->vfs->open(fdt, path_buf, O_RDONLY,
+                                                  0, current->uid, current->gid);
     if (fd < 0) {
         return fd;
     }
@@ -1399,7 +1405,8 @@ inline int64_t sys_open(uint64_t path_addr, uint64_t flags, uint64_t mode,
     }
     return current_torus_context->vfs->open(&current->fd_table, path_buf,
                                             static_cast<uint32_t>(flags),
-                                            static_cast<uint32_t>(mode));
+                                            static_cast<uint32_t>(mode),
+                                            current->uid, current->gid);
 }
 
 /**
@@ -1469,7 +1476,7 @@ inline int64_t sys_unlink(uint64_t path_addr, uint64_t, uint64_t,
     if (!validate_user_path(current, path_buf, false)) {
         return -EINVAL;
     }
-    return current_torus_context->vfs->unlink(path_buf);
+    return current_torus_context->vfs->unlink(path_buf, current->uid, current->gid);
 }
 
 inline int64_t sys_list(uint64_t path_addr, uint64_t buf_addr, uint64_t count,
@@ -1509,7 +1516,8 @@ inline int64_t sys_list(uint64_t path_addr, uint64_t buf_addr, uint64_t count,
 
     char local[kMaxOut];
     char* out = user_buf ? local : buf;
-    int32_t got = current_torus_context->vfs->list(path ? path : "/", out, len);
+    int32_t got = current_torus_context->vfs->list(path ? path : "/", out, len,
+                                                   current->uid, current->gid);
     if (got < 0) {
         return got;
     }
@@ -1542,7 +1550,8 @@ inline int64_t sys_mkdir(uint64_t path_addr, uint64_t mode, uint64_t,
     if (!validate_user_path(current, path_buf, false)) {
         return -EINVAL;
     }
-    return current_torus_context->vfs->mkdir(path_buf, static_cast<uint32_t>(mode));
+    return current_torus_context->vfs->mkdir(path_buf, static_cast<uint32_t>(mode),
+                                             current->uid, current->gid);
 }
 
 inline int64_t sys_stat(uint64_t path_addr, uint64_t stat_addr, uint64_t,
@@ -1570,7 +1579,8 @@ inline int64_t sys_stat(uint64_t path_addr, uint64_t stat_addr, uint64_t,
     }
 
     rse_stat info = {};
-    int32_t rc = current_torus_context->vfs->stat(path_buf, &info);
+    int32_t rc = current_torus_context->vfs->stat(path_buf, &info,
+                                                  current->uid, current->gid);
     if (rc < 0) {
         return rc;
     }

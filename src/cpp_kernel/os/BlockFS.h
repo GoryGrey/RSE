@@ -148,7 +148,9 @@ public:
         for (uint32_t i = 0; i < kMaxFiles; ++i) {
             entries_[i].name[0] = '\0';
             entries_[i].size = 0;
-            entries_[i].slot_index = i;
+            entries_[i].slot_index = 0;
+            set_entry_slot_index(entries_[i], i);
+            set_entry_owner(entries_[i], 0, 0);
             entries_[i].checksum = 0;
             entries_[i].in_use = 0;
         }
@@ -214,6 +216,18 @@ public:
         return data_start_lba_;
     }
 
+    uint32_t slotIndex(const BlockFSEntry* entry) const {
+        return entry ? entry_slot_index(*entry) : 0;
+    }
+
+    uint16_t ownerUid(const BlockFSEntry* entry) const {
+        return entry ? entry_uid(*entry) : 0;
+    }
+
+    uint16_t ownerGid(const BlockFSEntry* entry) const {
+        return entry ? entry_gid(*entry) : 0;
+    }
+
     bool isDirectory(const BlockFSEntry* entry) const {
         return entry && entry->in_use && entry_type(*entry) == kEntryDir;
     }
@@ -229,7 +243,7 @@ public:
         return default_mode(entry_type(*entry));
     }
 
-    bool mkdir(const char* name, uint16_t mode) {
+    bool mkdir(const char* name, uint16_t mode, uint16_t uid = 0, uint16_t gid = 0) {
         if (!mounted_ || !name || name[0] == '\0') {
             return false;
         }
@@ -253,6 +267,7 @@ public:
         free_slot->in_use = 1;
         set_entry_type(*free_slot, kEntryDir);
         set_entry_mode(*free_slot, mode != 0 ? mode : default_mode(kEntryDir));
+        set_entry_owner(*free_slot, uid, gid);
         uint32_t index = (uint32_t)(free_slot - entries_);
         if (!commit_entry(index)) {
             return false;
@@ -260,7 +275,8 @@ public:
         return true;
     }
 
-    bool stat(const char* name, uint32_t* size, uint8_t* type, uint16_t* mode) const {
+    bool stat(const char* name, uint32_t* size, uint8_t* type, uint16_t* mode,
+              uint16_t* uid, uint16_t* gid) const {
         if (!mounted_ || !name || !size || !type || !mode) {
             return false;
         }
@@ -274,6 +290,12 @@ public:
         *size = entry->size;
         *type = entry_type(*entry);
         *mode = effectiveMode(entry);
+        if (uid) {
+            *uid = entry_uid(*entry);
+        }
+        if (gid) {
+            *gid = entry_gid(*entry);
+        }
         return true;
     }
 
@@ -364,7 +386,8 @@ public:
         return (int32_t)written;
     }
 
-    BlockFSEntry* open(const char* name, bool create, uint16_t mode = 0) {
+    BlockFSEntry* open(const char* name, bool create, uint16_t mode = 0,
+                       uint16_t uid = 0, uint16_t gid = 0) {
         if (!mounted_ || !name || name[0] == '\0') {
             return nullptr;
         }
@@ -395,8 +418,9 @@ public:
         set_entry_type(*free_slot, kEntryFile);
         uint16_t set_mode = mode != 0 ? mode : default_mode(kEntryFile);
         set_entry_mode(*free_slot, set_mode);
+        set_entry_owner(*free_slot, uid, gid);
         uint32_t index = (uint32_t)(free_slot - entries_);
-        if (!zero_slot_data(free_slot->slot_index)) {
+        if (!zero_slot_data(entry_slot_index(*free_slot))) {
             clear_entry(index);
             return nullptr;
         }
@@ -425,7 +449,7 @@ public:
             return 0;
         }
         uint64_t file_off = offset;
-        uint64_t lba_base = data_start_lba_ + (uint64_t)entry->slot_index * slot_blocks_;
+        uint64_t lba_base = data_start_lba_ + (uint64_t)entry_slot_index(*entry) * slot_blocks_;
         return block_read_at(lba_base, file_off, buf, to_read);
     }
 
@@ -448,7 +472,7 @@ public:
             return 0;
         }
         uint64_t file_off = offset;
-        uint64_t lba_base = data_start_lba_ + (uint64_t)entry->slot_index * slot_blocks_;
+        uint64_t lba_base = data_start_lba_ + (uint64_t)entry_slot_index(*entry) * slot_blocks_;
         int64_t wrote = block_write_at(lba_base, file_off, buf, remaining);
         if (wrote > 0) {
             uint64_t new_size = offset + (uint64_t)wrote;
@@ -497,7 +521,7 @@ public:
             return false;
         }
         uint32_t index = (uint32_t)(entry - entries_);
-        uint32_t slot_index = entry->slot_index;
+        uint32_t slot_index = entry_slot_index(*entry);
         clear_entry(index);
         if (!commit_entry(index)) {
             return false;
@@ -539,7 +563,7 @@ public:
             return false;
         }
         entries_[index] = entry;
-        entries_[index].slot_index = index;
+        set_entry_slot_index(entries_[index], index);
         sync_entries();
         return true;
     }
@@ -556,6 +580,11 @@ private:
     uint64_t region_blocks_;
     BlockFSHeader header_;
     BlockFSEntry entries_[kMaxFiles];
+
+    static constexpr uint32_t kSlotIndexMask = 0xFFu;
+    static constexpr uint32_t kOwnerMask = 0xFFu;
+    static constexpr uint32_t kUidShift = 8u;
+    static constexpr uint32_t kGidShift = 16u;
 
     static uint32_t blocks_for_bytes(uint32_t bytes, uint32_t block_size) {
         return (bytes + block_size - 1u) / block_size;
@@ -580,6 +609,18 @@ private:
         return (uint16_t)entry.reserved[1] | ((uint16_t)entry.reserved[2] << 8);
     }
 
+    static uint32_t entry_slot_index(const BlockFSEntry& entry) {
+        return entry.slot_index & kSlotIndexMask;
+    }
+
+    static uint16_t entry_uid(const BlockFSEntry& entry) {
+        return (uint16_t)((entry.slot_index >> kUidShift) & kOwnerMask);
+    }
+
+    static uint16_t entry_gid(const BlockFSEntry& entry) {
+        return (uint16_t)((entry.slot_index >> kGidShift) & kOwnerMask);
+    }
+
     static void set_entry_type(BlockFSEntry& entry, uint8_t type) {
         entry.reserved[0] = type;
     }
@@ -587,6 +628,17 @@ private:
     static void set_entry_mode(BlockFSEntry& entry, uint16_t mode) {
         entry.reserved[1] = (uint8_t)(mode & 0xFFu);
         entry.reserved[2] = (uint8_t)((mode >> 8) & 0xFFu);
+    }
+
+    static void set_entry_slot_index(BlockFSEntry& entry, uint32_t index) {
+        entry.slot_index = (entry.slot_index & ~kSlotIndexMask) | (index & kSlotIndexMask);
+    }
+
+    static void set_entry_owner(BlockFSEntry& entry, uint16_t uid, uint16_t gid) {
+        uint32_t packed = (entry.slot_index & kSlotIndexMask);
+        packed |= (uint32_t)(uid & kOwnerMask) << kUidShift;
+        packed |= (uint32_t)(gid & kOwnerMask) << kGidShift;
+        entry.slot_index = packed;
     }
 
     static uint16_t default_mode(uint8_t type) {
@@ -648,7 +700,9 @@ private:
         for (uint32_t i = 0; i < kMaxFiles; ++i) {
             entries_[i].name[0] = '\0';
             entries_[i].size = 0;
-            entries_[i].slot_index = i;
+            entries_[i].slot_index = 0;
+            set_entry_slot_index(entries_[i], i);
+            set_entry_owner(entries_[i], 0, 0);
             entries_[i].checksum = 0;
             entries_[i].in_use = 0;
         }
@@ -743,7 +797,7 @@ private:
     BlockFSEntry* find_free() {
         for (uint32_t i = 0; i < kMaxFiles; ++i) {
             if (!entries_[i].in_use) {
-                entries_[i].slot_index = i;
+                set_entry_slot_index(entries_[i], i);
                 entries_[i].checksum = 0;
                 return &entries_[i];
             }
@@ -780,7 +834,8 @@ private:
         entry.size = 0;
         entry.checksum = 0;
         entry.in_use = 0;
-        entry.slot_index = index;
+        set_entry_slot_index(entry, index);
+        set_entry_owner(entry, 0, 0);
         set_entry_type(entry, kEntryFile);
         set_entry_mode(entry, 0);
     }
@@ -803,8 +858,8 @@ private:
                 changed = true;
                 continue;
             }
-            if (entries_[i].slot_index != i) {
-                entries_[i].slot_index = i;
+            if (entry_slot_index(entries_[i]) != i) {
+                set_entry_slot_index(entries_[i], i);
                 changed = true;
             }
             if (entry_mode(entries_[i]) == 0) {
@@ -960,7 +1015,7 @@ private:
             (void)sync_header();
             return;
         }
-        header_.journal_entry.slot_index = header_.journal_index;
+        set_entry_slot_index(header_.journal_entry, header_.journal_index);
         entries_[header_.journal_index] = header_.journal_entry;
         if (!sync_entries()) {
             return;
@@ -1128,7 +1183,7 @@ private:
         uint32_t hash = kOffset;
         uint64_t remaining = entry->size;
         uint64_t offset = 0;
-        uint64_t lba_base = data_start_lba_ + (uint64_t)entry->slot_index * slot_blocks_;
+        uint64_t lba_base = data_start_lba_ + (uint64_t)entry_slot_index(*entry) * slot_blocks_;
         while (remaining > 0) {
             uint64_t lba = lba_base + (offset / block_size_);
             if (rse_block_read(lba, scratch, 1) != 0) {

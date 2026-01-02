@@ -59,7 +59,7 @@ int main() {
     int64_t wipe_wrote = fs.write(wipe, 0, reinterpret_cast<const uint8_t*>(wipe_payload),
                                   static_cast<uint32_t>(sizeof(wipe_payload) - 1));
     assert(wipe_wrote == static_cast<int64_t>(sizeof(wipe_payload) - 1));
-    uint64_t wipe_lba = fs.getDataStartLba() + (uint64_t)wipe->slot_index * fs.getSlotBlocks();
+    uint64_t wipe_lba = fs.getDataStartLba() + (uint64_t)fs.slotIndex(wipe) * fs.getSlotBlocks();
     std::array<uint8_t, 512> wipe_raw{};
     int rc = os::rse_block_read(wipe_lba, wipe_raw.data(), 1);
     assert(rc == 0);
@@ -74,7 +74,7 @@ int main() {
     }
     os::BlockFSEntry* wipe2 = fs.open("wipe2.txt", true, 0644);
     assert(wipe2 != nullptr);
-    uint64_t wipe2_lba = fs.getDataStartLba() + (uint64_t)wipe2->slot_index * fs.getSlotBlocks();
+    uint64_t wipe2_lba = fs.getDataStartLba() + (uint64_t)fs.slotIndex(wipe2) * fs.getSlotBlocks();
     std::array<uint8_t, 512> wipe2_raw{};
     rc = os::rse_block_read(wipe2_lba, wipe2_raw.data(), 1);
     assert(rc == 0);
@@ -82,7 +82,7 @@ int main() {
         assert(wipe2_raw[i] == 0);
     }
 
-    uint64_t base_lba = fs.getDataStartLba() + (uint64_t)entry->slot_index * fs.getSlotBlocks();
+    uint64_t base_lba = fs.getDataStartLba() + (uint64_t)fs.slotIndex(entry) * fs.getSlotBlocks();
     std::array<uint8_t, 512> raw{};
     rc = os::rse_block_read(base_lba, raw.data(), 1);
     assert(rc == 0);
@@ -107,14 +107,14 @@ int main() {
     os::BlockFSEntry oversize_copy = *oversize;
     oversize_copy.size = fs.getSlotBlocks() * fs.getBlockSize() + 1;
     oversize_copy.checksum = 0;
-    bool wrote_oversize = fs.debugWriteEntry(oversize->slot_index, oversize_copy);
+    bool wrote_oversize = fs.debugWriteEntry(fs.slotIndex(oversize), oversize_copy);
     assert(wrote_oversize);
 
     os::BlockFSEntry* badtype = fs.open("badtype.txt", true, 0644);
     assert(badtype != nullptr);
     os::BlockFSEntry badtype_copy = *badtype;
     badtype_copy.reserved[0] = 0xFF;
-    bool wrote_badtype = fs.debugWriteEntry(badtype->slot_index, badtype_copy);
+    bool wrote_badtype = fs.debugWriteEntry(fs.slotIndex(badtype), badtype_copy);
     assert(wrote_badtype);
 
     os::BlockFS fs2;

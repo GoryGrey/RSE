@@ -108,6 +108,8 @@ public:
     uint32_t pid;               // Process ID
     uint32_t parent_pid;        // Parent process ID
     uint32_t torus_id;          // Which torus owns this process
+    uint16_t uid;               // Owner user id
+    uint16_t gid;               // Owner group id
     
     // ========== State ==========
     ProcessState state;
@@ -150,6 +152,8 @@ public:
         : pid(pid), 
           parent_pid(parent_pid), 
           torus_id(torus_id),
+          uid(0),
+          gid(0),
           state(ProcessState::READY),
           exit_code(0),
           kernel_owned(false),

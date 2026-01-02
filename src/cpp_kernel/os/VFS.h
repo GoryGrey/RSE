@@ -100,6 +100,23 @@ private:
         return (mode & needed) == needed;
     }
 
+    static bool check_access(uint16_t mode, uint16_t needed, uint16_t uid, uint16_t gid,
+                             uint16_t owner_uid, uint16_t owner_gid) {
+        if (uid == 0) {
+            return true;
+        }
+        uint16_t mask = needed;
+        if (uid == owner_uid) {
+            return (mode & mask) == mask;
+        }
+        if (gid == owner_gid) {
+            uint16_t group_mask = (uint16_t)(mask >> 3);
+            return (mode & group_mask) == group_mask;
+        }
+        uint16_t other_mask = (uint16_t)(mask >> 6);
+        return (mode & other_mask) == other_mask;
+    }
+
     bool split_parent_abs(const char* path, char* out, size_t max) const {
         if (!path || !out || max == 0 || path[0] != '/') {
             return false;
@@ -151,7 +168,7 @@ private:
         uint32_t size = 0;
         bool is_dir = false;
         uint32_t mode = 0;
-        if (!fs_->stat(path, &size, &is_dir, &mode)) {
+        if (!fs_->stat(path, &size, &is_dir, &mode, nullptr, nullptr)) {
             return false;
         }
         if (!is_dir) {
@@ -172,7 +189,7 @@ private:
         uint32_t size = 0;
         uint8_t type = 0;
         uint16_t mode = 0;
-        if (!blockfs_->stat(path, &size, &type, &mode)) {
+        if (!blockfs_->stat(path, &size, &type, &mode, nullptr, nullptr)) {
             return false;
         }
         if (type != BlockFS::kEntryDir) {
@@ -182,12 +199,12 @@ private:
         return true;
     }
 
-    bool persist_dir_access(const char* path, uint16_t needed) const {
+    bool persist_dir_access(const char* path, uint16_t needed, uint16_t uid, uint16_t gid) const {
         if (!blockfs_ || !blockfs_->isMounted()) {
             return false;
         }
         if (!path || path[0] == '\0') {
-            return check_mode(kPersistRootMode, needed);
+            return check_access(kPersistRootMode, needed, uid, gid, 0, 0);
         }
         char prefix[BlockFS::kNameMax + 1] = {};
         size_t prefix_len = 0;
@@ -212,14 +229,16 @@ private:
             uint32_t size = 0;
             uint8_t type = 0;
             uint16_t mode = 0;
-            if (!blockfs_->stat(prefix, &size, &type, &mode)) {
+            uint16_t entry_uid = 0;
+            uint16_t entry_gid = 0;
+            if (!blockfs_->stat(prefix, &size, &type, &mode, &entry_uid, &entry_gid)) {
                 return false;
             }
             if (type != BlockFS::kEntryDir) {
                 return false;
             }
             uint16_t need = slash ? kPermExec : needed;
-            if (!check_mode(mode, need)) {
+            if (!check_access(mode, need, uid, gid, entry_uid, entry_gid)) {
                 return false;
             }
             if (!slash) {
@@ -230,12 +249,12 @@ private:
         return true;
     }
 
-    bool memfs_dir_access(const char* path, uint16_t needed) const {
+    bool memfs_dir_access(const char* path, uint16_t needed, uint16_t uid, uint16_t gid) const {
         if (!fs_) {
             return false;
         }
         if (!path || std::strcmp(path, "/") == 0 || std::strcmp(path, "") == 0) {
-            return check_mode(kRootMode, needed);
+            return check_access(kRootMode, needed, uid, gid, 0, 0);
         }
         char prefix[256] = {};
         size_t prefix_len = 0;
@@ -261,14 +280,16 @@ private:
             uint32_t size = 0;
             bool is_dir = false;
             uint32_t mode = 0;
-            if (!fs_->stat(prefix, &size, &is_dir, &mode)) {
+            uint16_t entry_uid = 0;
+            uint16_t entry_gid = 0;
+            if (!fs_->stat(prefix, &size, &is_dir, &mode, &entry_uid, &entry_gid)) {
                 return false;
             }
             if (!is_dir) {
                 return false;
             }
             uint16_t need = slash ? kPermExec : needed;
-            if (!check_mode(static_cast<uint16_t>(mode), need)) {
+            if (!check_access(static_cast<uint16_t>(mode), need, uid, gid, entry_uid, entry_gid)) {
                 return false;
             }
             if (!slash) {
@@ -282,6 +303,11 @@ private:
 public:
     VFS(MemFS* fs)
         : fs_(fs), device_mgr_(nullptr), blockfs_(nullptr) {}
+
+    static bool hasAccess(uint16_t mode, uint16_t needed, uint16_t uid, uint16_t gid,
+                          uint16_t owner_uid, uint16_t owner_gid) {
+        return check_access(mode, needed, uid, gid, owner_uid, owner_gid);
+    }
 
     void setDeviceManager(DeviceManager* mgr) {
         device_mgr_ = mgr;
@@ -350,7 +376,8 @@ public:
      * @return File descriptor, or -1 on error
      */
     int32_t open(FileDescriptorTable* fd_table, const char* path,
-                 uint32_t flags, uint32_t mode = 0644) {
+                 uint32_t flags, uint32_t mode = 0644,
+                 uint16_t uid = 0, uint16_t gid = 0) {
         if (!fd_table) {
             return -EINVAL;
         }
@@ -362,6 +389,9 @@ public:
             const char* dev_name = devName(path);
             if (!dev_name) {
                 return -EINVAL;
+            }
+            if (!check_access(kDevRootMode, kPermExec, uid, gid, 0, 0)) {
+                return -EACCES;
             }
             if (!device_mgr_) {
                 return -ENOENT;
@@ -401,16 +431,18 @@ public:
             if (flags & O_CREAT) {
                 need = static_cast<uint16_t>(need | kPermWrite);
             }
-            if (!persist_dir_access(parent, need)) {
+            if (!persist_dir_access(parent, need, uid, gid)) {
                 return -EACCES;
             }
             BlockFSEntry* entry = blockfs_->open(persist, (flags & O_CREAT) != 0,
-                                                 static_cast<uint16_t>(mode));
+                                                 static_cast<uint16_t>(mode),
+                                                 uid, gid);
             if (!entry) {
                 uint32_t stat_size = 0;
                 uint8_t stat_type = 0;
                 uint16_t stat_mode = 0;
-                if (blockfs_->stat(persist, &stat_size, &stat_type, &stat_mode) &&
+                if (blockfs_->stat(persist, &stat_size, &stat_type, &stat_mode,
+                                   nullptr, nullptr) &&
                     stat_type == BlockFS::kEntryDir) {
                     return -EISDIR;
                 }
@@ -418,10 +450,18 @@ public:
                 return -1;
             }
             uint16_t mode_bits = blockfs_->effectiveMode(entry);
+            uint16_t owner_uid = blockfs_->ownerUid(entry);
+            uint16_t owner_gid = blockfs_->ownerGid(entry);
             bool wants_write = (flags & (O_WRONLY | O_RDWR)) != 0;
             bool wants_read = (flags & O_WRONLY) == 0;
-            if ((wants_write && (mode_bits & 0200) == 0) ||
-                (wants_read && (mode_bits & 0400) == 0)) {
+            uint16_t needed = 0;
+            if (wants_write) {
+                needed = static_cast<uint16_t>(needed | kPermWrite);
+            }
+            if (wants_read) {
+                needed = static_cast<uint16_t>(needed | kPermRead);
+            }
+            if (!check_access(mode_bits, needed, uid, gid, owner_uid, owner_gid)) {
                 return -EACCES;
             }
             if (flags & O_TRUNC) {
@@ -452,7 +492,7 @@ public:
         if (flags & O_CREAT) {
             need = static_cast<uint16_t>(need | kPermWrite);
         }
-        if (!memfs_dir_access(parent, need)) {
+        if (!memfs_dir_access(parent, need, uid, gid)) {
             return -EACCES;
         }
 
@@ -461,7 +501,7 @@ public:
         
         // Create if doesn't exist and O_CREAT is set
         if (!file && (flags & O_CREAT)) {
-            file = fs_->create(path, mode);
+            file = fs_->create(path, mode, uid, gid);
             if (!file) {
                 std::cerr << "[VFS] Failed to create file: " << path << std::endl;
                 return -1;
@@ -479,10 +519,19 @@ public:
         }
 
         uint32_t mode_bits = file->mode != 0 ? file->mode : 0644;
+        uint16_t owner_uid = file->uid;
+        uint16_t owner_gid = file->gid;
         bool wants_write = (flags & (O_WRONLY | O_RDWR)) != 0;
         bool wants_read = (flags & O_WRONLY) == 0;
-        if ((wants_write && (mode_bits & 0200) == 0) ||
-            (wants_read && (mode_bits & 0400) == 0)) {
+        uint16_t needed = 0;
+        if (wants_write) {
+            needed = static_cast<uint16_t>(needed | kPermWrite);
+        }
+        if (wants_read) {
+            needed = static_cast<uint16_t>(needed | kPermRead);
+        }
+        if (!check_access(static_cast<uint16_t>(mode_bits), needed, uid, gid,
+                          owner_uid, owner_gid)) {
             return -EACCES;
         }
         
@@ -907,7 +956,7 @@ public:
      * @param path File path
      * @return 0 on success, -1 on error
      */
-    int32_t unlink(const char* path) {
+    int32_t unlink(const char* path, uint16_t uid = 0, uint16_t gid = 0) {
         if (hasPersistPrefix(path)) {
             if (isPersistRoot(path)) {
                 return -EINVAL;
@@ -923,7 +972,8 @@ public:
             if (!split_parent_rel(persist, parent, sizeof(parent))) {
                 return -EINVAL;
             }
-            if (!persist_dir_access(parent, static_cast<uint16_t>(kPermWrite | kPermExec))) {
+            if (!persist_dir_access(parent, static_cast<uint16_t>(kPermWrite | kPermExec),
+                                    uid, gid)) {
                 return -EACCES;
             }
             return blockfs_->remove(persist) ? 0 : -1;
@@ -941,7 +991,8 @@ public:
         if (!split_parent_abs(path, parent, sizeof(parent))) {
             return -EINVAL;
         }
-        if (!memfs_dir_access(parent, static_cast<uint16_t>(kPermWrite | kPermExec))) {
+        if (!memfs_dir_access(parent, static_cast<uint16_t>(kPermWrite | kPermExec),
+                              uid, gid)) {
             return -EACCES;
         }
         if (fs_->remove(path)) {
@@ -950,13 +1001,15 @@ public:
         return -1;
     }
 
-    int32_t list(const char* path, char* buf, uint32_t max) const {
+    int32_t list(const char* path, char* buf, uint32_t max,
+                 uint16_t uid = 0, uint16_t gid = 0) const {
         if (!buf || max == 0) {
             return -EINVAL;
         }
         const char* target = path ? path : "/";
         if (strcmp(target, "/") == 0 || strcmp(target, "") == 0) {
-            if (!check_mode(kRootMode, static_cast<uint16_t>(kPermRead | kPermExec))) {
+            if (!check_access(kRootMode, static_cast<uint16_t>(kPermRead | kPermExec),
+                              uid, gid, 0, 0)) {
                 return -EACCES;
             }
             uint32_t written = 0;
@@ -996,7 +1049,8 @@ public:
             if (!device_mgr_) {
                 return -1;
             }
-            if (!check_mode(kDevRootMode, static_cast<uint16_t>(kPermRead | kPermExec))) {
+            if (!check_access(kDevRootMode, static_cast<uint16_t>(kPermRead | kPermExec),
+                              uid, gid, 0, 0)) {
                 return -EACCES;
             }
             return (int32_t)device_mgr_->list(buf, max);
@@ -1005,7 +1059,8 @@ public:
             if (!blockfs_ || !blockfs_->isMounted()) {
                 return -1;
             }
-            if (!persist_dir_access(nullptr, static_cast<uint16_t>(kPermRead | kPermExec))) {
+            if (!persist_dir_access(nullptr, static_cast<uint16_t>(kPermRead | kPermExec),
+                                    uid, gid)) {
                 return -EACCES;
             }
             return blockfs_->listDirectory(nullptr, buf, max);
@@ -1018,63 +1073,74 @@ public:
             if (!blockfs_ || !blockfs_->isMounted()) {
                 return -1;
             }
-            if (!persist_dir_access(persist, static_cast<uint16_t>(kPermRead | kPermExec))) {
+            if (!persist_dir_access(persist, static_cast<uint16_t>(kPermRead | kPermExec),
+                                    uid, gid)) {
                 return -EACCES;
             }
             return blockfs_->listDirectory(persist, buf, max);
         }
-        if (!memfs_dir_access(target, static_cast<uint16_t>(kPermRead | kPermExec))) {
+        if (!memfs_dir_access(target, static_cast<uint16_t>(kPermRead | kPermExec),
+                              uid, gid)) {
             return -EACCES;
         }
         return fs_->list(target, buf, max);
     }
 
-    int32_t stat(const char* path, rse_stat* out) const {
+    int32_t stat(const char* path, rse_stat* out,
+                 uint16_t uid = 0, uint16_t gid = 0) const {
         if (!path || !out) {
             return -EINVAL;
         }
         if (strcmp(path, "/") == 0 || strcmp(path, "") == 0) {
-            if (!check_mode(kRootMode, kPermExec)) {
+            if (!check_access(kRootMode, kPermExec, uid, gid, 0, 0)) {
                 return -EACCES;
             }
             out->size = 0;
             out->mode = kRootMode;
             out->type = RSE_STAT_DIR;
+            out->uid = 0;
+            out->gid = 0;
             return 0;
         }
         if (strcmp(path, "/dev") == 0 || strcmp(path, "/dev/") == 0) {
             if (!device_mgr_) {
                 return -ENOENT;
             }
-            if (!check_mode(kDevRootMode, kPermExec)) {
+            if (!check_access(kDevRootMode, kPermExec, uid, gid, 0, 0)) {
                 return -EACCES;
             }
             out->size = 0;
             out->mode = kDevRootMode;
             out->type = RSE_STAT_DIR;
+            out->uid = 0;
+            out->gid = 0;
             return 0;
         }
         if (strcmp(path, "/persist") == 0 || strcmp(path, "/persist/") == 0) {
             if (!blockfs_ || !blockfs_->isMounted()) {
                 return -ENOENT;
             }
-            if (!check_mode(kPersistRootMode, kPermExec)) {
+            if (!check_access(kPersistRootMode, kPermExec, uid, gid, 0, 0)) {
                 return -EACCES;
             }
             out->size = 0;
             out->mode = kPersistRootMode;
             out->type = RSE_STAT_DIR;
+            out->uid = 0;
+            out->gid = 0;
             return 0;
         }
 
         Device* dev = lookupDevice(path);
         if (dev) {
-            if (!check_mode(kDevRootMode, kPermExec)) {
+            if (!check_access(kDevRootMode, kPermExec, uid, gid, 0, 0)) {
                 return -EACCES;
             }
             out->size = 0;
             out->mode = 0666;
             out->type = RSE_STAT_DEVICE;
+            out->uid = 0;
+            out->gid = 0;
             return 0;
         }
         if (hasDevPrefix(path)) {
@@ -1096,18 +1162,22 @@ public:
             if (!split_parent_rel(persist, parent, sizeof(parent))) {
                 return -EINVAL;
             }
-            if (!persist_dir_access(parent, kPermExec)) {
+            if (!persist_dir_access(parent, kPermExec, uid, gid)) {
                 return -EACCES;
             }
             uint32_t size = 0;
             uint8_t type = 0;
             uint16_t mode = 0;
-            if (!blockfs_->stat(persist, &size, &type, &mode)) {
+            uint16_t owner_uid = 0;
+            uint16_t owner_gid = 0;
+            if (!blockfs_->stat(persist, &size, &type, &mode, &owner_uid, &owner_gid)) {
                 return -ENOENT;
             }
             out->size = size;
             out->mode = mode;
             out->type = (type == BlockFS::kEntryDir) ? RSE_STAT_DIR : RSE_STAT_FILE;
+            out->uid = owner_uid;
+            out->gid = owner_gid;
             return 0;
         }
 
@@ -1121,18 +1191,22 @@ public:
         if (!split_parent_abs(path, parent, sizeof(parent))) {
             return -EINVAL;
         }
-        if (!memfs_dir_access(parent, kPermExec)) {
+        if (!memfs_dir_access(parent, kPermExec, uid, gid)) {
             return -EACCES;
         }
         uint32_t size = 0;
         bool is_dir = false;
         uint32_t mode = 0;
-        if (!fs_->stat(path, &size, &is_dir, &mode)) {
+        uint16_t owner_uid = 0;
+        uint16_t owner_gid = 0;
+        if (!fs_->stat(path, &size, &is_dir, &mode, &owner_uid, &owner_gid)) {
             return -ENOENT;
         }
         out->size = size;
         out->mode = mode;
         out->type = is_dir ? RSE_STAT_DIR : RSE_STAT_FILE;
+        out->uid = owner_uid;
+        out->gid = owner_gid;
         return 0;
     }
     
@@ -1149,7 +1223,8 @@ public:
         }
     }
 
-    int32_t mkdir(const char* path, uint32_t mode) {
+    int32_t mkdir(const char* path, uint32_t mode,
+                  uint16_t uid = 0, uint16_t gid = 0) {
         if (!path) {
             return -EINVAL;
         }
@@ -1168,10 +1243,11 @@ public:
             if (!split_parent_rel(persist, parent, sizeof(parent))) {
                 return -EINVAL;
             }
-            if (!persist_dir_access(parent, static_cast<uint16_t>(kPermWrite | kPermExec))) {
+            if (!persist_dir_access(parent, static_cast<uint16_t>(kPermWrite | kPermExec),
+                                    uid, gid)) {
                 return -EACCES;
             }
-            return blockfs_->mkdir(persist, (uint16_t)mode) ? 0 : -1;
+            return blockfs_->mkdir(persist, (uint16_t)mode, uid, gid) ? 0 : -1;
         }
         if (hasDevPrefix(path) || lookupDevice(path)) {
             return -EINVAL;
@@ -1183,10 +1259,11 @@ public:
         if (!split_parent_abs(path, parent, sizeof(parent))) {
             return -EINVAL;
         }
-        if (!memfs_dir_access(parent, static_cast<uint16_t>(kPermWrite | kPermExec))) {
+        if (!memfs_dir_access(parent, static_cast<uint16_t>(kPermWrite | kPermExec),
+                              uid, gid)) {
             return -EACCES;
         }
-        return fs_->mkdir(path, mode) ? 0 : -1;
+        return fs_->mkdir(path, mode, uid, gid) ? 0 : -1;
     }
 };
 

@@ -861,19 +861,27 @@ private:
 
     void sanitize_entries() {
         bool changed = false;
+        bool scrub_slots[kMaxFiles] = {};
+        auto clear_entry_scrub = [&](uint32_t index) {
+            if (index >= kMaxFiles) {
+                return;
+            }
+            scrub_slots[index] = true;
+            clear_entry(index);
+        };
         for (uint32_t i = 0; i < kMaxFiles; ++i) {
             if (!entries_[i].in_use) {
                 continue;
             }
             const char* name = entries_[i].name;
             if (!is_valid_path(name)) {
-                clear_entry(i);
+                clear_entry_scrub(i);
                 changed = true;
                 continue;
             }
             uint8_t type = entry_type(entries_[i]);
             if (!valid_type(type)) {
-                clear_entry(i);
+                clear_entry_scrub(i);
                 changed = true;
                 continue;
             }
@@ -881,8 +889,13 @@ private:
                 set_entry_slot_index(entries_[i], i);
                 changed = true;
             }
-            if (entry_mode(entries_[i]) == 0) {
+            uint16_t mode_bits = entry_mode(entries_[i]);
+            uint16_t masked = static_cast<uint16_t>(mode_bits & 0777u);
+            if (masked == 0) {
                 set_entry_mode(entries_[i], default_mode(type));
+                changed = true;
+            } else if (masked != mode_bits) {
+                set_entry_mode(entries_[i], masked);
                 changed = true;
             }
             if (type == kEntryDir) {
@@ -893,7 +906,7 @@ private:
                 }
             } else {
                 if (entries_[i].size > slot_size_) {
-                    clear_entry(i);
+                    clear_entry_scrub(i);
                     changed = true;
                     continue;
                 }
@@ -909,7 +922,7 @@ private:
                     continue;
                 }
                 if (name_equal(entries_[i].name, entries_[j].name)) {
-                    clear_entry(j);
+                    clear_entry_scrub(j);
                     changed = true;
                 }
             }
@@ -924,7 +937,7 @@ private:
                 }
                 const char* name = entries_[i].name;
                 if (!parent_dir_exists(name)) {
-                    clear_entry(i);
+                    clear_entry_scrub(i);
                     removed = true;
                     changed = true;
                 }
@@ -944,6 +957,11 @@ private:
         }
         if (changed) {
             (void)sync_entries();
+            for (uint32_t i = 0; i < kMaxFiles; ++i) {
+                if (scrub_slots[i]) {
+                    (void)zero_slot_data(i);
+                }
+            }
         }
     }
 

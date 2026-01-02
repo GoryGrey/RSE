@@ -162,6 +162,25 @@ int main() {
     bool wrote_badtype = fs.debugWriteEntry(fs.slotIndex(badtype), badtype_copy);
     assert(wrote_badtype);
 
+    os::BlockFSEntry* stale = fs.open("stale.txt", true, 0644);
+    assert(stale != nullptr);
+    const char stale_payload[] = "stale";
+    int64_t stale_wrote = fs.write(stale, 0, reinterpret_cast<const uint8_t*>(stale_payload),
+                                   static_cast<uint32_t>(sizeof(stale_payload) - 1));
+    assert(stale_wrote == static_cast<int64_t>(sizeof(stale_payload) - 1));
+    uint64_t stale_lba = fs.getDataStartLba() + (uint64_t)fs.slotIndex(stale) * fs.getSlotBlocks();
+    std::array<uint8_t, 512> stale_raw{};
+    rc = os::rse_block_read(stale_lba, stale_raw.data(), 1);
+    assert(rc == 0);
+    assert(std::memcmp(stale_raw.data(), stale_payload, sizeof(stale_payload) - 1) == 0);
+    os::BlockFSEntry stale_copy = *stale;
+    std::memset(stale_copy.name, 0, sizeof(stale_copy.name));
+    stale_copy.name[0] = '/';
+    stale_copy.name[1] = 'x';
+    stale_copy.name[2] = '\0';
+    bool wrote_stale = fs.debugWriteEntry(fs.slotIndex(stale), stale_copy);
+    assert(wrote_stale);
+
     os::BlockFS fs2;
     bool mounted2 = fs2.mount(512, os::rse_block_total_blocks());
     assert(mounted2);
@@ -177,6 +196,14 @@ int main() {
     assert(oversize_after == nullptr);
     os::BlockFSEntry* badtype_after = fs2.open("badtype.txt", false, 0);
     assert(badtype_after == nullptr);
+    os::BlockFSEntry* stale_after = fs2.open("stale.txt", false, 0);
+    assert(stale_after == nullptr);
+    std::array<uint8_t, 512> stale_scrubbed{};
+    rc = os::rse_block_read(stale_lba, stale_scrubbed.data(), 1);
+    assert(rc == 0);
+    for (size_t i = 0; i < stale_scrubbed.size(); ++i) {
+        assert(stale_scrubbed[i] == 0);
+    }
 
     bool removed_dir_fail = fs2.remove("bad");
     assert(!removed_dir_fail);

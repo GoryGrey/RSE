@@ -232,6 +232,7 @@ public:
                 fds_[i] = *old_desc;
                 fds_[i].fd = i;
                 fds_[i].ref_count = 1;
+                fds_[i].clearCloseOnExec();
                 old_desc->ref_count++;
                 return i;
             }
@@ -260,6 +261,7 @@ public:
         fds_[new_fd] = *old_desc;
         fds_[new_fd].fd = new_fd;
         fds_[new_fd].ref_count = 1;
+        fds_[new_fd].clearCloseOnExec();
         old_desc->ref_count++;
         return new_fd;
     }

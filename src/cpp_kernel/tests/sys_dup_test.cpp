@@ -119,6 +119,37 @@ int main() {
         return 1;
     }
 
+    int64_t clo_fd = os::syscall(os::SYS_OPEN, path_addr,
+                                 os::O_CREAT | os::O_TRUNC | os::O_RDWR | os::O_CLOEXEC);
+    if (!require(clo_fd >= 0, "open O_CLOEXEC")) {
+        return 1;
+    }
+    os::FileDescriptor* clo_desc = proc.fd_table.get(static_cast<int32_t>(clo_fd));
+    if (!require(clo_desc && clo_desc->closeOnExec(), "CLOEXEC set on original")) {
+        return 1;
+    }
+
+    int64_t clo_dup = os::syscall(os::SYS_DUP, clo_fd);
+    if (!require(clo_dup >= 0, "dup CLOEXEC fd")) {
+        return 1;
+    }
+    os::FileDescriptor* clo_dup_desc = proc.fd_table.get(static_cast<int32_t>(clo_dup));
+    if (!require(clo_dup_desc && !clo_dup_desc->closeOnExec(),
+                 "dup clears CLOEXEC")) {
+        return 1;
+    }
+
+    int target_clo_fd = 9;
+    int64_t clo_dup2 = os::syscall(os::SYS_DUP2, clo_fd, target_clo_fd);
+    if (!require(clo_dup2 == target_clo_fd, "dup2 CLOEXEC target")) {
+        return 1;
+    }
+    os::FileDescriptor* clo_dup2_desc = proc.fd_table.get(static_cast<int32_t>(clo_dup2));
+    if (!require(clo_dup2_desc && !clo_dup2_desc->closeOnExec(),
+                 "dup2 clears CLOEXEC")) {
+        return 1;
+    }
+
     std::cout << "  ✓ all tests passed" << std::endl;
     return 0;
 }

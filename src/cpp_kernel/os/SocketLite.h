@@ -432,6 +432,9 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
         if (len < sizeof(TcpLiteSynPayload)) {
             return;
         }
+        if (mgr.find_by_conn(header.conn)) {
+            return;
+        }
         TcpLiteSynPayload syn{};
         std::memcpy(&syn, payload, sizeof(syn));
         SocketLite* listener = mgr.find_listener(syn.dest_port, SocketLite::Backend::NET_LITE);

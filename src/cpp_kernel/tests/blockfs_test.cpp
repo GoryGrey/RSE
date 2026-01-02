@@ -53,6 +53,51 @@ int main() {
     assert(read == static_cast<int64_t>(sizeof(payload) - 1));
     assert(std::memcmp(out.data(), payload, sizeof(payload) - 1) == 0);
 
+    auto set_mode = [](os::BlockFSEntry& target, uint16_t mode) {
+        target.reserved[1] = static_cast<uint8_t>(mode & 0xFFu);
+        target.reserved[2] = static_cast<uint8_t>((mode >> 8) & 0xFFu);
+    };
+
+    os::BlockFSEntry* journal = fs.open("journal.txt", true, 0644);
+    assert(journal != nullptr);
+    const char journal_payload[] = "journal";
+    int64_t journal_wrote = fs.write(journal, 0,
+                                     reinterpret_cast<const uint8_t*>(journal_payload),
+                                     static_cast<uint32_t>(sizeof(journal_payload) - 1));
+    assert(journal_wrote == static_cast<int64_t>(sizeof(journal_payload) - 1));
+
+    os::BlockFSEntry journal_copy = *journal;
+    set_mode(journal_copy, 0600);
+    bool journal_set = fs.debugSetJournal("journal.txt", journal_copy);
+    assert(journal_set);
+
+    os::BlockFS fs_journal;
+    bool mounted_journal = fs_journal.mount(512, os::rse_block_total_blocks());
+    assert(mounted_journal);
+    uint32_t journal_size = 0;
+    uint8_t journal_type = 0;
+    uint16_t journal_mode = 0;
+    bool journal_stat = fs_journal.stat("journal.txt", &journal_size, &journal_type,
+                                        &journal_mode, nullptr, nullptr);
+    assert(journal_stat);
+    assert(journal_mode == 0600);
+
+    os::BlockFSEntry* journal_after = fs_journal.open("journal.txt", false, 0);
+    assert(journal_after != nullptr);
+    os::BlockFSEntry journal_bad = *journal_after;
+    set_mode(journal_bad, 0644);
+    bool journal_bad_set = fs_journal.debugSetJournal("journal.txt", journal_bad, true);
+    assert(journal_bad_set);
+
+    os::BlockFS fs_journal_bad;
+    bool mounted_journal_bad = fs_journal_bad.mount(512, os::rse_block_total_blocks());
+    assert(mounted_journal_bad);
+    uint16_t journal_bad_mode = 0;
+    bool journal_bad_stat = fs_journal_bad.stat("journal.txt", &journal_size, &journal_type,
+                                                &journal_bad_mode, nullptr, nullptr);
+    assert(journal_bad_stat);
+    assert(journal_bad_mode == 0600);
+
     os::BlockFSEntry* wipe = fs.open("wipe.txt", true, 0644);
     assert(wipe != nullptr);
     const char wipe_payload[] = "wipe";

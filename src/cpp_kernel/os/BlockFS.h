@@ -567,6 +567,25 @@ public:
         sync_entries();
         return true;
     }
+
+    bool debugSetJournal(const char* name, const BlockFSEntry& entry, bool bad_crc = false) {
+        if (!mounted_ || !name) {
+            return false;
+        }
+        BlockFSEntry* existing = find_entry(name);
+        if (!existing) {
+            return false;
+        }
+        uint32_t index = (uint32_t)(existing - entries_);
+        header_.journal_active = 1;
+        header_.journal_index = index;
+        header_.journal_entry = entry;
+        header_.journal_crc = entry_crc(entry);
+        if (bad_crc) {
+            header_.journal_crc ^= 0xFFu;
+        }
+        return sync_header();
+    }
 #endif
 
 private:

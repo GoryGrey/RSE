@@ -40,13 +40,26 @@ int main() {
     ctx.dispatcher = &dispatcher;
     ctx.vfs = &vfs;
     ctx.phys_alloc = &phys_alloc;
+    ctx.next_pid = 2;
     os::current_torus_context = &ctx;
 
     os::OSProcess proc(1, 0, 0);
+    proc.uid = 1001;
+    proc.gid = 1002;
+    proc.signal_handlers[os::SIGTERM] = os::SIG_IGN;
     proc.initMemory(&phys_alloc);
     scheduler.addProcess(&proc);
     scheduler.tick();
     assert(scheduler.getCurrentProcess() == &proc);
+
+    int64_t fork_pid = os::syscall(os::SYS_FORK);
+    assert(fork_pid == 2);
+    os::OSProcess* child = scheduler.findProcess(static_cast<uint32_t>(fork_pid));
+    assert(child != nullptr);
+    assert(child->parent_pid == proc.pid);
+    assert(child->uid == proc.uid);
+    assert(child->gid == proc.gid);
+    assert(child->signal_handlers[os::SIGTERM] == os::SIG_IGN);
 
     uint64_t guard_bytes = proc.vmem->getStackGuardBytes();
     if (guard_bytes > 0) {

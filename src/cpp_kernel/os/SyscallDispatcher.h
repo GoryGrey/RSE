@@ -416,6 +416,11 @@ inline int64_t sys_fork(uint64_t, uint64_t, uint64_t,
     child->context = parent->context;
     child->memory = parent->memory;
     child->priority = parent->priority;
+    child->uid = parent->uid;
+    child->gid = parent->gid;
+    std::memcpy(child->signal_handlers,
+                parent->signal_handlers,
+                sizeof(child->signal_handlers));
     
     // Copy file descriptors (per-process table)
     child->fd_table = parent->fd_table;
@@ -1794,6 +1799,9 @@ inline int64_t sys_ps(uint64_t buf_addr, uint64_t count, uint64_t,
     bool wrote = false;
     scheduler->forEachProcess([&](OSProcess* proc) {
         if (!proc) {
+            return;
+        }
+        if (current->uid != 0 && proc->uid != current->uid) {
             return;
         }
         if (!append_str("pid=") || !append_u64(proc->pid) ||

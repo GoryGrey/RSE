@@ -1,6 +1,6 @@
 # RSE Operating System: Roadmap
 
-Last Updated: January 01, 2026
+Last Updated: January 02, 2026
 Status: Active development (prototype)
 
 ---
@@ -15,6 +15,7 @@ This roadmap tracks the path from the current prototype to a production-grade OS
 
 - Bootable UEFI kernel (serial + framebuffer) with dashboard.
 - Syscall dispatcher with user-pointer validation and per-torus dispatch.
+- User isolation progress: sys_fork inherits uid/gid + signal handlers; sys_ps filters by uid for non-root callers.
 - ELF loader enforces the user virtual address window (rejects out-of-range segments).
 - MemFS + BlockFS with checksum journal; /persist mounted with directory paths; MemFS supports nested paths, deterministic list order, uid/gid ownership, and permission checks (including ancestor exec); BlockFS sanitizes invalid entries on mount and zeroes slots on create/remove.
 - Minimal network stack (ARP/UDP parsing + loopback) with NET_LITE socket syscalls and a raw Ethernet/IP/TCP backend for AF_INET sockets when `RSE_NET_RAW=1` (basic handshake/data/FIN).

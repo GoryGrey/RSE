@@ -28,11 +28,17 @@ int main() {
 
     os::OSProcess proc1(1, 0, 0);
     os::OSProcess proc2(2, 1, 0);
+    os::OSProcess proc3(3, 1, 0);
     proc1.initMemory(&phys_alloc);
     proc2.initMemory(&phys_alloc);
+    proc3.initMemory(&phys_alloc);
+    proc1.uid = 1000;
+    proc2.uid = 1000;
+    proc3.uid = 2000;
 
     scheduler.addProcess(&proc1);
     scheduler.addProcess(&proc2);
+    scheduler.addProcess(&proc3);
     scheduler.tick();
     assert(scheduler.getCurrentProcess() != nullptr);
 
@@ -52,6 +58,18 @@ int main() {
 
     assert(std::strstr(out, "pid=1") != nullptr);
     assert(std::strstr(out, "pid=2") != nullptr);
+    assert(std::strstr(out, "pid=3") == nullptr);
+
+    proc1.uid = 0;
+    wrote = os::syscall(os::SYS_PS, buf_addr, 512);
+    assert(wrote > 0);
+    read_len = (wrote < (int64_t)(sizeof(out) - 1))
+        ? (size_t)wrote
+        : (sizeof(out) - 1);
+    ok = proc1.vmem->readUser(out, buf_addr, read_len);
+    assert(ok);
+    out[read_len] = '\0';
+    assert(std::strstr(out, "pid=3") != nullptr);
 
     uint64_t bad_addr = proc1.vmem->getStackEnd() + 0x1000;
     int64_t bad_rc = os::syscall(os::SYS_PS, bad_addr, 64);

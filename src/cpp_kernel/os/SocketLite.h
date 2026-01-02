@@ -33,11 +33,13 @@ static constexpr uint8_t kNetLiteMaxRetries = 3u;
 static constexpr uint8_t kNetLiteMaxBacklog = 4u;
 static constexpr uint32_t kNetLiteDataRetryTicks = 8u;
 static constexpr uint8_t kNetLiteDataMaxRetries = 5u;
+static constexpr uint32_t kNetLiteCloseTimeout = 32u;
 static constexpr uint32_t kTcpRetryTicks = 8u;
 static constexpr uint32_t kTcpConnectTimeout = 128u;
 static constexpr uint8_t kTcpMaxRetries = 4u;
 static constexpr uint32_t kTcpDataRetryTicks = 8u;
 static constexpr uint8_t kTcpDataMaxRetries = 5u;
+static constexpr uint32_t kTcpCloseTimeout = 128u;
 static constexpr uint16_t kTcpWindowBytes = 4096u;
 static constexpr uint16_t kTcpMss = 1200u;
 static constexpr uint32_t kArpEntryTtl = 256u;
@@ -116,6 +118,9 @@ struct SocketLite {
     uint8_t local_mac[6];
     uint32_t fin_retry_at;
     uint8_t fin_attempts;
+    bool close_requested;
+    uint32_t close_deadline;
+    SocketLite* listener;
     SocketLite* peer;
     SocketLite* pending;
     SocketLite* pending_next;
@@ -156,6 +161,9 @@ struct SocketLite {
           peer_window(kTcpWindowBytes),
           fin_retry_at(0),
           fin_attempts(0),
+          close_requested(false),
+          close_deadline(0),
+          listener(nullptr),
           peer(nullptr),
           pending(nullptr),
           pending_next(nullptr),
@@ -669,7 +677,7 @@ public:
     }
 
     void service_tcp_connect(uint32_t now) {
-        auto reset_connect = [](SocketLite* sock) {
+        auto reset_connect = [this](SocketLite* sock) {
             if (!sock) {
                 return;
             }
@@ -685,6 +693,7 @@ public:
             sock->reset_pending = true;
             sock->tcp_state = TcpState::CLOSED;
             sock->tcp_syn_pending = false;
+            sock->listener = nullptr;
         };
         for (uint32_t i = 0; i < kMaxSockets; ++i) {
             if (!in_use_[i]) {
@@ -697,14 +706,22 @@ public:
                 continue;
             }
             if (sock.connect_deadline != 0 && now >= sock.connect_deadline) {
-                reset_connect(&sock);
+                if (sock.listener) {
+                    release(&sock);
+                } else {
+                    reset_connect(&sock);
+                }
                 continue;
             }
             if (sock.connect_retry == 0 || now < sock.connect_retry) {
                 continue;
             }
             if (sock.connect_attempts >= kTcpMaxRetries) {
-                reset_connect(&sock);
+                if (sock.listener) {
+                    release(&sock);
+                } else {
+                    reset_connect(&sock);
+                }
                 continue;
             }
             uint8_t flags = 0;
@@ -729,6 +746,40 @@ public:
             sock.connect_retry = now + tcp_backoff(kTcpRetryTicks, sock.connect_attempts);
             if (sock.connect_deadline == 0) {
                 sock.connect_deadline = now + kTcpConnectTimeout;
+            }
+        }
+    }
+
+    void sweep_closed(uint32_t now) {
+        for (uint32_t i = 0; i < kMaxSockets; ++i) {
+            if (!in_use_[i]) {
+                continue;
+            }
+            SocketLite& sock = sockets_[i];
+            if (!sock.close_requested) {
+                continue;
+            }
+            bool expired = (sock.close_deadline != 0 && now >= sock.close_deadline);
+            if (sock.backend == SocketLite::Backend::NET_LITE) {
+                if (sock.state == SocketLite::State::CLOSED ||
+                    sock.peer_closed || sock.reset_pending || expired) {
+                    release(&sock);
+                }
+                continue;
+            }
+            if (sock.backend == SocketLite::Backend::TCP) {
+                if (sock.tcp_state == TcpState::CLOSED ||
+                    sock.state == SocketLite::State::CLOSED) {
+                    release(&sock);
+                    continue;
+                }
+                if (expired) {
+                    sock.reset_pending = true;
+                    sock.state = SocketLite::State::CLOSED;
+                    sock.tcp_state = TcpState::CLOSED;
+                    release(&sock);
+                }
+                continue;
             }
         }
     }
@@ -799,6 +850,7 @@ inline void socket_append_pending(SocketLite* listener, SocketLite* pending) {
         return;
     }
     pending->pending_next = nullptr;
+    pending->listener = listener;
     if (!listener->pending) {
         listener->pending = pending;
     } else {
@@ -820,6 +872,7 @@ inline SocketLite* socket_pop_pending(SocketLite* listener) {
     SocketLite* head = listener->pending;
     listener->pending = head->pending_next;
     head->pending_next = nullptr;
+    head->listener = nullptr;
     if (listener->pending_count > 0) {
         listener->pending_count--;
     }
@@ -840,6 +893,7 @@ inline SocketLite* socket_pop_pending_ready(SocketLite* listener) {
                 listener->pending = node->pending_next;
             }
             node->pending_next = nullptr;
+            node->listener = nullptr;
             if (listener->pending_count > 0) {
                 listener->pending_count--;
             }
@@ -1164,6 +1218,10 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
         SocketLite* sock = mgr.find_by_conn(header.conn);
         if (sock && (sock->state == SocketLite::State::CONNECTED ||
                      sock->state == SocketLite::State::CONNECTING)) {
+            if (sock->listener) {
+                mgr.release(sock);
+                return;
+            }
             if (sock->state == SocketLite::State::CONNECTING) {
                 sock->reset_pending = true;
             } else {
@@ -1181,6 +1239,10 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
     if (header.flags & kTcpLiteRst) {
         SocketLite* sock = mgr.find_by_conn(header.conn);
         if (sock && sock->state != SocketLite::State::CLOSED) {
+            if (sock->listener) {
+                mgr.release(sock);
+                return;
+            }
             sock->reset_pending = true;
             sock->peer_closed = false;
             sock->state = SocketLite::State::CLOSED;
@@ -1600,6 +1662,10 @@ inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
     }
 
     if (flags & kTcpFlagRst) {
+        if (sock->listener) {
+            mgr.release(sock);
+            return;
+        }
         sock->reset_pending = true;
         sock->peer_closed = false;
         sock->state = SocketLite::State::CLOSED;
@@ -1791,6 +1857,7 @@ inline void socket_poll_net() {
 #else
     netlite_poll_net();
 #endif
+    mgr.sweep_closed(g_socket_net_ticks);
 }
 
 inline void tcp_poll_net() {
@@ -1866,13 +1933,29 @@ inline int socket_close(Device* dev) {
         return -1;
     }
     SocketLite* sock = static_cast<SocketLite*>(dev->private_data);
-    if (sock && sock->backend == SocketLite::Backend::NET_LITE &&
-        sock->state == SocketLite::State::CONNECTED && sock->conn_id != 0 &&
-        !sock->peer_closed) {
-        (void)net_send_frame(sock->conn_id, kTcpLiteFin, nullptr, 0);
+    if (!sock) {
+        return 0;
     }
-    if (sock && sock->backend == SocketLite::Backend::TCP &&
-        sock->state == SocketLite::State::CONNECTED) {
+    if (sock->backend == SocketLite::Backend::NET_LITE) {
+        if (sock->state != SocketLite::State::CONNECTED) {
+            socket_manager().release(sock);
+            return 0;
+        }
+        if (sock->conn_id != 0 && !sock->peer_closed) {
+            (void)net_send_frame(sock->conn_id, kTcpLiteFin, nullptr, 0);
+        }
+        sock->close_requested = true;
+        sock->close_deadline = g_socket_net_ticks + kNetLiteCloseTimeout;
+        sock->state = SocketLite::State::CLOSED;
+        return 0;
+    }
+    if (sock->backend == SocketLite::Backend::TCP) {
+        if (sock->state != SocketLite::State::CONNECTED) {
+            socket_manager().release(sock);
+            return 0;
+        }
+        sock->close_requested = true;
+        sock->close_deadline = g_socket_net_ticks + kTcpCloseTimeout;
         sock->fin_seq = sock->tx_seq;
         sock->tx_seq += 1;
         sock->tcp_fin_pending = true;
@@ -1883,6 +1966,7 @@ inline int socket_close(Device* dev) {
             : TcpState::FIN_WAIT;
         (void)tcp_send_segment(sock, (uint8_t)(kTcpFlagFin | kTcpFlagAck),
                                nullptr, 0, sock->fin_seq, sock->rx_seq);
+        return 0;
     }
     socket_manager().release(sock);
     return 0;

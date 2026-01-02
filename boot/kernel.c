@@ -1929,7 +1929,11 @@ int rse_net_read(void *buf, uint32_t len) {
         return -1;
     }
 #if RSE_NET_RAW
-    return net_backend_read(buf, len);
+    int rc = net_backend_read(buf, len);
+    if (rc == 0) {
+        return -(int)RSE_EAGAIN;
+    }
+    return rc;
 #else
     uint32_t got = net_queue_pop((uint8_t *)buf, len);
     if (got > 0) {
@@ -1937,7 +1941,7 @@ int rse_net_read(void *buf, uint32_t len) {
     }
     net_poll_rx(8);
     got = net_queue_pop((uint8_t *)buf, len);
-    return (int)got;
+    return got > 0 ? (int)got : -(int)RSE_EAGAIN;
 #endif
 }
 
@@ -3593,7 +3597,7 @@ static int net_backend_read(void *buf, uint32_t len) {
     EFI_STATUS status = g_net->Receive(g_net, &header_size, &buf_size, buf,
                                        &src, &dst, &protocol);
     if (status == EFI_NOT_READY) {
-        return 0;
+        return -(int)RSE_EAGAIN;
     }
     if (EFI_ERROR(status)) {
         return -1;

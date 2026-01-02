@@ -124,6 +124,8 @@ int main() {
     uint64_t dir_addr = write_user_string(proc, persist_dir);
     int64_t mkdir_rc = os::syscall(os::SYS_MKDIR, dir_addr, 0755);
     assert(mkdir_rc == 0);
+    int64_t dir_open = os::syscall(os::SYS_OPEN, dir_addr, os::O_RDONLY);
+    assert(dir_open == -os::EISDIR);
 
     list_buf.fill(0);
     uint64_t root_list_addr = proc.vmem->allocate(list_buf.size());

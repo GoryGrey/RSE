@@ -362,6 +362,13 @@ public:
             BlockFSEntry* entry = blockfs_->open(persist, (flags & O_CREAT) != 0,
                                                  static_cast<uint16_t>(mode));
             if (!entry) {
+                uint32_t stat_size = 0;
+                uint8_t stat_type = 0;
+                uint16_t stat_mode = 0;
+                if (blockfs_->stat(persist, &stat_size, &stat_type, &stat_mode) &&
+                    stat_type == BlockFS::kEntryDir) {
+                    return -EISDIR;
+                }
                 std::cerr << "[VFS] BlockFS open failed: " << persist << std::endl;
                 return -1;
             }

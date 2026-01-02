@@ -1,6 +1,6 @@
 # RSE (Resilient Spatial Execution)
 
-Last Updated: December 28, 2025 (user isolation hardening + syscall VFS/persist test + metrics snapshot)
+Last Updated: January 01, 2026 (persist dir open returns EISDIR; /persist directory support + permissions; status refresh)
 
 Status: Research prototype. Bootable UEFI kernel with an interactive dashboard and in-kernel workloads; braided projection exchange works in multi-VM via shared memory.
 
@@ -47,13 +47,13 @@ Key properties:
 - Framebuffer dashboard with keyboard/mouse input.
 - Braided runtime (single-node projections + constraint application).
 - Projection exchange across 3 VMs via IVSHMEM shared memory.
-- Block-backed persistence via BlockFS mounted at /persist.
+- Block-backed persistence via BlockFS mounted at /persist with directories and basic permission checks.
 
 ## Known Limitations
 
 - User-mode isolation and permissions are still evolving.
 - Network RX/TX needs hardening; no TCP yet.
-- BlockFS is fixed-slot and flat (no directories).
+- BlockFS is fixed-slot; ownership model is still missing and permissions are basic.
 - Workload init is one-shot per boot.
 
 ---
@@ -71,7 +71,7 @@ Key properties:
 - Driver hardening (virtio-net).
 
 3) Filesystem
-- BlockFS directories + permissions.
+- BlockFS permissions/ownership model.
 - Stronger journaling and recovery.
 
 ---

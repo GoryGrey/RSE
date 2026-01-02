@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: January 01, 2026 (PIT timer preemption; ring3 sleep/yield + timeslice; W^X mprotect checks; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + overflow drops + conn collision checks; BlockFS checksum recovery; CLOEXEC dup hygiene; workload yields; directory listing sort; ISO workflow scripts; logged test heartbeat; quick boot test runner)
+Last Updated: January 01, 2026 (PIT timer preemption; ring3 sleep/yield + timeslice; W^X mprotect checks; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + overflow drops + conn collision checks; BlockFS checksum recovery; CLOEXEC dup hygiene; persist dir open returns EISDIR; workload yields; directory listing sort; ISO workflow scripts; logged test heartbeat; quick boot test runner)
 
 ---
 
@@ -25,7 +25,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 
 - Bootable UEFI kernel (serial + framebuffer) with dashboard and input.
 - In-kernel benchmarks (compute, memory, RAMFS, UEFI FS/block, fastio, HTTP loopback).
-- MemFS + BlockFS with per-process file descriptors, `/persist` directories, MemFS nested paths, deterministic list ordering, and permission checks on open/list/mkdir/unlink (including parent exec/write) with `.`/`..` path segments rejected.
+- MemFS + BlockFS with per-process file descriptors, `/persist` directories, MemFS nested paths, deterministic list ordering, permission checks on open/list/mkdir/unlink (including parent exec/write), `.`/`..` path segments rejected, and `-EISDIR` on directory open.
 - BlockFS persistence with checksum + journal + corruption detection (flat table, directory paths), with mount-time sanitize for duplicates/invalid entries and journal write checks; remove fully resets entry metadata.
 - TCP-lite framing over `/dev/net0` for loopback handshake/data tests with NET_LITE connect retries/timeouts, FIN-on-close, queued pending accepts, overflow-safe wire buffering, stricter FIN state handling, and conn-id collision checks.
 - In-kernel socket syscalls (`socket/bind/listen/accept/connect`) with loopback buffers and NET_LITE framing over the net device path.

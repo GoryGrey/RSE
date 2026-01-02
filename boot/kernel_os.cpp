@@ -445,7 +445,7 @@ void operator delete[](void* ptr, size_t) noexcept {
 }
 
 namespace std {
-const nothrow_t nothrow = {};
+const nothrow_t nothrow;
 }
 
 void* operator new(size_t size, const std::nothrow_t&) noexcept {

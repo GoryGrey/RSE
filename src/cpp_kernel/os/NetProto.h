@@ -11,6 +11,8 @@ struct TcpLiteHeader {
     uint16_t flags;
     uint16_t conn;
     uint32_t len;
+    uint32_t seq;
+    uint32_t ack;
 };
 
 static constexpr uint32_t kTcpLiteMagic = 0x52534554u; // "RSET"
@@ -26,7 +28,7 @@ inline int64_t tcp_lite_write(VFS* vfs, FileDescriptorTable* fdt, int32_t fd,
     if (!vfs || !fdt) {
         return -EINVAL;
     }
-    TcpLiteHeader header{ kTcpLiteMagic, flags, conn, len };
+    TcpLiteHeader header{ kTcpLiteMagic, flags, conn, len, 0, 0 };
     const uint8_t* src = static_cast<const uint8_t*>(payload);
     uint32_t written = 0;
     const uint8_t* header_bytes = reinterpret_cast<const uint8_t*>(&header);

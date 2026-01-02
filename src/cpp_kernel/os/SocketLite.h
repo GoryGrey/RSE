@@ -13,6 +13,8 @@ struct TcpLiteHeader {
     uint16_t flags;
     uint16_t conn;
     uint32_t len;
+    uint32_t seq;
+    uint32_t ack;
 };
 
 static constexpr uint32_t kTcpLiteMagic = 0x52534554u; // "RSET"
@@ -25,6 +27,8 @@ static constexpr uint32_t kNetLiteRetryTicks = 8u;
 static constexpr uint32_t kNetLiteConnectTimeout = 64u;
 static constexpr uint8_t kNetLiteMaxRetries = 3u;
 static constexpr uint8_t kNetLiteMaxBacklog = 4u;
+static constexpr uint32_t kNetLiteDataRetryTicks = 8u;
+static constexpr uint8_t kNetLiteDataMaxRetries = 5u;
 
 inline uint32_t g_socket_net_ticks = 0;
 
@@ -62,11 +66,19 @@ struct SocketLite {
     uint8_t pending_count;
     bool peer_closed;
     bool reset_pending;
+    uint32_t tx_seq;
+    uint32_t rx_seq;
+    uint32_t tx_pending_seq;
+    uint32_t tx_pending_len;
+    uint32_t tx_retry_at;
+    uint8_t tx_attempts;
+    bool tx_pending;
     SocketLite* peer;
     SocketLite* pending;
     SocketLite* pending_next;
     Device device;
     uint8_t buffer[kBufferSize];
+    uint8_t tx_buffer[kBufferSize];
     size_t head;
     size_t tail;
     size_t size;
@@ -84,6 +96,13 @@ struct SocketLite {
           pending_count(0),
           peer_closed(false),
           reset_pending(false),
+          tx_seq(1),
+          rx_seq(1),
+          tx_pending_seq(0),
+          tx_pending_len(0),
+          tx_retry_at(0),
+          tx_attempts(0),
+          tx_pending(false),
           peer(nullptr),
           pending(nullptr),
           pending_next(nullptr),
@@ -91,6 +110,7 @@ struct SocketLite {
           tail(0),
           size(0) {
         std::memset(buffer, 0, sizeof(buffer));
+        std::memset(tx_buffer, 0, sizeof(tx_buffer));
     }
 };
 
@@ -106,6 +126,9 @@ struct NetWireState {
         std::memset(buffer, 0, sizeof(buffer));
     }
 };
+
+inline int net_send_frame(uint16_t conn, uint16_t flags, const void* payload,
+                          uint32_t len, uint32_t seq = 0, uint32_t ack = 0);
 
 class SocketManager {
 public:
@@ -243,6 +266,42 @@ public:
 
     bool net_online() const {
         return net_online_;
+    }
+
+    void service_netlite_tx(uint32_t now) {
+        for (uint32_t i = 0; i < kMaxSockets; ++i) {
+            if (!in_use_[i]) {
+                continue;
+            }
+            SocketLite& sock = sockets_[i];
+            if (sock.backend != SocketLite::Backend::NET_LITE ||
+                sock.state != SocketLite::State::CONNECTED ||
+                !sock.tx_pending) {
+                continue;
+            }
+            if (sock.peer_closed || sock.reset_pending) {
+                sock.tx_pending = false;
+                continue;
+            }
+            if (now < sock.tx_retry_at) {
+                continue;
+            }
+            if (sock.tx_attempts >= kNetLiteDataMaxRetries) {
+                sock.reset_pending = true;
+                sock.state = SocketLite::State::CLOSED;
+                sock.tx_pending = false;
+                (void)net_send_frame(sock.conn_id, kTcpLiteRst, nullptr, 0);
+                continue;
+            }
+            int rc = net_send_frame(sock.conn_id, kTcpLiteData,
+                                    sock.tx_buffer, sock.tx_pending_len,
+                                    sock.tx_pending_seq, sock.rx_seq);
+            if (rc < 0) {
+                continue;
+            }
+            sock.tx_attempts++;
+            sock.tx_retry_at = now + kNetLiteDataRetryTicks;
+        }
     }
 
 private:
@@ -443,6 +502,19 @@ inline void net_out_flush() {
     }
 }
 
+inline void netlite_reset_txrx(SocketLite* sock) {
+    if (!sock) {
+        return;
+    }
+    sock->tx_seq = 1;
+    sock->rx_seq = 1;
+    sock->tx_pending_seq = 0;
+    sock->tx_pending_len = 0;
+    sock->tx_retry_at = 0;
+    sock->tx_attempts = 0;
+    sock->tx_pending = false;
+}
+
 inline int net_write_all(const uint8_t* data, uint32_t len) {
     if (!data || len == 0) {
         return 0;
@@ -463,8 +535,9 @@ inline int net_write_all(const uint8_t* data, uint32_t len) {
     return static_cast<int>(len);
 }
 
-inline int net_send_frame(uint16_t conn, uint16_t flags, const void* payload, uint32_t len) {
-    TcpLiteHeader header{ kTcpLiteMagic, flags, conn, len };
+inline int net_send_frame(uint16_t conn, uint16_t flags, const void* payload,
+                          uint32_t len, uint32_t seq, uint32_t ack) {
+    TcpLiteHeader header{ kTcpLiteMagic, flags, conn, len, seq, ack };
     if (!socket_manager().net_online()) {
         return -EIO;
     }
@@ -525,6 +598,7 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
         server_sock->port = syn.dest_port;
         server_sock->peer_port = syn.src_port;
         server_sock->conn_id = header.conn;
+        netlite_reset_txrx(server_sock);
         socket_append_pending(listener, server_sock);
         (void)net_send_frame(header.conn, kTcpLiteAck, nullptr, 0);
         return;
@@ -537,6 +611,16 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
             sock->connect_attempts = 0;
             sock->connect_retry = 0;
             sock->connect_deadline = 0;
+            netlite_reset_txrx(sock);
+        } else if (sock && sock->state == SocketLite::State::CONNECTED) {
+            if (sock->tx_pending && header.ack == sock->tx_pending_seq + 1) {
+                sock->tx_pending = false;
+                sock->tx_pending_seq = 0;
+                sock->tx_pending_len = 0;
+                sock->tx_attempts = 0;
+                sock->tx_retry_at = 0;
+                sock->tx_seq = header.ack;
+            }
         }
         return;
     }
@@ -569,6 +653,11 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
             sock->connect_attempts = 0;
             sock->connect_retry = 0;
             sock->connect_deadline = 0;
+            sock->tx_pending = false;
+            sock->tx_pending_seq = 0;
+            sock->tx_pending_len = 0;
+            sock->tx_attempts = 0;
+            sock->tx_retry_at = 0;
         }
         return;
     }
@@ -579,6 +668,15 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
             return;
         }
         if (sock->size >= SocketLite::kBufferSize) {
+            (void)net_send_frame(header.conn, kTcpLiteAck, nullptr, 0, 0, sock->rx_seq);
+            return;
+        }
+        if (header.seq < sock->rx_seq) {
+            (void)net_send_frame(header.conn, kTcpLiteAck, nullptr, 0, 0, sock->rx_seq);
+            return;
+        }
+        if (header.seq > sock->rx_seq) {
+            (void)net_send_frame(header.conn, kTcpLiteAck, nullptr, 0, 0, sock->rx_seq);
             return;
         }
         size_t space = SocketLite::kBufferSize - sock->size;
@@ -588,6 +686,10 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
             sock->tail = (sock->tail + 1) % SocketLite::kBufferSize;
         }
         sock->size += to_write;
+        if (to_write == len) {
+            sock->rx_seq++;
+        }
+        (void)net_send_frame(header.conn, kTcpLiteAck, nullptr, 0, 0, sock->rx_seq);
     }
 }
 
@@ -637,6 +739,7 @@ inline void socket_poll_net() {
         }
         net_dispatch_frame(header, payload, header.len);
     }
+    mgr.service_netlite_tx(g_socket_net_ticks);
 }
 
 inline int socket_open(Device* dev) {
@@ -716,11 +819,26 @@ inline ssize_t socket_write(Device* dev, const void* buf, size_t count) {
         if (sock->reset_pending) {
             return -ECONNRESET;
         }
-        int rc = net_send_frame(sock->conn_id, kTcpLiteData, buf, (uint32_t)count);
+        if (sock->tx_pending) {
+            socket_poll_net();
+            return -EAGAIN;
+        }
+        uint32_t to_write = count > SocketLite::kBufferSize
+            ? (uint32_t)SocketLite::kBufferSize
+            : (uint32_t)count;
+        std::memcpy(sock->tx_buffer, buf, to_write);
+        sock->tx_pending = true;
+        sock->tx_pending_seq = sock->tx_seq;
+        sock->tx_pending_len = to_write;
+        sock->tx_attempts = 1;
+        sock->tx_retry_at = g_socket_net_ticks + kNetLiteDataRetryTicks;
+        int rc = net_send_frame(sock->conn_id, kTcpLiteData,
+                                sock->tx_buffer, to_write,
+                                sock->tx_pending_seq, sock->rx_seq);
         if (rc < 0) {
             return rc;
         }
-        return (ssize_t)count;
+        return (ssize_t)to_write;
     }
     if (!sock || sock->state != SocketLite::State::CONNECTED) {
         if (sock && sock->peer_closed) {

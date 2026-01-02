@@ -59,6 +59,8 @@ struct SocketLite {
     uint8_t connect_attempts;
     uint8_t backlog;
     uint8_t pending_count;
+    bool peer_closed;
+    bool reset_pending;
     SocketLite* peer;
     SocketLite* pending;
     SocketLite* pending_next;
@@ -79,6 +81,8 @@ struct SocketLite {
           connect_attempts(0),
           backlog(0),
           pending_count(0),
+          peer_closed(false),
+          reset_pending(false),
           peer(nullptr),
           pending(nullptr),
           pending_next(nullptr),
@@ -250,6 +254,7 @@ private:
             if (other.peer == sock) {
                 other.peer = nullptr;
                 other.state = SocketLite::State::CLOSED;
+                other.reset_pending = true;
             }
             if (other.pending) {
                 SocketLite* prev = nullptr;
@@ -265,6 +270,7 @@ private:
                         if (other.pending_count > 0) {
                             other.pending_count--;
                         }
+                        other.reset_pending = true;
                         break;
                     }
                     prev = node;
@@ -475,6 +481,11 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
         SocketLite* sock = mgr.find_by_conn(header.conn);
         if (sock && (sock->state == SocketLite::State::CONNECTED ||
                      sock->state == SocketLite::State::CONNECTING)) {
+            if (sock->state == SocketLite::State::CONNECTING) {
+                sock->reset_pending = true;
+            } else {
+                sock->peer_closed = true;
+            }
             sock->state = SocketLite::State::CLOSED;
             sock->peer_port = 0;
             sock->connect_attempts = 0;
@@ -560,7 +571,8 @@ inline int socket_close(Device* dev) {
     }
     SocketLite* sock = static_cast<SocketLite*>(dev->private_data);
     if (sock && sock->backend == SocketLite::Backend::NET_LITE &&
-        sock->state == SocketLite::State::CONNECTED && sock->conn_id != 0) {
+        sock->state == SocketLite::State::CONNECTED && sock->conn_id != 0 &&
+        !sock->peer_closed) {
         (void)net_send_frame(sock->conn_id, kTcpLiteFin, nullptr, 0);
     }
     socket_manager().release(sock);
@@ -572,16 +584,23 @@ inline ssize_t socket_read(Device* dev, void* buf, size_t count) {
         return 0;
     }
     SocketLite* sock = static_cast<SocketLite*>(dev->private_data);
-    if (!sock || sock->state != SocketLite::State::CONNECTED) {
-        if (sock && sock->state == SocketLite::State::CLOSED) {
-            return -ECONNRESET;
-        }
+    if (!sock) {
         return -ENOTCONN;
     }
     if (sock->backend == SocketLite::Backend::NET_LITE) {
         socket_poll_net();
     }
+    if (sock->state != SocketLite::State::CONNECTED &&
+        sock->state != SocketLite::State::CLOSED) {
+        return -ENOTCONN;
+    }
     if (sock->size == 0) {
+        if (sock->peer_closed) {
+            return 0;
+        }
+        if (sock->reset_pending || sock->state == SocketLite::State::CLOSED) {
+            return -ECONNRESET;
+        }
         return -EAGAIN;
     }
     size_t to_read = count < sock->size ? count : sock->size;
@@ -599,18 +618,45 @@ inline ssize_t socket_write(Device* dev, const void* buf, size_t count) {
         return 0;
     }
     SocketLite* sock = static_cast<SocketLite*>(dev->private_data);
-    if (!sock || sock->state != SocketLite::State::CONNECTED) {
-        if (sock && sock->state == SocketLite::State::CLOSED) {
-            return -ECONNRESET;
-        }
+    if (!sock) {
         return -ENOTCONN;
     }
     if (sock->backend == SocketLite::Backend::NET_LITE) {
+        if (!sock || sock->state != SocketLite::State::CONNECTED) {
+            if (sock && sock->peer_closed) {
+                return -EPIPE;
+            }
+            if (sock && sock->reset_pending) {
+                return -ECONNRESET;
+            }
+            return -ENOTCONN;
+        }
+        if (sock->peer_closed) {
+            return -EPIPE;
+        }
+        if (sock->reset_pending) {
+            return -ECONNRESET;
+        }
         int rc = net_send_frame(sock->conn_id, kTcpLiteData, buf, (uint32_t)count);
         if (rc < 0) {
             return rc;
         }
         return (ssize_t)count;
+    }
+    if (!sock || sock->state != SocketLite::State::CONNECTED) {
+        if (sock && sock->peer_closed) {
+            return -EPIPE;
+        }
+        if (sock && sock->reset_pending) {
+            return -ECONNRESET;
+        }
+        return -ENOTCONN;
+    }
+    if (sock->peer_closed) {
+        return -EPIPE;
+    }
+    if (sock->reset_pending) {
+        return -ECONNRESET;
     }
     if (!sock->peer) {
         return -ENOTCONN;

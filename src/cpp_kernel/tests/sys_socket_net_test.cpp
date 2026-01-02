@@ -170,6 +170,21 @@ int main() {
     }
     assert(os::net_wire_state().drops == 0);
 
+    int64_t close_rc = os::syscall(os::SYS_CLOSE, client_fd);
+    assert(close_rc == 0);
+    int64_t eof = -1;
+    for (int attempt = 0; attempt < 16; ++attempt) {
+        eof = os::syscall(os::SYS_READ, accept_fd, reply_buf_ptr, 1);
+        if (eof == -EAGAIN) {
+            continue;
+        }
+        break;
+    }
+    assert(eof == 0);
+    int64_t after_close = os::syscall(os::SYS_WRITE, accept_fd,
+                                      reply_ptr, sizeof(reply) - 1);
+    assert(after_close == -os::EPIPE);
+
     std::cout << "  ✓ all tests passed" << std::endl;
     return 0;
 }

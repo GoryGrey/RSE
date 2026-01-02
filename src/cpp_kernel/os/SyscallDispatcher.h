@@ -1264,6 +1264,13 @@ inline int64_t sys_write(uint64_t fd, uint64_t buf_addr, uint64_t count,
     if (!current) {
         return -ESRCH;
     }
+    if (fd > INT32_MAX) {
+        return -EBADF;
+    }
+    int32_t fd_num = static_cast<int32_t>(fd);
+    if (!current->fd_table.get(fd_num)) {
+        return -EBADF;
+    }
     if (count > static_cast<uint64_t>(UINT32_MAX)) {
         return -EINVAL;
     }
@@ -1282,7 +1289,7 @@ inline int64_t sys_write(uint64_t fd, uint64_t buf_addr, uint64_t count,
                 return total != 0 ? total : -EFAULT;
             }
             int64_t written = current_torus_context->vfs->write(&current->fd_table,
-                                                               static_cast<int32_t>(fd),
+                                                               fd_num,
                                                                scratch,
                                                                chunk);
             if (written < 0) {
@@ -1298,7 +1305,7 @@ inline int64_t sys_write(uint64_t fd, uint64_t buf_addr, uint64_t count,
         return total;
     }
     return current_torus_context->vfs->write(&current->fd_table,
-                                             static_cast<int32_t>(fd),
+                                             fd_num,
                                              (const void *)buf_addr,
                                              static_cast<uint32_t>(count));
 }
@@ -1315,6 +1322,13 @@ inline int64_t sys_read(uint64_t fd, uint64_t buf_addr, uint64_t count,
     if (!current) {
         return -ESRCH;
     }
+    if (fd > INT32_MAX) {
+        return -EBADF;
+    }
+    int32_t fd_num = static_cast<int32_t>(fd);
+    if (!current->fd_table.get(fd_num)) {
+        return -EBADF;
+    }
     if (count > static_cast<uint64_t>(UINT32_MAX)) {
         return -EINVAL;
     }
@@ -1330,7 +1344,7 @@ inline int64_t sys_read(uint64_t fd, uint64_t buf_addr, uint64_t count,
         while (remaining > 0) {
             uint32_t chunk = remaining > kScratch ? kScratch : static_cast<uint32_t>(remaining);
             int64_t got = current_torus_context->vfs->read(&current->fd_table,
-                                                          static_cast<int32_t>(fd),
+                                                          fd_num,
                                                           scratch,
                                                           chunk);
             if (got < 0) {
@@ -1352,7 +1366,7 @@ inline int64_t sys_read(uint64_t fd, uint64_t buf_addr, uint64_t count,
         return total;
     }
     return current_torus_context->vfs->read(&current->fd_table,
-                                            static_cast<int32_t>(fd),
+                                            fd_num,
                                             (void *)buf_addr,
                                             static_cast<uint32_t>(count));
 }
@@ -1394,8 +1408,14 @@ inline int64_t sys_close(uint64_t fd, uint64_t, uint64_t,
     if (!current) {
         return -ESRCH;
     }
-    return current_torus_context->vfs->close(&current->fd_table,
-                                             static_cast<int32_t>(fd));
+    if (fd > INT32_MAX) {
+        return -EBADF;
+    }
+    int32_t fd_num = static_cast<int32_t>(fd);
+    if (!current->fd_table.get(fd_num)) {
+        return -EBADF;
+    }
+    return current_torus_context->vfs->close(&current->fd_table, fd_num);
 }
 
 /**
@@ -1410,8 +1430,15 @@ inline int64_t sys_lseek(uint64_t fd, uint64_t offset, uint64_t whence,
     if (!current) {
         return -ESRCH;
     }
+    if (fd > INT32_MAX) {
+        return -EBADF;
+    }
+    int32_t fd_num = static_cast<int32_t>(fd);
+    if (!current->fd_table.get(fd_num)) {
+        return -EBADF;
+    }
     return current_torus_context->vfs->lseek(&current->fd_table,
-                                             static_cast<int32_t>(fd),
+                                             fd_num,
                                              static_cast<int64_t>(offset),
                                              static_cast<int>(whence));
 }

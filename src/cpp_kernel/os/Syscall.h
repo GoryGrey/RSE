@@ -104,6 +104,9 @@ constexpr int EISDIR    = 21;  // Is a directory
 #ifndef ENOTSOCK
 constexpr int ENOTSOCK  = 88;  // Not a socket
 #endif
+#ifndef EPIPE
+constexpr int EPIPE     = 32;  // Broken pipe
+#endif
 #ifndef EADDRINUSE
 constexpr int EADDRINUSE = 98; // Address already in use
 #endif

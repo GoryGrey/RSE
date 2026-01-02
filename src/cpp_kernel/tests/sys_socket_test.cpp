@@ -52,6 +52,7 @@ int main() {
     os::rse_sockaddr addr{};
     addr.family = os::RSE_AF_LOOP;
     addr.port = 4242;
+    addr.addr = os::RSE_ADDR_LOOPBACK;
     uint64_t addr_ptr = write_user(proc, &addr, sizeof(addr));
 
     int64_t bind_rc = os::syscall(os::SYS_BIND, server_fd, addr_ptr, sizeof(addr));
@@ -113,6 +114,7 @@ int main() {
     os::rse_sockaddr missing{};
     missing.family = os::RSE_AF_LOOP;
     missing.port = 5151;
+    missing.addr = os::RSE_ADDR_LOOPBACK;
     uint64_t missing_ptr = write_user(proc, &missing, sizeof(missing));
     int64_t no_listener_fd = os::syscall(os::SYS_SOCKET, os::RSE_AF_LOOP, os::RSE_SOCK_STREAM, 0);
     assert(no_listener_fd >= 0);

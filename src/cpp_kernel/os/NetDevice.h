@@ -12,6 +12,8 @@ namespace os {
 extern "C" int rse_net_init(void);
 extern "C" int rse_net_read(void* buf, uint32_t len);
 extern "C" int rse_net_write(const void* buf, uint32_t len);
+extern "C" int rse_net_get_mac(uint8_t mac_out[6]);
+extern "C" int rse_net_get_ip(uint8_t ip_out[4]);
 #else
 struct NetLoopback {
     static constexpr size_t CAPACITY = 16384;
@@ -72,6 +74,30 @@ inline int rse_net_write(const void* buf, uint32_t len) {
     }
     state.size += to_write;
     return (int)to_write;
+}
+
+inline int rse_net_get_mac(uint8_t mac_out[6]) {
+    if (!mac_out) {
+        return -1;
+    }
+    mac_out[0] = 0x02;
+    mac_out[1] = 0x00;
+    mac_out[2] = 0x00;
+    mac_out[3] = 0x00;
+    mac_out[4] = 0x00;
+    mac_out[5] = 0x01;
+    return 0;
+}
+
+inline int rse_net_get_ip(uint8_t ip_out[4]) {
+    if (!ip_out) {
+        return -1;
+    }
+    ip_out[0] = 10;
+    ip_out[1] = 0;
+    ip_out[2] = 2;
+    ip_out[3] = 15;
+    return 0;
 }
 #endif
 

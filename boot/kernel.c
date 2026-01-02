@@ -1977,6 +1977,16 @@ int rse_net_get_mac(uint8_t mac_out[6]) {
     return 0;
 }
 
+int rse_net_get_ip(uint8_t ip_out[4]) {
+    if (!ip_out) {
+        return -1;
+    }
+    for (uint32_t i = 0; i < 4; ++i) {
+        ip_out[i] = net_ip_addr[i];
+    }
+    return 0;
+}
+
 static EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *uefi_find_writable_fs(EFI_SYSTEM_TABLE *st) {
     if (!st || !st->BootServices) {
         return NULL;

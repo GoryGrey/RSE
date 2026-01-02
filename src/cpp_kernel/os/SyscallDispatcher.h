@@ -614,7 +614,7 @@ inline int64_t sys_socket(uint64_t domain, uint64_t type, uint64_t protocol,
     if (!current) {
         return -ESRCH;
     }
-    if (domain != RSE_AF_LOOP) {
+    if (domain != RSE_AF_LOOP && domain != RSE_AF_INET) {
         return -EOPNOTSUPP;
     }
     if (type != 0 && type != RSE_SOCK_STREAM) {
@@ -622,12 +622,29 @@ inline int64_t sys_socket(uint64_t domain, uint64_t type, uint64_t protocol,
     }
     SocketLite::Backend backend = SocketLite::Backend::LOOPBACK;
     if (protocol == RSE_PROTO_NET) {
+#if RSE_NET_RAW
+        return -EOPNOTSUPP;
+#endif
+        if (domain != RSE_AF_LOOP) {
+            return -EOPNOTSUPP;
+        }
         backend = SocketLite::Backend::NET_LITE;
         socket_manager().ensure_net_online();
         if (!socket_manager().net_online()) {
             return -EIO;
         }
+    } else if (protocol == RSE_PROTO_TCP) {
+#if !RSE_NET_RAW
+        return -EOPNOTSUPP;
+#endif
+        backend = SocketLite::Backend::TCP;
+        socket_manager().ensure_net_online();
+        if (!socket_manager().net_online()) {
+            return -EIO;
+        }
     } else if (protocol != 0) {
+        return -EOPNOTSUPP;
+    } else if (domain == RSE_AF_INET) {
         return -EOPNOTSUPP;
     }
     SocketLite* sock = socket_manager().allocate(backend);
@@ -663,15 +680,29 @@ inline int64_t sys_bind(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
     if (!read_user_bytes(current, addr_ptr, &addr, sizeof(addr))) {
         return -EFAULT;
     }
-    if (addr.family != RSE_AF_LOOP) {
+    if (addr.family != RSE_AF_LOOP && addr.family != RSE_AF_INET) {
         return -EOPNOTSUPP;
     }
     SocketLite* sock = fd_to_socket(current, static_cast<int32_t>(fd));
     if (!sock) {
         return -ENOTSOCK;
     }
+    if (sock->backend == SocketLite::Backend::NET_LITE &&
+        addr.family != RSE_AF_LOOP) {
+        return -EOPNOTSUPP;
+    }
     if (sock->state != SocketLite::State::CREATED) {
         return -EINVAL;
+    }
+    if (sock->backend == SocketLite::Backend::TCP) {
+        uint32_t bind_ip = addr.addr;
+        if (addr.family == RSE_AF_LOOP || bind_ip == 0) {
+            bind_ip = socket_manager().local_ip();
+        }
+        if (bind_ip == 0) {
+            return -EIO;
+        }
+        sock->local_ip = bind_ip;
     }
     uint16_t port = addr.port;
     if (port == 0) {
@@ -728,10 +759,11 @@ inline int64_t sys_accept(uint64_t fd, uint64_t addr_ptr, uint64_t addrlen_ptr,
         return -EINVAL;
     }
     SocketLite* server_sock = nullptr;
-    if (listener->backend == SocketLite::Backend::NET_LITE) {
+    if (listener->backend == SocketLite::Backend::NET_LITE ||
+        listener->backend == SocketLite::Backend::TCP) {
         socket_poll_net();
     }
-    server_sock = socket_pop_pending(listener);
+    server_sock = socket_pop_pending_ready(listener);
     if (!server_sock) {
         return -EAGAIN;
     }
@@ -773,8 +805,15 @@ inline int64_t sys_accept(uint64_t fd, uint64_t addr_ptr, uint64_t addrlen_ptr,
 
     if (addr_ptr != 0) {
         rse_sockaddr out{};
-        out.family = RSE_AF_LOOP;
-        out.port = server_sock->peer_port;
+        if (listener->backend == SocketLite::Backend::TCP) {
+            out.family = RSE_AF_INET;
+            out.port = server_sock->peer_port;
+            out.addr = server_sock->peer_ip;
+        } else {
+            out.family = RSE_AF_LOOP;
+            out.port = server_sock->peer_port;
+            out.addr = RSE_ADDR_LOOPBACK;
+        }
         if (!write_user_bytes(current, addr_ptr, &out, sizeof(out))) {
             return -EFAULT;
         }
@@ -811,6 +850,23 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
         sock->peer_closed = false;
         sock->reset_pending = false;
     };
+    auto reset_tcp_connect = [](SocketLite* sock) {
+        if (!sock) {
+            return;
+        }
+        sock->state = (sock->port != 0)
+            ? SocketLite::State::BOUND
+            : SocketLite::State::CREATED;
+        sock->peer_port = 0;
+        sock->peer_ip = 0;
+        sock->connect_attempts = 0;
+        sock->connect_retry = 0;
+        sock->connect_deadline = 0;
+        sock->peer_closed = false;
+        sock->reset_pending = false;
+        sock->tcp_state = TcpState::CLOSED;
+        sock->tcp_syn_pending = false;
+    };
     if (addr_len < sizeof(rse_sockaddr)) {
         return -EINVAL;
     }
@@ -821,7 +877,7 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
     if (!read_user_bytes(current, addr_ptr, &addr, sizeof(addr))) {
         return -EFAULT;
     }
-    if (addr.family != RSE_AF_LOOP) {
+    if (addr.family != RSE_AF_LOOP && addr.family != RSE_AF_INET) {
         return -EOPNOTSUPP;
     }
     if (addr.port == 0) {
@@ -833,6 +889,10 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
     }
     if (sock->state == SocketLite::State::CONNECTED) {
         return -EISCONN;
+    }
+    if (sock->backend == SocketLite::Backend::NET_LITE &&
+        addr.family != RSE_AF_LOOP) {
+        return -EOPNOTSUPP;
     }
     if (sock->state == SocketLite::State::CONNECTING &&
         sock->backend == SocketLite::Backend::NET_LITE) {
@@ -879,6 +939,26 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
         }
         return -EAGAIN;
     }
+    if (sock->state == SocketLite::State::CONNECTING &&
+        sock->backend == SocketLite::Backend::TCP) {
+        socket_poll_net();
+        if (sock->state == SocketLite::State::CONNECTED) {
+            return 0;
+        }
+        if (sock->reset_pending) {
+            reset_tcp_connect(sock);
+            return -ECONNREFUSED;
+        }
+        uint32_t now = g_socket_net_ticks;
+        if (sock->connect_deadline == 0) {
+            sock->connect_deadline = now + kTcpConnectTimeout;
+        }
+        if (now >= sock->connect_deadline) {
+            reset_tcp_connect(sock);
+            return -ETIMEDOUT;
+        }
+        return -EAGAIN;
+    }
     if (sock->state == SocketLite::State::LISTENING) {
         return -EOPNOTSUPP;
     }
@@ -911,6 +991,41 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
                                 &syn, sizeof(syn));
         if (rc < 0) {
             reset_netlite_connect(sock);
+            return rc;
+        }
+        socket_poll_net();
+        return sock->state == SocketLite::State::CONNECTED ? 0 : -EAGAIN;
+    }
+
+    if (sock->backend == SocketLite::Backend::TCP) {
+        uint32_t peer_ip = addr.addr;
+        if (addr.family == RSE_AF_LOOP || peer_ip == 0) {
+            peer_ip = socket_manager().local_ip();
+        }
+        if (peer_ip == 0) {
+            return -EIO;
+        }
+        if (sock->port == 0) {
+            uint16_t port = socket_manager().allocate_ephemeral_port(sock->backend);
+            if (port == 0) {
+                return -EAGAIN;
+            }
+            sock->port = port;
+        }
+        sock->peer_port = addr.port;
+        sock->peer_ip = peer_ip;
+        sock->state = SocketLite::State::CONNECTING;
+        sock->tcp_state = TcpState::SYN_SENT;
+        sock->syn_seq = socket_manager().next_isn();
+        sock->tx_seq = sock->syn_seq + 1;
+        sock->tcp_syn_pending = true;
+        uint32_t now = g_socket_net_ticks;
+        sock->connect_attempts = 1;
+        sock->connect_retry = now + kTcpRetryTicks;
+        sock->connect_deadline = now + kTcpConnectTimeout;
+        int rc = tcp_send_segment(sock, kTcpFlagSyn, nullptr, 0,
+                                  sock->syn_seq, 0);
+        if (rc < 0) {
             return rc;
         }
         socket_poll_net();

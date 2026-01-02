@@ -17,7 +17,7 @@ This roadmap tracks the path from the current prototype to a production-grade OS
 - Syscall dispatcher with user-pointer validation and per-torus dispatch.
 - ELF loader enforces the user virtual address window (rejects out-of-range segments).
 - MemFS + BlockFS with checksum journal; /persist mounted with directory paths; MemFS supports nested paths, deterministic list order, uid/gid ownership, and permission checks (including ancestor exec); BlockFS sanitizes invalid entries on mount and zeroes slots on create/remove.
-- Minimal network stack (ARP/UDP parsing + loopback) with NET_LITE socket syscalls over the net device path (connect retries/timeouts, queued accepts, FIN on close).
+- Minimal network stack (ARP/UDP parsing + loopback) with NET_LITE socket syscalls and a raw Ethernet/IP/TCP backend for AF_INET sockets when `RSE_NET_RAW=1` (basic handshake/data/FIN).
 - UEFI kernel build is freestanding with minimal string/mem shims for kernel C++ code.
 - Ring3 init loads a real freestanding user ELF at `/bin/init`, can run `/persist/boot.rc` or `/boot.rc` scripts, and yields/sleeps across ring3 slots on syscall ticks.
 - IVSHMEM projection exchange across 3 VMs.
@@ -44,12 +44,12 @@ Success criteria:
 
 ### 2) Network Stack Hardening
 - Stable RX/TX under load (virtio-net).
-- Wire socket syscalls to real TCP (connect/listen/accept/close) beyond NET_LITE framing.
+- Raw TCP socket backend is in place; harden connect/listen/accept/close beyond NET_LITE framing.
 - Better packet validation + timeouts.
 
 Success criteria:
 - RX/TX stress tests complete without stalls.
-- TCP handshake and simple request/response works.
+- Raw TCP handshake and simple request/response works.
 
 ### 3) Filesystem Growth
 - BlockFS directories + permissions (owner/group/other enforcement in place; single-group uid/gid).

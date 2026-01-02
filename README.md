@@ -1,6 +1,6 @@
 # RSE (Resilient Spatial Execution)
 
-Last Updated: January 01, 2026 (memfs/persist ancestor exec enforcement; virtio-net TX backpressure + RX guardrails; empty net reads return EAGAIN; net queue + RX/TX error counters surfaced; BlockFS slot zeroing on create/remove; mergeable RX disabled pending reassembly; status refresh)
+Last Updated: January 01, 2026 (memfs/persist ancestor exec enforcement; virtio-net TX backpressure + RX guardrails; empty net reads return EAGAIN; net queue + RX/TX error counters surfaced; BlockFS slot zeroing on create/remove; mergeable RX disabled pending reassembly; raw TCP socket backend for AF_INET when RSE_NET_RAW=1; sys_socket_tcp_test)
 
 Status: Research prototype. Bootable UEFI kernel with an interactive dashboard and in-kernel workloads; braided projection exchange works in multi-VM via shared memory.
 
@@ -41,7 +41,7 @@ Key properties:
 
 - Bootable UEFI kernel in QEMU (serial + framebuffer).
 - In-kernel workloads: compute, memory, RAMFS I/O, UEFI FS/block I/O, HTTP loopback.
-- /dev/net0 UDP loopback (minimal stack; no full IP/TCP yet).
+- /dev/net0 UDP loopback plus raw Ethernet/IP/TCP backend for AF_INET sockets when `RSE_NET_RAW=1`.
 - Cooperative userspace tasks + ring3 exec smoke (UEFI).
 - Fast-path I/O device (/dev/fast0) using a native ring buffer.
 - Framebuffer dashboard with keyboard/mouse input.
@@ -60,7 +60,7 @@ Key properties:
 
 - User-mode isolation and permissions are still evolving.
 - Custom signal handlers are not wired yet (default/ignore only).
-- Network stack remains minimal (UDP loopback/NET_LITE; no TCP yet).
+- Network stack remains minimal (raw TCP is basic; no congestion control, fragmentation, or full socket options).
 - BlockFS is fixed-slot; ownership uses 8-bit uid/gid (single group, no ACLs).
 - Workload init is one-shot per boot.
 
@@ -75,7 +75,7 @@ Key properties:
 
 2) Network stack
 - Stable RX/TX under load.
-- Minimal TCP support.
+- TCP hardening (retransmit, flow control, teardown edge cases).
 - Driver hardening (virtio-net).
 
 3) Filesystem

@@ -167,12 +167,16 @@ struct rse_timespec {
 // ========== Sockets ==========
 
 constexpr uint16_t RSE_AF_LOOP = 1;
+constexpr uint16_t RSE_AF_INET = 2;
 constexpr uint16_t RSE_SOCK_STREAM = 1;
 constexpr uint16_t RSE_PROTO_NET = 1;
+constexpr uint16_t RSE_PROTO_TCP = 2;
+constexpr uint32_t RSE_ADDR_LOOPBACK = 0x7F000001u;
 
 struct rse_sockaddr {
     uint16_t family;
     uint16_t port;
+    uint32_t addr;
 };
 
 // ========== Memory Protection Flags ==========

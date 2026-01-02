@@ -23,7 +23,7 @@ static uint64_t write_user(os::OSProcess& proc, const void* data, size_t size) {
 }
 
 static void write_exact(int64_t fd, uint64_t buf, size_t size) {
-    for (int attempt = 0; attempt < 16; ++attempt) {
+    for (int attempt = 0; attempt < 32; ++attempt) {
         int64_t wrote = os::syscall(os::SYS_WRITE, fd, buf, size);
         if (wrote == static_cast<int64_t>(size)) {
             return;
@@ -39,7 +39,7 @@ static void write_exact(int64_t fd, uint64_t buf, size_t size) {
 static void read_exact(int64_t fd, uint64_t buf, size_t size) {
     size_t remaining = size;
     uint64_t cursor = buf;
-    for (int attempt = 0; attempt < 32 && remaining > 0; ++attempt) {
+    for (int attempt = 0; attempt < 64 && remaining > 0; ++attempt) {
         int64_t got = os::syscall(os::SYS_READ, fd, cursor, remaining);
         if (got == -EAGAIN) {
             continue;
@@ -52,7 +52,7 @@ static void read_exact(int64_t fd, uint64_t buf, size_t size) {
 }
 
 int main() {
-    std::cout << "[sys_socket_net Tests]" << std::endl;
+    std::cout << "[sys_socket_tcp Tests]" << std::endl;
 
     alignas(os::PAGE_SIZE) std::array<uint8_t, 1 << 20> phys{};
     os::PhysicalAllocator phys_alloc(reinterpret_cast<uint64_t>(phys.data()), phys.size());
@@ -75,14 +75,14 @@ int main() {
     scheduler.tick();
     assert(scheduler.getCurrentProcess() == &proc);
 
-    int64_t server_fd = os::syscall(os::SYS_SOCKET, os::RSE_AF_LOOP,
-                                    os::RSE_SOCK_STREAM, os::RSE_PROTO_NET);
+    int64_t server_fd = os::syscall(os::SYS_SOCKET, os::RSE_AF_INET,
+                                    os::RSE_SOCK_STREAM, os::RSE_PROTO_TCP);
     assert(server_fd >= 0);
 
     os::rse_sockaddr addr{};
-    addr.family = os::RSE_AF_LOOP;
+    addr.family = os::RSE_AF_INET;
     addr.port = 5050;
-    addr.addr = os::RSE_ADDR_LOOPBACK;
+    addr.addr = 0;
     uint64_t addr_ptr = write_user(proc, &addr, sizeof(addr));
 
     int64_t bind_rc = os::syscall(os::SYS_BIND, server_fd, addr_ptr, sizeof(addr));
@@ -90,20 +90,20 @@ int main() {
     int64_t listen_rc = os::syscall(os::SYS_LISTEN, server_fd, 1);
     assert(listen_rc == 0);
 
-    int64_t client_fd = os::syscall(os::SYS_SOCKET, os::RSE_AF_LOOP,
-                                    os::RSE_SOCK_STREAM, os::RSE_PROTO_NET);
+    int64_t client_fd = os::syscall(os::SYS_SOCKET, os::RSE_AF_INET,
+                                    os::RSE_SOCK_STREAM, os::RSE_PROTO_TCP);
     assert(client_fd >= 0);
 
     os::rse_sockaddr bad_addr{};
-    bad_addr.family = os::RSE_AF_LOOP;
+    bad_addr.family = os::RSE_AF_INET;
     bad_addr.port = 6060;
-    bad_addr.addr = os::RSE_ADDR_LOOPBACK;
+    bad_addr.addr = 0;
     uint64_t bad_addr_ptr = write_user(proc, &bad_addr, sizeof(bad_addr));
-    int64_t bad_client = os::syscall(os::SYS_SOCKET, os::RSE_AF_LOOP,
-                                     os::RSE_SOCK_STREAM, os::RSE_PROTO_NET);
+    int64_t bad_client = os::syscall(os::SYS_SOCKET, os::RSE_AF_INET,
+                                     os::RSE_SOCK_STREAM, os::RSE_PROTO_TCP);
     assert(bad_client >= 0);
     int64_t refused = -1;
-    for (int attempt = 0; attempt < 8; ++attempt) {
+    for (int attempt = 0; attempt < 16; ++attempt) {
         refused = os::syscall(os::SYS_CONNECT, bad_client, bad_addr_ptr, sizeof(bad_addr));
         if (refused != -EAGAIN) {
             break;
@@ -121,7 +121,7 @@ int main() {
     assert(peer_addr_ptr != 0);
 
     int64_t accept_fd = -1;
-    for (int attempt = 0; attempt < 8; ++attempt) {
+    for (int attempt = 0; attempt < 32; ++attempt) {
         accept_fd = os::syscall(os::SYS_ACCEPT, server_fd, peer_addr_ptr, addrlen_ptr);
         if (accept_fd >= 0) {
             break;
@@ -135,6 +135,12 @@ int main() {
         }
     }
     assert(accept_fd >= 0);
+
+    os::rse_sockaddr peer{};
+    assert(proc.vmem->readUser(&peer, peer_addr_ptr, sizeof(peer)));
+    assert(peer.family == os::RSE_AF_INET);
+    assert(peer.port != 0);
+    assert(peer.addr != 0);
 
     const char msg[] = "netping";
     uint64_t msg_ptr = write_user(proc, msg, sizeof(msg) - 1);
@@ -170,7 +176,7 @@ int main() {
     assert(bulk_send_ptr != 0);
     assert(bulk_recv_ptr != 0);
 
-    for (uint8_t iter = 0; iter < 16; ++iter) {
+    for (uint8_t iter = 0; iter < 8; ++iter) {
         for (size_t i = 0; i < bulk.size(); ++i) {
             bulk[i] = static_cast<uint8_t>(iter + i);
         }
@@ -187,12 +193,11 @@ int main() {
         assert(proc.vmem->readUser(bulk_out.data(), bulk_recv_ptr, bulk_out.size()));
         assert(std::memcmp(bulk_out.data(), bulk.data(), bulk.size()) == 0);
     }
-    assert(os::net_wire_state().drops == 0);
 
     int64_t close_rc = os::syscall(os::SYS_CLOSE, client_fd);
     assert(close_rc == 0);
     int64_t eof = -1;
-    for (int attempt = 0; attempt < 16; ++attempt) {
+    for (int attempt = 0; attempt < 32; ++attempt) {
         eof = os::syscall(os::SYS_READ, accept_fd, reply_buf_ptr, 1);
         if (eof == -EAGAIN) {
             continue;

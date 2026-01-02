@@ -6,6 +6,10 @@
 #include <cstdint>
 #include <cstring>
 
+#ifndef RSE_NET_RAW
+#define RSE_NET_RAW 0
+#endif
+
 namespace os {
 
 struct TcpLiteHeader {
@@ -29,12 +33,37 @@ static constexpr uint8_t kNetLiteMaxRetries = 3u;
 static constexpr uint8_t kNetLiteMaxBacklog = 4u;
 static constexpr uint32_t kNetLiteDataRetryTicks = 8u;
 static constexpr uint8_t kNetLiteDataMaxRetries = 5u;
+static constexpr uint32_t kTcpRetryTicks = 8u;
+static constexpr uint32_t kTcpConnectTimeout = 128u;
+static constexpr uint8_t kTcpMaxRetries = 4u;
+static constexpr uint32_t kTcpDataRetryTicks = 8u;
+static constexpr uint8_t kTcpDataMaxRetries = 5u;
+static constexpr uint16_t kTcpWindowBytes = 4096u;
+static constexpr uint16_t kTcpMss = 1200u;
+static constexpr uint16_t kEthertypeIPv4 = 0x0800;
+static constexpr uint16_t kEthertypeArp = 0x0806;
+static constexpr uint8_t kIpProtoTcp = 6;
+static constexpr uint8_t kTcpFlagFin = 0x01;
+static constexpr uint8_t kTcpFlagSyn = 0x02;
+static constexpr uint8_t kTcpFlagRst = 0x04;
+static constexpr uint8_t kTcpFlagPsh = 0x08;
+static constexpr uint8_t kTcpFlagAck = 0x10;
 
 inline uint32_t g_socket_net_ticks = 0;
 
 struct TcpLiteSynPayload {
     uint16_t dest_port;
     uint16_t src_port;
+};
+
+enum class TcpState : uint8_t {
+    CLOSED,
+    SYN_SENT,
+    SYN_RCVD,
+    ESTABLISHED,
+    FIN_WAIT,
+    CLOSE_WAIT,
+    LAST_ACK
 };
 
 struct SocketLite {
@@ -49,7 +78,8 @@ struct SocketLite {
 
     enum class Backend : uint8_t {
         LOOPBACK,
-        NET_LITE
+        NET_LITE,
+        TCP
     };
 
     static constexpr size_t kBufferSize = 8192;
@@ -59,6 +89,8 @@ struct SocketLite {
     uint16_t port;
     uint16_t peer_port;
     uint16_t conn_id;
+    uint32_t peer_ip;
+    uint32_t local_ip;
     uint32_t connect_deadline;
     uint32_t connect_retry;
     uint8_t connect_attempts;
@@ -68,11 +100,18 @@ struct SocketLite {
     bool reset_pending;
     uint32_t tx_seq;
     uint32_t rx_seq;
+    uint32_t syn_seq;
+    uint32_t fin_seq;
     uint32_t tx_pending_seq;
     uint32_t tx_pending_len;
     uint32_t tx_retry_at;
     uint8_t tx_attempts;
     bool tx_pending;
+    TcpState tcp_state;
+    bool tcp_syn_pending;
+    bool tcp_fin_pending;
+    uint8_t peer_mac[6];
+    uint8_t local_mac[6];
     SocketLite* peer;
     SocketLite* pending;
     SocketLite* pending_next;
@@ -89,6 +128,8 @@ struct SocketLite {
           port(0),
           peer_port(0),
           conn_id(0),
+          peer_ip(0),
+          local_ip(0),
           connect_deadline(0),
           connect_retry(0),
           connect_attempts(0),
@@ -98,11 +139,16 @@ struct SocketLite {
           reset_pending(false),
           tx_seq(1),
           rx_seq(1),
+          syn_seq(0),
+          fin_seq(0),
           tx_pending_seq(0),
           tx_pending_len(0),
           tx_retry_at(0),
           tx_attempts(0),
           tx_pending(false),
+          tcp_state(TcpState::CLOSED),
+          tcp_syn_pending(false),
+          tcp_fin_pending(false),
           peer(nullptr),
           pending(nullptr),
           pending_next(nullptr),
@@ -111,8 +157,13 @@ struct SocketLite {
           size(0) {
         std::memset(buffer, 0, sizeof(buffer));
         std::memset(tx_buffer, 0, sizeof(tx_buffer));
+        std::memset(peer_mac, 0, sizeof(peer_mac));
+        std::memset(local_mac, 0, sizeof(local_mac));
     }
 };
+
+inline int tcp_send_segment(SocketLite* sock, uint8_t flags, const uint8_t* payload,
+                            uint32_t len, uint32_t seq, uint32_t ack);
 
 struct NetWireState {
     static constexpr size_t kCapacity = 16384;
@@ -127,16 +178,143 @@ struct NetWireState {
     }
 };
 
+struct NetFrameState {
+    static constexpr size_t kCapacity = 32768;
+    uint8_t buffer[kCapacity];
+    size_t head;
+    size_t tail;
+    size_t size;
+    uint32_t drops;
+
+    NetFrameState() : head(0), tail(0), size(0), drops(0) {
+        std::memset(buffer, 0, sizeof(buffer));
+    }
+};
+
+inline uint16_t net_htons(uint16_t value) {
+    return (uint16_t)((value << 8) | (value >> 8));
+}
+
+inline uint32_t net_htonl(uint32_t value) {
+    return ((value & 0x000000FFu) << 24) |
+           ((value & 0x0000FF00u) << 8) |
+           ((value & 0x00FF0000u) >> 8) |
+           ((value & 0xFF000000u) >> 24);
+}
+
+inline uint16_t net_checksum(const uint8_t* data, uint32_t len) {
+    uint32_t sum = 0;
+    for (uint32_t i = 0; i + 1 < len; i += 2) {
+        sum += (uint16_t)((data[i] << 8) | data[i + 1]);
+    }
+    if (len & 1u) {
+        sum += (uint16_t)(data[len - 1] << 8);
+    }
+    while (sum >> 16) {
+        sum = (sum & 0xFFFFu) + (sum >> 16);
+    }
+    return (uint16_t)(~sum);
+}
+
+inline uint32_t net_checksum_add(uint32_t sum, const uint8_t* data, uint32_t len) {
+    for (uint32_t i = 0; i + 1 < len; i += 2) {
+        sum += (uint16_t)((data[i] << 8) | data[i + 1]);
+    }
+    if (len & 1u) {
+        sum += (uint16_t)(data[len - 1] << 8);
+    }
+    return sum;
+}
+
+inline uint16_t net_checksum_finish(uint32_t sum) {
+    while (sum >> 16) {
+        sum = (sum & 0xFFFFu) + (sum >> 16);
+    }
+    return (uint16_t)(~sum);
+}
+
+inline void net_ip_to_bytes(uint32_t ip, uint8_t out[4]) {
+    out[0] = (uint8_t)((ip >> 24) & 0xFFu);
+    out[1] = (uint8_t)((ip >> 16) & 0xFFu);
+    out[2] = (uint8_t)((ip >> 8) & 0xFFu);
+    out[3] = (uint8_t)(ip & 0xFFu);
+}
+
+inline uint32_t net_ip_from_bytes(const uint8_t ip[4]) {
+    return (uint32_t)(ip[0] << 24) |
+           (uint32_t)(ip[1] << 16) |
+           (uint32_t)(ip[2] << 8) |
+           (uint32_t)ip[3];
+}
+
+struct __attribute__((packed)) net_eth_hdr {
+    uint8_t dst[6];
+    uint8_t src[6];
+    uint16_t ethertype;
+};
+
+struct __attribute__((packed)) net_ipv4_hdr {
+    uint8_t ver_ihl;
+    uint8_t tos;
+    uint16_t total_len;
+    uint16_t id;
+    uint16_t frag_off;
+    uint8_t ttl;
+    uint8_t proto;
+    uint16_t checksum;
+    uint8_t src[4];
+    uint8_t dst[4];
+};
+
+struct __attribute__((packed)) net_tcp_hdr {
+    uint16_t src_port;
+    uint16_t dst_port;
+    uint32_t seq;
+    uint32_t ack;
+    uint8_t data_off;
+    uint8_t flags;
+    uint16_t window;
+    uint16_t checksum;
+    uint16_t urgent;
+};
+
+struct __attribute__((packed)) net_arp_pkt {
+    uint16_t htype;
+    uint16_t ptype;
+    uint8_t hlen;
+    uint8_t plen;
+    uint16_t oper;
+    uint8_t sha[6];
+    uint8_t spa[4];
+    uint8_t tha[6];
+    uint8_t tpa[4];
+};
+
 inline int net_send_frame(uint16_t conn, uint16_t flags, const void* payload,
                           uint32_t len, uint32_t seq = 0, uint32_t ack = 0);
 
 class SocketManager {
 public:
     static constexpr uint32_t kMaxSockets = 64;
+    static constexpr uint32_t kArpEntries = 8;
 
-    SocketManager() : next_ephemeral_(40000), next_conn_id_(1), net_online_(false) {
+    SocketManager()
+        : next_ephemeral_(40000),
+          next_conn_id_(1),
+          tcp_next_isn_(1),
+          net_online_(false),
+          local_ip_(0),
+          local_mac_valid_(false),
+          local_ip_valid_(false) {
         for (uint32_t i = 0; i < kMaxSockets; ++i) {
             in_use_[i] = false;
+        }
+        std::memset(local_mac_, 0, sizeof(local_mac_));
+        for (uint32_t i = 0; i < kArpEntries; ++i) {
+            arp_cache_[i].ip = 0;
+            arp_cache_[i].last_seen = 0;
+            arp_cache_[i].valid = false;
+            std::memset(arp_cache_[i].mac, 0, sizeof(arp_cache_[i].mac));
         }
     }
 
@@ -210,6 +388,24 @@ public:
         return nullptr;
     }
 
+    SocketLite* find_tcp_socket(uint16_t port, uint16_t peer_port, uint32_t peer_ip) {
+        for (uint32_t i = 0; i < kMaxSockets; ++i) {
+            if (!in_use_[i]) {
+                continue;
+            }
+            SocketLite& sock = sockets_[i];
+            if (sock.backend != SocketLite::Backend::TCP ||
+                sock.state == SocketLite::State::CLOSED) {
+                continue;
+            }
+            if (sock.port == port && sock.peer_port == peer_port &&
+                sock.peer_ip == peer_ip) {
+                return &sock;
+            }
+        }
+        return nullptr;
+    }
+
     bool port_in_use(uint16_t port, SocketLite::Backend backend) const {
         if (port == 0) {
             return false;
@@ -261,11 +457,97 @@ public:
         }
         if (rse_net_init() == 0) {
             net_online_ = true;
+            ensure_net_identity();
         }
     }
 
     bool net_online() const {
         return net_online_;
+    }
+
+    void ensure_net_identity() {
+        if (!net_online_) {
+            return;
+        }
+        if (!local_mac_valid_) {
+            local_mac_valid_ = (rse_net_get_mac(local_mac_) == 0);
+        }
+        if (!local_ip_valid_) {
+            uint8_t ip_bytes[4] = {};
+            if (rse_net_get_ip(ip_bytes) == 0) {
+                local_ip_ = (uint32_t)(ip_bytes[0] << 24) |
+                            (uint32_t)(ip_bytes[1] << 16) |
+                            (uint32_t)(ip_bytes[2] << 8) |
+                            (uint32_t)ip_bytes[3];
+                local_ip_valid_ = true;
+            }
+        }
+    }
+
+    uint32_t local_ip() const {
+        return local_ip_;
+    }
+
+    bool local_ip_valid() const {
+        return local_ip_valid_;
+    }
+
+    bool get_local_mac(uint8_t out[6]) const {
+        if (!out || !local_mac_valid_) {
+            return false;
+        }
+        std::memcpy(out, local_mac_, sizeof(local_mac_));
+        return true;
+    }
+
+    void set_local_ip(uint32_t ip) {
+        local_ip_ = ip;
+        local_ip_valid_ = ip != 0;
+    }
+
+    uint32_t next_isn() {
+        uint32_t value = tcp_next_isn_;
+        tcp_next_isn_ += 0x1000u;
+        if (tcp_next_isn_ == 0) {
+            tcp_next_isn_ = 1;
+        }
+        return value;
+    }
+
+    bool arp_lookup(uint32_t ip, uint8_t out_mac[6]) const {
+        if (!out_mac || ip == 0) {
+            return false;
+        }
+        for (uint32_t i = 0; i < kArpEntries; ++i) {
+            if (arp_cache_[i].valid && arp_cache_[i].ip == ip) {
+                std::memcpy(out_mac, arp_cache_[i].mac, 6);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void arp_update(uint32_t ip, const uint8_t mac[6]) {
+        if (!mac || ip == 0) {
+            return;
+        }
+        uint32_t slot = kArpEntries;
+        for (uint32_t i = 0; i < kArpEntries; ++i) {
+            if (arp_cache_[i].valid && arp_cache_[i].ip == ip) {
+                slot = i;
+                break;
+            }
+            if (!arp_cache_[i].valid && slot == kArpEntries) {
+                slot = i;
+            }
+        }
+        if (slot == kArpEntries) {
+            slot = (g_socket_net_ticks % kArpEntries);
+        }
+        arp_cache_[slot].ip = ip;
+        arp_cache_[slot].valid = true;
+        arp_cache_[slot].last_seen = g_socket_net_ticks;
+        std::memcpy(arp_cache_[slot].mac, mac, 6);
     }
 
     void service_netlite_tx(uint32_t now) {
@@ -304,7 +586,114 @@ public:
         }
     }
 
+    void service_tcp_tx(uint32_t now) {
+        for (uint32_t i = 0; i < kMaxSockets; ++i) {
+            if (!in_use_[i]) {
+                continue;
+            }
+            SocketLite& sock = sockets_[i];
+            if (sock.backend != SocketLite::Backend::TCP ||
+                sock.state != SocketLite::State::CONNECTED ||
+                !sock.tx_pending) {
+                continue;
+            }
+            if (sock.peer_closed || sock.reset_pending) {
+                sock.tx_pending = false;
+                continue;
+            }
+            if (now < sock.tx_retry_at) {
+                continue;
+            }
+            if (sock.tx_attempts >= kTcpDataMaxRetries) {
+                sock.reset_pending = true;
+                sock.state = SocketLite::State::CLOSED;
+                sock.tx_pending = false;
+                continue;
+            }
+            int rc = tcp_send_segment(&sock, (uint8_t)(kTcpFlagAck | kTcpFlagPsh),
+                                      sock.tx_buffer, sock.tx_pending_len,
+                                      sock.tx_pending_seq, sock.rx_seq);
+            if (rc < 0) {
+                continue;
+            }
+            sock.tx_attempts++;
+            sock.tx_retry_at = now + kTcpDataRetryTicks;
+        }
+    }
+
+    void service_tcp_connect(uint32_t now) {
+        auto reset_connect = [](SocketLite* sock) {
+            if (!sock) {
+                return;
+            }
+            sock->state = (sock->port != 0)
+                ? SocketLite::State::BOUND
+                : SocketLite::State::CREATED;
+            sock->peer_port = 0;
+            sock->peer_ip = 0;
+            sock->connect_attempts = 0;
+            sock->connect_retry = 0;
+            sock->connect_deadline = 0;
+            sock->peer_closed = false;
+            sock->reset_pending = true;
+            sock->tcp_state = TcpState::CLOSED;
+            sock->tcp_syn_pending = false;
+        };
+        for (uint32_t i = 0; i < kMaxSockets; ++i) {
+            if (!in_use_[i]) {
+                continue;
+            }
+            SocketLite& sock = sockets_[i];
+            if (sock.backend != SocketLite::Backend::TCP ||
+                sock.state != SocketLite::State::CONNECTING ||
+                !sock.tcp_syn_pending) {
+                continue;
+            }
+            if (sock.connect_deadline != 0 && now >= sock.connect_deadline) {
+                reset_connect(&sock);
+                continue;
+            }
+            if (sock.connect_retry == 0 || now < sock.connect_retry) {
+                continue;
+            }
+            if (sock.connect_attempts >= kTcpMaxRetries) {
+                reset_connect(&sock);
+                continue;
+            }
+            uint8_t flags = 0;
+            uint32_t seq = 0;
+            uint32_t ack = 0;
+            if (sock.tcp_state == TcpState::SYN_SENT) {
+                flags = kTcpFlagSyn;
+                seq = sock.syn_seq;
+            } else if (sock.tcp_state == TcpState::SYN_RCVD) {
+                flags = (uint8_t)(kTcpFlagSyn | kTcpFlagAck);
+                seq = sock.syn_seq;
+                ack = sock.rx_seq;
+            } else {
+                reset_connect(&sock);
+                continue;
+            }
+            int rc = tcp_send_segment(&sock, flags, nullptr, 0, seq, ack);
+            if (rc < 0) {
+                continue;
+            }
+            sock.connect_attempts++;
+            sock.connect_retry = now + kTcpRetryTicks;
+            if (sock.connect_deadline == 0) {
+                sock.connect_deadline = now + kTcpConnectTimeout;
+            }
+        }
+    }
+
 private:
+    struct ArpEntry {
+        uint32_t ip;
+        uint8_t mac[6];
+        uint32_t last_seen;
+        bool valid;
+    };
+
     void detach_peers(SocketLite* sock) {
         for (uint32_t i = 0; i < kMaxSockets; ++i) {
             if (!in_use_[i]) {
@@ -344,7 +733,13 @@ private:
     bool in_use_[kMaxSockets];
     uint16_t next_ephemeral_;
     uint16_t next_conn_id_;
+    uint32_t tcp_next_isn_;
     bool net_online_;
+    uint32_t local_ip_;
+    uint8_t local_mac_[6];
+    bool local_mac_valid_;
+    bool local_ip_valid_;
+    ArpEntry arp_cache_[kArpEntries];
 };
 
 inline SocketManager& socket_manager() {
@@ -384,6 +779,31 @@ inline SocketLite* socket_pop_pending(SocketLite* listener) {
     return head;
 }
 
+inline SocketLite* socket_pop_pending_ready(SocketLite* listener) {
+    if (!listener) {
+        return nullptr;
+    }
+    SocketLite* prev = nullptr;
+    SocketLite* node = listener->pending;
+    while (node) {
+        if (node->state == SocketLite::State::CONNECTED) {
+            if (prev) {
+                prev->pending_next = node->pending_next;
+            } else {
+                listener->pending = node->pending_next;
+            }
+            node->pending_next = nullptr;
+            if (listener->pending_count > 0) {
+                listener->pending_count--;
+            }
+            return node;
+        }
+        prev = node;
+        node = node->pending_next;
+    }
+    return nullptr;
+}
+
 inline NetWireState& net_wire_state() {
     static NetWireState state;
     return state;
@@ -392,6 +812,74 @@ inline NetWireState& net_wire_state() {
 inline NetWireState& net_out_state() {
     static NetWireState state;
     return state;
+}
+
+inline NetFrameState& net_frame_state() {
+    static NetFrameState state;
+    return state;
+}
+
+inline bool net_frame_push(const uint8_t* data, size_t len) {
+    if (!data || len == 0) {
+        return false;
+    }
+    NetFrameState& frame = net_frame_state();
+    size_t free_space = NetFrameState::kCapacity - frame.size;
+    if (len > free_space) {
+        frame.drops++;
+        return false;
+    }
+    size_t remaining = len;
+    const uint8_t* src = data;
+    while (remaining > 0 && frame.size < NetFrameState::kCapacity) {
+        frame.buffer[frame.tail] = *src++;
+        frame.tail = (frame.tail + 1) % NetFrameState::kCapacity;
+        frame.size++;
+        remaining--;
+    }
+    return remaining == 0;
+}
+
+inline bool net_frame_peek(uint8_t* out, size_t len) {
+    if (!out || len == 0) {
+        return false;
+    }
+    NetFrameState& frame = net_frame_state();
+    if (frame.size < len) {
+        return false;
+    }
+    size_t idx = frame.head;
+    for (size_t i = 0; i < len; ++i) {
+        out[i] = frame.buffer[idx];
+        idx = (idx + 1) % NetFrameState::kCapacity;
+    }
+    return true;
+}
+
+inline bool net_frame_pop(uint8_t* out, size_t len) {
+    if (!out || len == 0) {
+        return false;
+    }
+    NetFrameState& frame = net_frame_state();
+    if (frame.size < len) {
+        return false;
+    }
+    for (size_t i = 0; i < len; ++i) {
+        out[i] = frame.buffer[frame.head];
+        frame.head = (frame.head + 1) % NetFrameState::kCapacity;
+    }
+    frame.size -= len;
+    return true;
+}
+
+inline void net_frame_consume(size_t len) {
+    if (len == 0) {
+        return;
+    }
+    NetFrameState& frame = net_frame_state();
+    size_t consume = len > frame.size ? frame.size : len;
+    frame.head = (frame.head + consume) % NetFrameState::kCapacity;
+    frame.size -= consume;
 }
 
 inline bool net_wire_push(const uint8_t* data, size_t len) {
@@ -693,12 +1181,479 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
     }
 }
 
-inline void socket_poll_net() {
+inline bool tcp_fill_local_identity(SocketLite* sock) {
+    if (!sock) {
+        return false;
+    }
+    SocketManager& mgr = socket_manager();
+    mgr.ensure_net_identity();
+    if (!mgr.local_ip_valid()) {
+        return false;
+    }
+    if (!mgr.get_local_mac(sock->local_mac)) {
+        return false;
+    }
+    if (sock->local_ip == 0) {
+        sock->local_ip = mgr.local_ip();
+    }
+    return sock->local_ip != 0;
+}
+
+inline bool tcp_is_local_ip(uint32_t ip) {
+    SocketManager& mgr = socket_manager();
+    uint32_t local = mgr.local_ip();
+    if (ip == 0 || ip == RSE_ADDR_LOOPBACK) {
+        return true;
+    }
+    return local != 0 && ip == local;
+}
+
+inline uint16_t tcp_checksum(uint32_t src_ip, uint32_t dst_ip,
+                             const net_tcp_hdr* tcp,
+                             const uint8_t* payload,
+                             uint32_t len) {
+    uint8_t pseudo[12];
+    net_ip_to_bytes(src_ip, pseudo);
+    net_ip_to_bytes(dst_ip, pseudo + 4);
+    pseudo[8] = 0;
+    pseudo[9] = kIpProtoTcp;
+    pseudo[10] = (uint8_t)((len + sizeof(net_tcp_hdr)) >> 8);
+    pseudo[11] = (uint8_t)((len + sizeof(net_tcp_hdr)) & 0xFFu);
+    uint32_t sum = 0;
+    sum = net_checksum_add(sum, pseudo, sizeof(pseudo));
+    sum = net_checksum_add(sum, reinterpret_cast<const uint8_t*>(tcp), sizeof(net_tcp_hdr));
+    if (payload && len > 0) {
+        sum = net_checksum_add(sum, payload, len);
+    }
+    return net_checksum_finish(sum);
+}
+
+inline int tcp_send_arp_request(uint32_t target_ip) {
+    SocketManager& mgr = socket_manager();
+    uint8_t local_mac[6] = {};
+    if (!mgr.get_local_mac(local_mac)) {
+        return -EIO;
+    }
+    uint32_t local_ip = mgr.local_ip();
+    if (local_ip == 0 || target_ip == 0) {
+        return -EINVAL;
+    }
+    uint8_t frame[64];
+    net_eth_hdr eth = {};
+    net_arp_pkt arp = {};
+    for (uint32_t i = 0; i < 6; ++i) {
+        eth.dst[i] = 0xFF;
+        eth.src[i] = local_mac[i];
+        arp.sha[i] = local_mac[i];
+        arp.tha[i] = 0;
+    }
+    eth.ethertype = net_htons(kEthertypeArp);
+    arp.htype = net_htons(0x0001);
+    arp.ptype = net_htons(kEthertypeIPv4);
+    arp.hlen = 6;
+    arp.plen = 4;
+    arp.oper = net_htons(0x0001);
+    net_ip_to_bytes(local_ip, arp.spa);
+    net_ip_to_bytes(target_ip, arp.tpa);
+    uint32_t offset = 0;
+    std::memcpy(frame + offset, &eth, sizeof(eth));
+    offset += sizeof(eth);
+    std::memcpy(frame + offset, &arp, sizeof(arp));
+    offset += sizeof(arp);
+    if (offset < 60) {
+        std::memset(frame + offset, 0, 60 - offset);
+        offset = 60;
+    }
+    int rc = rse_net_write(frame, offset);
+    return rc < 0 ? rc : 0;
+}
+
+inline int tcp_send_arp_reply(uint32_t target_ip, const uint8_t target_mac[6]) {
+    SocketManager& mgr = socket_manager();
+    uint8_t local_mac[6] = {};
+    if (!mgr.get_local_mac(local_mac)) {
+        return -EIO;
+    }
+    uint32_t local_ip = mgr.local_ip();
+    if (local_ip == 0 || !target_mac) {
+        return -EINVAL;
+    }
+    uint8_t frame[64];
+    net_eth_hdr eth = {};
+    net_arp_pkt arp = {};
+    for (uint32_t i = 0; i < 6; ++i) {
+        eth.dst[i] = target_mac[i];
+        eth.src[i] = local_mac[i];
+        arp.sha[i] = local_mac[i];
+        arp.tha[i] = target_mac[i];
+    }
+    eth.ethertype = net_htons(kEthertypeArp);
+    arp.htype = net_htons(0x0001);
+    arp.ptype = net_htons(kEthertypeIPv4);
+    arp.hlen = 6;
+    arp.plen = 4;
+    arp.oper = net_htons(0x0002);
+    net_ip_to_bytes(local_ip, arp.spa);
+    net_ip_to_bytes(target_ip, arp.tpa);
+    uint32_t offset = 0;
+    std::memcpy(frame + offset, &eth, sizeof(eth));
+    offset += sizeof(eth);
+    std::memcpy(frame + offset, &arp, sizeof(arp));
+    offset += sizeof(arp);
+    if (offset < 60) {
+        std::memset(frame + offset, 0, 60 - offset);
+        offset = 60;
+    }
+    int rc = rse_net_write(frame, offset);
+    return rc < 0 ? rc : 0;
+}
+
+inline bool tcp_resolve_peer_mac(SocketLite* sock) {
+    if (!sock) {
+        return false;
+    }
+    if (!tcp_fill_local_identity(sock)) {
+        return false;
+    }
+    if (tcp_is_local_ip(sock->peer_ip) || sock->peer_ip == sock->local_ip) {
+        std::memcpy(sock->peer_mac, sock->local_mac, sizeof(sock->peer_mac));
+        return true;
+    }
+    SocketManager& mgr = socket_manager();
+    if (mgr.arp_lookup(sock->peer_ip, sock->peer_mac)) {
+        return true;
+    }
+    (void)tcp_send_arp_request(sock->peer_ip);
+    return false;
+}
+
+inline int tcp_send_segment(SocketLite* sock, uint8_t flags, const uint8_t* payload,
+                            uint32_t len, uint32_t seq, uint32_t ack) {
+    if (!sock || sock->peer_ip == 0 || sock->port == 0 || sock->peer_port == 0) {
+        return -EINVAL;
+    }
+    if (!socket_manager().net_online()) {
+        return -EIO;
+    }
+    if (!tcp_resolve_peer_mac(sock)) {
+        return -EAGAIN;
+    }
+    uint8_t frame[1600];
+    uint32_t offset = 0;
+    net_eth_hdr eth = {};
+    net_ipv4_hdr ip = {};
+    net_tcp_hdr tcp = {};
+
+    std::memcpy(eth.dst, sock->peer_mac, sizeof(eth.dst));
+    std::memcpy(eth.src, sock->local_mac, sizeof(eth.src));
+    eth.ethertype = net_htons(kEthertypeIPv4);
+
+    ip.ver_ihl = 0x45;
+    ip.tos = 0;
+    uint16_t ip_len = (uint16_t)(sizeof(net_ipv4_hdr) + sizeof(net_tcp_hdr) + len);
+    ip.total_len = net_htons(ip_len);
+    ip.id = net_htons(0x1234);
+    ip.frag_off = net_htons(0x4000);
+    ip.ttl = 64;
+    ip.proto = kIpProtoTcp;
+    ip.checksum = 0;
+    net_ip_to_bytes(sock->local_ip, ip.src);
+    net_ip_to_bytes(sock->peer_ip, ip.dst);
+    ip.checksum = net_htons(net_checksum(reinterpret_cast<const uint8_t*>(&ip), sizeof(ip)));
+
+    tcp.src_port = net_htons(sock->port);
+    tcp.dst_port = net_htons(sock->peer_port);
+    tcp.seq = net_htonl(seq);
+    tcp.ack = net_htonl(ack);
+    tcp.data_off = (uint8_t)(5u << 4);
+    tcp.flags = flags;
+    tcp.window = net_htons(kTcpWindowBytes);
+    tcp.checksum = 0;
+    tcp.urgent = 0;
+    tcp.checksum = net_htons(tcp_checksum(sock->local_ip, sock->peer_ip, &tcp,
+                                          payload, len));
+
+    std::memcpy(frame + offset, &eth, sizeof(eth));
+    offset += sizeof(eth);
+    std::memcpy(frame + offset, &ip, sizeof(ip));
+    offset += sizeof(ip);
+    std::memcpy(frame + offset, &tcp, sizeof(tcp));
+    offset += sizeof(tcp);
+    if (payload && len > 0) {
+        std::memcpy(frame + offset, payload, len);
+        offset += len;
+    }
+    if (offset < 60) {
+        std::memset(frame + offset, 0, 60 - offset);
+        offset = 60;
+    }
+    int rc = rse_net_write(frame, offset);
+    return rc < 0 ? rc : (int)len;
+}
+
+inline void tcp_handle_arp(const net_eth_hdr* eth, const net_arp_pkt* arp) {
+    if (!eth || !arp) {
+        return;
+    }
+    uint16_t oper = net_htons(arp->oper);
+    uint32_t sender_ip = net_ip_from_bytes(arp->spa);
+    if (sender_ip != 0) {
+        socket_manager().arp_update(sender_ip, arp->sha);
+    }
+    if (oper != 0x0001) {
+        return;
+    }
+    uint32_t target_ip = net_ip_from_bytes(arp->tpa);
+    if (!tcp_is_local_ip(target_ip)) {
+        return;
+    }
+    (void)tcp_send_arp_reply(sender_ip, arp->sha);
+}
+
+inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
+                            const uint8_t* payload, uint32_t len) {
+    if (!eth || !ip || !payload) {
+        return;
+    }
+    if ((ip->ver_ihl >> 4) != 4) {
+        return;
+    }
+    uint32_t ihl = (uint32_t)(ip->ver_ihl & 0x0F) * 4;
+    if (ihl < sizeof(net_ipv4_hdr) || len < ihl) {
+        return;
+    }
+    if (net_checksum(reinterpret_cast<const uint8_t*>(ip), ihl) != 0) {
+        return;
+    }
+    if (ip->proto != kIpProtoTcp) {
+        return;
+    }
+    uint32_t src_ip = net_ip_from_bytes(ip->src);
+    uint32_t dst_ip = net_ip_from_bytes(ip->dst);
+    if (!tcp_is_local_ip(dst_ip)) {
+        return;
+    }
+    if (len < ihl + sizeof(net_tcp_hdr)) {
+        return;
+    }
+    const net_tcp_hdr* tcp = reinterpret_cast<const net_tcp_hdr*>(
+        reinterpret_cast<const uint8_t*>(payload) + ihl);
+    uint32_t tcp_header_len = (uint32_t)((tcp->data_off >> 4) & 0x0F) * 4;
+    if (tcp_header_len < sizeof(net_tcp_hdr)) {
+        return;
+    }
+    uint32_t payload_offset = ihl + tcp_header_len;
+    if (payload_offset > len) {
+        return;
+    }
+    uint32_t payload_len = len - payload_offset;
+    const uint8_t* tcp_payload = reinterpret_cast<const uint8_t*>(payload) + payload_offset;
+    net_tcp_hdr tcp_copy = *tcp;
+    tcp_copy.checksum = 0;
+    uint16_t calc = tcp_checksum(src_ip, dst_ip, &tcp_copy, tcp_payload, payload_len);
+    uint16_t recv = net_htons(tcp->checksum);
+    if (calc != recv) {
+        return;
+    }
+    socket_manager().arp_update(src_ip, eth->src);
+
+    uint16_t dst_port = net_htons(tcp->dst_port);
+    uint16_t src_port = net_htons(tcp->src_port);
+    uint32_t seq = net_htonl(tcp->seq);
+    uint32_t ack = net_htonl(tcp->ack);
+    uint8_t flags = tcp->flags;
+
+    SocketManager& mgr = socket_manager();
+    SocketLite* sock = mgr.find_tcp_socket(dst_port, src_port, src_ip);
+
+    if ((flags & kTcpFlagSyn) && !(flags & kTcpFlagAck)) {
+        SocketLite* listener = mgr.find_listener(dst_port, SocketLite::Backend::TCP);
+        if (!listener) {
+            SocketLite temp;
+            temp.port = dst_port;
+            temp.peer_port = src_port;
+            temp.peer_ip = src_ip;
+            tcp_fill_local_identity(&temp);
+            std::memcpy(temp.peer_mac, eth->src, sizeof(temp.peer_mac));
+            (void)tcp_send_segment(&temp, (uint8_t)(kTcpFlagRst | kTcpFlagAck),
+                                   nullptr, 0, 0, seq + 1);
+            return;
+        }
+        if (listener->backlog == 0) {
+            listener->backlog = 1;
+        }
+        if (listener->pending_count >= listener->backlog) {
+            SocketLite temp;
+            temp.port = dst_port;
+            temp.peer_port = src_port;
+            temp.peer_ip = src_ip;
+            tcp_fill_local_identity(&temp);
+            std::memcpy(temp.peer_mac, eth->src, sizeof(temp.peer_mac));
+            (void)tcp_send_segment(&temp, (uint8_t)(kTcpFlagRst | kTcpFlagAck),
+                                   nullptr, 0, 0, seq + 1);
+            return;
+        }
+        SocketLite* server_sock = mgr.allocate(SocketLite::Backend::TCP);
+        if (!server_sock) {
+            return;
+        }
+        server_sock->state = SocketLite::State::CONNECTING;
+        server_sock->tcp_state = TcpState::SYN_RCVD;
+        server_sock->port = dst_port;
+        server_sock->peer_port = src_port;
+        server_sock->peer_ip = src_ip;
+        server_sock->rx_seq = seq + 1;
+        server_sock->syn_seq = mgr.next_isn();
+        server_sock->tx_seq = server_sock->syn_seq + 1;
+        server_sock->tcp_syn_pending = true;
+        server_sock->connect_attempts = 1;
+        server_sock->connect_retry = g_socket_net_ticks + kTcpRetryTicks;
+        server_sock->connect_deadline = g_socket_net_ticks + kTcpConnectTimeout;
+        tcp_fill_local_identity(server_sock);
+        std::memcpy(server_sock->peer_mac, eth->src, sizeof(server_sock->peer_mac));
+        (void)tcp_send_segment(server_sock, (uint8_t)(kTcpFlagSyn | kTcpFlagAck),
+                               nullptr, 0, server_sock->syn_seq, server_sock->rx_seq);
+        socket_append_pending(listener, server_sock);
+        return;
+    }
+
+    if (!sock) {
+        if (flags & kTcpFlagRst) {
+            return;
+        }
+        SocketLite temp;
+        temp.port = dst_port;
+        temp.peer_port = src_port;
+        temp.peer_ip = src_ip;
+        tcp_fill_local_identity(&temp);
+        std::memcpy(temp.peer_mac, eth->src, sizeof(temp.peer_mac));
+        uint32_t ack_num = seq + payload_len;
+        if (flags & kTcpFlagSyn) {
+            ack_num += 1;
+        }
+        if (flags & kTcpFlagFin) {
+            ack_num += 1;
+        }
+        (void)tcp_send_segment(&temp, (uint8_t)(kTcpFlagRst | kTcpFlagAck),
+                               nullptr, 0, 0, ack_num);
+        return;
+    }
+
+    if (flags & kTcpFlagRst) {
+        sock->reset_pending = true;
+        sock->peer_closed = false;
+        sock->state = SocketLite::State::CLOSED;
+        sock->tcp_state = TcpState::CLOSED;
+        sock->tx_pending = false;
+        return;
+    }
+
+    if ((flags & kTcpFlagSyn) && (flags & kTcpFlagAck)) {
+        if (sock->tcp_state == TcpState::SYN_SENT &&
+            ack == sock->syn_seq + 1) {
+            sock->rx_seq = seq + 1;
+            sock->state = SocketLite::State::CONNECTED;
+            sock->tcp_state = TcpState::ESTABLISHED;
+            sock->connect_attempts = 0;
+            sock->connect_retry = 0;
+            sock->connect_deadline = 0;
+            sock->tcp_syn_pending = false;
+            std::memcpy(sock->peer_mac, eth->src, sizeof(sock->peer_mac));
+            (void)tcp_send_segment(sock, kTcpFlagAck, nullptr, 0,
+                                   sock->tx_seq, sock->rx_seq);
+        }
+        return;
+    }
+
+    if (flags & kTcpFlagAck) {
+        if (sock->tcp_state == TcpState::SYN_RCVD &&
+            ack == sock->syn_seq + 1) {
+            sock->state = SocketLite::State::CONNECTED;
+            sock->tcp_state = TcpState::ESTABLISHED;
+            sock->connect_attempts = 0;
+            sock->connect_retry = 0;
+            sock->connect_deadline = 0;
+            sock->tcp_syn_pending = false;
+        }
+        if (sock->tx_pending &&
+            ack >= sock->tx_pending_seq + sock->tx_pending_len) {
+            sock->tx_pending = false;
+            sock->tx_pending_seq = 0;
+            sock->tx_pending_len = 0;
+            sock->tx_attempts = 0;
+            sock->tx_retry_at = 0;
+        }
+        if (sock->tcp_fin_pending && ack == sock->fin_seq + 1) {
+            sock->tcp_fin_pending = false;
+        }
+    }
+
+    if (payload_len > 0) {
+        if (sock->state != SocketLite::State::CONNECTED) {
+            return;
+        }
+        if (seq != sock->rx_seq) {
+            (void)tcp_send_segment(sock, kTcpFlagAck, nullptr, 0,
+                                   sock->tx_seq, sock->rx_seq);
+            return;
+        }
+        size_t space = SocketLite::kBufferSize - sock->size;
+        size_t to_write = payload_len < space ? payload_len : space;
+        for (size_t i = 0; i < to_write; ++i) {
+            sock->buffer[sock->tail] = tcp_payload[i];
+            sock->tail = (sock->tail + 1) % SocketLite::kBufferSize;
+        }
+        sock->size += to_write;
+        sock->rx_seq += (uint32_t)to_write;
+        (void)tcp_send_segment(sock, kTcpFlagAck, nullptr, 0,
+                               sock->tx_seq, sock->rx_seq);
+    }
+
+    if (flags & kTcpFlagFin) {
+        sock->peer_closed = true;
+        sock->rx_seq += 1;
+        (void)tcp_send_segment(sock, kTcpFlagAck, nullptr, 0,
+                               sock->tx_seq, sock->rx_seq);
+        sock->state = SocketLite::State::CLOSED;
+        sock->tcp_state = TcpState::CLOSED;
+    }
+}
+
+inline void tcp_handle_frame(const uint8_t* frame, uint32_t len) {
+    if (!frame || len < sizeof(net_eth_hdr)) {
+        return;
+    }
+    const net_eth_hdr* eth = reinterpret_cast<const net_eth_hdr*>(frame);
+    uint16_t ethertype = net_htons(eth->ethertype);
+    const uint8_t* payload = frame + sizeof(net_eth_hdr);
+    uint32_t payload_len = len - sizeof(net_eth_hdr);
+    if (ethertype == kEthertypeArp) {
+        if (payload_len < sizeof(net_arp_pkt)) {
+            return;
+        }
+        const net_arp_pkt* arp = reinterpret_cast<const net_arp_pkt*>(payload);
+        tcp_handle_arp(eth, arp);
+        return;
+    }
+    if (ethertype == kEthertypeIPv4) {
+        if (payload_len < sizeof(net_ipv4_hdr)) {
+            return;
+        }
+        const net_ipv4_hdr* ip = reinterpret_cast<const net_ipv4_hdr*>(payload);
+        uint16_t total_len = net_htons(ip->total_len);
+        if (total_len < sizeof(net_ipv4_hdr) ||
+            total_len > payload_len) {
+            return;
+        }
+        tcp_handle_ipv4(eth, ip, payload, total_len);
+    }
+}
+
+inline void netlite_poll_net() {
     SocketManager& mgr = socket_manager();
     if (!mgr.net_online()) {
         return;
     }
-    g_socket_net_ticks++;
     net_out_flush();
     uint8_t scratch[256];
     while (true) {
@@ -742,6 +1697,84 @@ inline void socket_poll_net() {
     mgr.service_netlite_tx(g_socket_net_ticks);
 }
 
+inline void tcp_poll_net();
+
+inline void socket_poll_net() {
+    SocketManager& mgr = socket_manager();
+    if (!mgr.net_online()) {
+        return;
+    }
+    g_socket_net_ticks++;
+#if RSE_NET_RAW
+    tcp_poll_net();
+#else
+    netlite_poll_net();
+#endif
+}
+
+inline void tcp_poll_net() {
+    SocketManager& mgr = socket_manager();
+    if (!mgr.net_online()) {
+        return;
+    }
+    uint8_t scratch[2048];
+    while (true) {
+        int got = rse_net_read(scratch, sizeof(scratch));
+        if (got <= 0) {
+            break;
+        }
+        if (!net_frame_push(scratch, static_cast<size_t>(got))) {
+            break;
+        }
+    }
+
+    while (net_frame_state().size >= sizeof(net_eth_hdr)) {
+        net_eth_hdr eth{};
+        if (!net_frame_peek(reinterpret_cast<uint8_t*>(&eth), sizeof(eth))) {
+            break;
+        }
+        uint16_t ethertype = net_htons(eth.ethertype);
+        uint32_t frame_len = 0;
+        if (ethertype == kEthertypeArp) {
+            frame_len = sizeof(net_eth_hdr) + sizeof(net_arp_pkt);
+        } else if (ethertype == kEthertypeIPv4) {
+            uint8_t ip_buf[sizeof(net_eth_hdr) + sizeof(net_ipv4_hdr)];
+            if (!net_frame_peek(ip_buf, sizeof(ip_buf))) {
+                break;
+            }
+            const net_ipv4_hdr* ip = reinterpret_cast<const net_ipv4_hdr*>(
+                ip_buf + sizeof(net_eth_hdr));
+            uint16_t total_len = net_htons(ip->total_len);
+            if (total_len < sizeof(net_ipv4_hdr)) {
+                net_frame_consume(1);
+                continue;
+            }
+            frame_len = sizeof(net_eth_hdr) + total_len;
+        } else {
+            net_frame_consume(1);
+            continue;
+        }
+        if (frame_len < 60) {
+            frame_len = 60;
+        }
+        if (net_frame_state().size < frame_len) {
+            break;
+        }
+        uint8_t frame[1600];
+        if (frame_len > sizeof(frame)) {
+            net_frame_consume(frame_len);
+            continue;
+        }
+        if (!net_frame_pop(frame, frame_len)) {
+            break;
+        }
+        tcp_handle_frame(frame, frame_len);
+    }
+
+    mgr.service_tcp_connect(g_socket_net_ticks);
+    mgr.service_tcp_tx(g_socket_net_ticks);
+}
+
 inline int socket_open(Device* dev) {
     (void)dev;
     return 0;
@@ -757,6 +1790,14 @@ inline int socket_close(Device* dev) {
         !sock->peer_closed) {
         (void)net_send_frame(sock->conn_id, kTcpLiteFin, nullptr, 0);
     }
+    if (sock && sock->backend == SocketLite::Backend::TCP &&
+        sock->state == SocketLite::State::CONNECTED && !sock->peer_closed) {
+        sock->fin_seq = sock->tx_seq;
+        sock->tx_seq += 1;
+        sock->tcp_fin_pending = true;
+        (void)tcp_send_segment(sock, (uint8_t)(kTcpFlagFin | kTcpFlagAck),
+                               nullptr, 0, sock->fin_seq, sock->rx_seq);
+    }
     socket_manager().release(sock);
     return 0;
 }
@@ -769,7 +1810,8 @@ inline ssize_t socket_read(Device* dev, void* buf, size_t count) {
     if (!sock) {
         return -ENOTCONN;
     }
-    if (sock->backend == SocketLite::Backend::NET_LITE) {
+    if (sock->backend == SocketLite::Backend::NET_LITE ||
+        sock->backend == SocketLite::Backend::TCP) {
         socket_poll_net();
     }
     if (sock->state != SocketLite::State::CONNECTED &&
@@ -836,6 +1878,44 @@ inline ssize_t socket_write(Device* dev, const void* buf, size_t count) {
                                 sock->tx_buffer, to_write,
                                 sock->tx_pending_seq, sock->rx_seq);
         if (rc < 0) {
+            return rc;
+        }
+        return (ssize_t)to_write;
+    }
+    if (sock->backend == SocketLite::Backend::TCP) {
+        if (!sock || sock->state != SocketLite::State::CONNECTED) {
+            if (sock && sock->peer_closed) {
+                return -EPIPE;
+            }
+            if (sock && sock->reset_pending) {
+                return -ECONNRESET;
+            }
+            return -ENOTCONN;
+        }
+        if (sock->peer_closed) {
+            return -EPIPE;
+        }
+        if (sock->reset_pending) {
+            return -ECONNRESET;
+        }
+        if (sock->tx_pending) {
+            socket_poll_net();
+            return -EAGAIN;
+        }
+        uint32_t to_write = count > kTcpMss ? kTcpMss : (uint32_t)count;
+        std::memcpy(sock->tx_buffer, buf, to_write);
+        sock->tx_pending = true;
+        sock->tx_pending_seq = sock->tx_seq;
+        sock->tx_pending_len = to_write;
+        sock->tx_seq += to_write;
+        sock->tx_attempts = 1;
+        sock->tx_retry_at = g_socket_net_ticks + kTcpDataRetryTicks;
+        int rc = tcp_send_segment(sock, (uint8_t)(kTcpFlagAck | kTcpFlagPsh),
+                                  sock->tx_buffer, to_write,
+                                  sock->tx_pending_seq, sock->rx_seq);
+        if (rc < 0) {
+            sock->tx_attempts = 0;
+            sock->tx_retry_at = g_socket_net_ticks + kTcpDataRetryTicks;
             return rc;
         }
         return (ssize_t)to_write;

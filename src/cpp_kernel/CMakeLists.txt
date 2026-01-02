@@ -204,6 +204,13 @@ if(NOT MSVC)
     target_link_libraries(sys_socket_net_test atomic)
 endif()
 
+# sys_socket_tcp test
+add_executable(sys_socket_tcp_test tests/sys_socket_tcp_test.cpp)
+target_compile_definitions(sys_socket_tcp_test PRIVATE RSE_NET_RAW=1)
+if(NOT MSVC)
+    target_link_libraries(sys_socket_tcp_test atomic)
+endif()
+
 # sys_pipe test
 add_executable(sys_pipe_test tests/sys_pipe_test.cpp)
 if(NOT MSVC)

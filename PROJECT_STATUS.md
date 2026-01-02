@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: January 01, 2026 (PIT timer preemption; ring3 sleep/yield + timeslice; W^X mprotect checks; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + EOF/EPIPE + RST refused + seq/ack retransmit + outbound queue + overflow drops + conn collision checks; virtio-net TX backpressure returns EAGAIN; virtio-net RX length/id guards; net reads return EAGAIN on empty; net queue drops + RX/TX error counters surfaced; mergeable RX disabled pending reassembly; virtio-net UEFI fallback only on hard errors; BlockFS checksum recovery + slot zeroing on create/remove; uid/gid ownership enforced for MemFS/BlockFS with stat reporting; CLOEXEC dup hygiene; persist dir open returns EISDIR; exec requires exec-bit; ancestor exec enforced for memfs/persist path traversal; signal ignore/default; stat parent-exec gating; workload yields; directory listing sort; ISO workflow scripts; logged test heartbeat; quick boot test runner)
+Last Updated: January 01, 2026 (PIT timer preemption; ring3 sleep/yield + timeslice; W^X mprotect checks; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + EOF/EPIPE + RST refused + seq/ack retransmit + outbound queue + overflow drops + conn collision checks; raw TCP socket backend (ARP/IPv4/TCP) for AF_INET when RSE_NET_RAW=1; virtio-net TX backpressure returns EAGAIN; virtio-net RX length/id guards; net reads return EAGAIN on empty; net queue drops + RX/TX error counters surfaced; mergeable RX disabled pending reassembly; virtio-net UEFI fallback only on hard errors; BlockFS checksum recovery + slot zeroing on create/remove; uid/gid ownership enforced for MemFS/BlockFS with stat reporting; CLOEXEC dup hygiene; persist dir open returns EISDIR; exec requires exec-bit; ancestor exec enforced for memfs/persist path traversal; signal ignore/default; stat parent-exec gating; workload yields; directory listing sort; ISO workflow scripts; logged test heartbeat; quick boot test runner)
 
 ---
 
@@ -29,6 +29,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - MemFS/persist path traversal now enforces execute permission on all ancestor directories for open/list/mkdir/unlink.
 - BlockFS persistence with checksum + journal + corruption detection (flat table, directory paths), with mount-time sanitize for duplicates/invalid entries and journal write checks; remove resets entry metadata and zeroes slot data; new files zero their slots before use.
 - TCP-lite framing over `/dev/net0` for loopback handshake/data tests with NET_LITE connect retries/timeouts, FIN-on-close (EOF for reads, EPIPE on write), RST refused handling, seq/ack retransmit (stop-and-wait), outbound queue with flush, queued pending accepts, overflow-safe wire buffering, stricter FIN state handling, and conn-id collision checks.
+- Raw Ethernet/IP/TCP backend for AF_INET sockets when `RSE_NET_RAW=1` (SYN/SYN-ACK/ACK, data, FIN), with ARP cache and local MAC/IP discovery.
 - virtio-net driver backpressure returns EAGAIN, RX descriptor length/id validation, and guarded UEFI fallback (empty reads return EAGAIN; net queue drops + RX/TX counters tracked; mergeable RX disabled until reassembly support exists).
 - In-kernel socket syscalls (`socket/bind/listen/accept/connect`) with loopback buffers and NET_LITE framing over the net device path.
 - Syscall dispatcher with user-range validation anchored to per-process code/stack bounds (including nanosleep/pipe/time pointers) and per-torus dispatch.
@@ -56,7 +57,8 @@ Design guardrail:
 - Latest full system run log: `build/boot/full_test.log` (Jan 01, 2026).
 - Syscall + OS tests: `sys_wait_test`, `sys_ps_test`, `sys_stat_test`, `sys_memfs_dir_test`,
   `sys_user_isolation_test`, `sys_vfs_persist_test`, `sys_socket_test`, `sys_socket_net_test`,
-  `sys_pipe_test`, `sys_dup_test`, `sys_mmap_test`, `exec_vfs_test`.
+  `sys_socket_tcp_test` (RSE_NET_RAW=1), `sys_pipe_test`, `sys_dup_test`, `sys_mmap_test`,
+  `exec_vfs_test`.
 - Devices: `blockfs_test`, `net_device_test`.
 
 Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal and redirect logs outside the repo:
@@ -65,7 +67,7 @@ Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal a
 ### Known Limitations
 
 - User-mode isolation/permissions are still evolving; ring3 time slicing is syscall-boundary only and limited to a small slot count.
-- Network stack is minimal (ARP/UDP parsing + loopback); NET_LITE framing is not full TCP.
+- Network stack is minimal (NET_LITE framing + raw TCP basics; no congestion control, fragmentation, or socket options).
 - BlockFS uses fixed slots; ownership uses 8-bit uid/gid (single group, no ACLs).
 - Workload init is script-driven but still one-shot per boot (no interactive console input yet).
 
@@ -80,7 +82,7 @@ Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal a
 
 2) Network stack
 - Stable RX/TX under load.
-- Minimal TCP support.
+- TCP hardening (retransmit, flow control, teardown edge cases).
 - Driver hardening (virtio-net).
 
 3) Filesystem

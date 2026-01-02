@@ -3002,11 +3002,7 @@ static int virtio_net_init_modern(void) {
     virtio_net_mrg_rxbuf = 0;
     virtio_net_hdr_len = VIRTIO_NET_HDR_BASE_SIZE;
     uint32_t driver_features_lo = host_features_lo & VIRTIO_NET_F_MAC;
-    if (host_features_lo & VIRTIO_NET_F_MRG_RXBUF) {
-        driver_features_lo |= VIRTIO_NET_F_MRG_RXBUF;
-        virtio_net_mrg_rxbuf = 1;
-        virtio_net_hdr_len = VIRTIO_NET_HDR_MRG_SIZE;
-    }
+    // Avoid mergeable RX buffers until multi-buffer reassembly is implemented.
     uint32_t driver_features_hi = host_features_hi & VIRTIO_F_VERSION_1;
     if ((host_features_hi & VIRTIO_F_VERSION_1) == 0) {
         return -1;
@@ -3127,11 +3123,6 @@ static int virtio_net_init_legacy(void) {
     virtio_net_mrg_rxbuf = 0;
     virtio_net_hdr_len = VIRTIO_NET_HDR_BASE_SIZE;
     uint32_t guest_features = host_features & VIRTIO_NET_F_MAC;
-    if (host_features & VIRTIO_NET_F_MRG_RXBUF) {
-        guest_features |= VIRTIO_NET_F_MRG_RXBUF;
-        virtio_net_mrg_rxbuf = 1;
-        virtio_net_hdr_len = VIRTIO_NET_HDR_MRG_SIZE;
-    }
     outl((uint16_t)(virtio_net_io_base + VIRTIO_PCI_GUEST_FEATURES), guest_features);
     outl((uint16_t)(virtio_net_io_base + VIRTIO_PCI_GUEST_PAGE_SIZE), 4096);
     for (uint32_t i = 0; i < sizeof(virtio_net_mac); ++i) {
@@ -3254,6 +3245,10 @@ static void virtio_net_notify_tx(void) {
 }
 
 static void virtio_net_reclaim_tx(void) {
+    if (!net_tx_used) {
+        return;
+    }
+    __asm__ volatile("mfence" ::: "memory");
     while (net_tx_used_idx != net_tx_used->idx) {
         net_tx_used_idx++;
     }
@@ -3270,6 +3265,9 @@ static int virtio_net_send(const void *buf, uint32_t len) {
     if (virtio_net_use_modern && !virtio_net_common) {
         return -1;
     }
+    if (!net_tx_avail || !net_tx_used || !net_tx_desc || net_tx_qsz == 0) {
+        return -1;
+    }
     if (len > VIRTIO_NET_BUF_SIZE) {
         return -1;
     }
@@ -3280,12 +3278,15 @@ static int virtio_net_send(const void *buf, uint32_t len) {
     virtio_net_reclaim_tx();
     uint16_t avail_idx = net_tx_avail->idx;
     uint16_t used_idx = net_tx_used_idx;
-    for (uint32_t i = 0; i < 100000; ++i) {
-        if ((uint16_t)(avail_idx - used_idx) < net_tx_slots) {
-            break;
+    if ((uint16_t)(avail_idx - used_idx) >= net_tx_slots) {
+        for (uint32_t i = 0; i < 1024; ++i) {
+            virtio_net_reclaim_tx();
+            used_idx = net_tx_used_idx;
+            if ((uint16_t)(avail_idx - used_idx) < net_tx_slots) {
+                break;
+            }
+            io_wait();
         }
-        virtio_net_reclaim_tx();
-        used_idx = net_tx_used_idx;
     }
     if ((uint16_t)(avail_idx - used_idx) >= net_tx_slots) {
         if (!tx_stall_logged) {
@@ -3294,7 +3295,7 @@ static int virtio_net_send(const void *buf, uint32_t len) {
             serial_write("\n");
             tx_stall_logged = 1;
         }
-        return -1;
+        return -(int)RSE_EAGAIN;
     }
     if (tx_stall_logged) {
         tx_stall_logged = 0;
@@ -3326,6 +3327,7 @@ static int virtio_net_send(const void *buf, uint32_t len) {
 
 static int virtio_net_recv(void *buf, uint32_t len) {
     static int rx_logged = 0;
+    static int rx_bad_logged = 0;
     if (!buf || len == 0) {
         return -1;
     }
@@ -3335,10 +3337,13 @@ static int virtio_net_recv(void *buf, uint32_t len) {
     if (virtio_net_use_modern && !virtio_net_common) {
         return -1;
     }
+    if (!net_rx_used || !net_rx_avail || !net_rx_desc || net_rx_qsz == 0) {
+        return -1;
+    }
+    __asm__ volatile("mfence" ::: "memory");
     if (net_rx_used->idx == net_rx_used_idx) {
         return 0;
     }
-    __asm__ volatile("mfence" ::: "memory");
     struct virtq_used_elem elem = net_rx_used->ring[net_rx_used_idx % net_rx_qsz];
     net_rx_used_idx++;
     if (!rx_logged) {
@@ -3350,16 +3355,29 @@ static int virtio_net_recv(void *buf, uint32_t len) {
         rx_logged = 1;
     }
     if (elem.id >= net_rx_qsz) {
+        if (!rx_bad_logged) {
+            serial_write("[RSE] virtio-net rx invalid id\n");
+            rx_bad_logged = 1;
+        }
         return -1;
     }
     uint32_t data_len = 0;
-    if (elem.len > virtio_net_hdr_len) {
+    if (elem.len < virtio_net_hdr_len || elem.len > VIRTIO_NET_BUF_SIZE) {
+        if (!rx_bad_logged) {
+            serial_write("[RSE] virtio-net rx invalid len=");
+            serial_write_u64(elem.len);
+            serial_write("\n");
+            rx_bad_logged = 1;
+        }
+    } else {
         data_len = elem.len - virtio_net_hdr_len;
+        if (data_len > len) {
+            data_len = len;
+        }
+        memcpy(buf,
+               net_rx_bufs + (size_t)elem.id * VIRTIO_NET_BUF_SIZE + virtio_net_hdr_len,
+               data_len);
     }
-    if (data_len > len) {
-        data_len = len;
-    }
-    memcpy(buf, net_rx_bufs + (size_t)elem.id * VIRTIO_NET_BUF_SIZE + virtio_net_hdr_len, data_len);
 
     uint16_t idx = net_rx_avail->idx;
     net_rx_avail->ring[idx % net_rx_qsz] = (uint16_t)elem.id;
@@ -3530,18 +3548,27 @@ static int net_backend_write(const void *buf, uint32_t len) {
     }
     if (g_net_backend == NET_BACKEND_VIRTIO) {
         int rc = virtio_net_send(buf, len);
-        if (rc >= 0) {
+        if (rc >= 0 || rc == -(int)RSE_EAGAIN) {
             return rc;
         }
         if (net_init_uefi() == 0 && g_net_backend == NET_BACKEND_UEFI && g_net) {
             EFI_STATUS status = g_net->Transmit(g_net, 0, len, (void *)buf,
                                                 NULL, NULL, NULL);
+            if (status == EFI_NOT_READY) {
+                return -(int)RSE_EAGAIN;
+            }
             return EFI_ERROR(status) ? -1 : (int)len;
         }
+        return rc;
+    }
+    if (!g_net && net_init_uefi() != 0) {
         return -1;
     }
     EFI_STATUS status = g_net->Transmit(g_net, 0, len, (void *)buf,
                                         NULL, NULL, NULL);
+    if (status == EFI_NOT_READY) {
+        return -(int)RSE_EAGAIN;
+    }
     return EFI_ERROR(status) ? -1 : (int)len;
 }
 
@@ -3554,6 +3581,9 @@ static int net_backend_read(void *buf, uint32_t len) {
     }
     if (g_net_backend == NET_BACKEND_VIRTIO) {
         return virtio_net_recv(buf, len);
+    }
+    if (!g_net && net_init_uefi() != 0) {
+        return -1;
     }
     UINTN header_size = 0;
     UINTN buf_size = len;
@@ -3864,6 +3894,9 @@ static int net_udp_send(const uint8_t *payload, uint32_t len) {
         return -(int)RSE_EAGAIN;
     }
     int rc = net_send_udp(net_mac_addr, net_ip_addr, net_udp_port, net_udp_port, payload, len);
+    if (rc == -(int)RSE_EAGAIN) {
+        return rc;
+    }
     return rc < 0 ? -1 : (int)len;
 }
 

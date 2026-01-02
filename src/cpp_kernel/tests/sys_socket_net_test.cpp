@@ -28,7 +28,7 @@ static void write_exact(int64_t fd, uint64_t buf, size_t size) {
         if (wrote == static_cast<int64_t>(size)) {
             return;
         }
-        if (wrote == -os::EAGAIN) {
+        if (wrote == -EAGAIN) {
             continue;
         }
         assert(false);
@@ -41,7 +41,7 @@ static void read_exact(int64_t fd, uint64_t buf, size_t size) {
     uint64_t cursor = buf;
     for (int attempt = 0; attempt < 32 && remaining > 0; ++attempt) {
         int64_t got = os::syscall(os::SYS_READ, fd, cursor, remaining);
-        if (got == -os::EAGAIN) {
+        if (got == -EAGAIN) {
             continue;
         }
         assert(got >= 0);
@@ -94,7 +94,7 @@ int main() {
     assert(client_fd >= 0);
 
     int64_t connect_rc = os::syscall(os::SYS_CONNECT, client_fd, addr_ptr, sizeof(addr));
-    assert(connect_rc == 0 || connect_rc == -os::EAGAIN);
+    assert(connect_rc == 0 || connect_rc == -EAGAIN);
 
     uint32_t addrlen = sizeof(os::rse_sockaddr);
     uint64_t addrlen_ptr = write_user(proc, &addrlen, sizeof(addrlen));
@@ -107,12 +107,12 @@ int main() {
         if (accept_fd >= 0) {
             break;
         }
-        assert(accept_fd == -os::EAGAIN);
+        assert(accept_fd == -EAGAIN);
         int64_t retry = os::syscall(os::SYS_CONNECT, client_fd, addr_ptr, sizeof(addr));
         if (retry == 0 || retry == -EISCONN) {
             // OK
         } else {
-            assert(retry == -os::EAGAIN);
+            assert(retry == -EAGAIN);
         }
     }
     assert(accept_fd >= 0);

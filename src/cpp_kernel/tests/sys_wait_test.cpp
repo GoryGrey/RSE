@@ -36,7 +36,7 @@ int main() {
     assert(child_pid > 1);
 
     int64_t early_wait = os::syscall(os::SYS_WAIT, 0);
-    assert(early_wait == -os::EAGAIN);
+    assert(early_wait == -EAGAIN);
 
     os::OSProcess* child = nullptr;
     scheduler.forEachProcess([&](os::OSProcess* proc) {

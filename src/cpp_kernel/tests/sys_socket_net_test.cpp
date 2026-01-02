@@ -93,6 +93,23 @@ int main() {
                                     os::RSE_SOCK_STREAM, os::RSE_PROTO_NET);
     assert(client_fd >= 0);
 
+    os::rse_sockaddr bad_addr{};
+    bad_addr.family = os::RSE_AF_LOOP;
+    bad_addr.port = 6060;
+    uint64_t bad_addr_ptr = write_user(proc, &bad_addr, sizeof(bad_addr));
+    int64_t bad_client = os::syscall(os::SYS_SOCKET, os::RSE_AF_LOOP,
+                                     os::RSE_SOCK_STREAM, os::RSE_PROTO_NET);
+    assert(bad_client >= 0);
+    int64_t refused = -1;
+    for (int attempt = 0; attempt < 8; ++attempt) {
+        refused = os::syscall(os::SYS_CONNECT, bad_client, bad_addr_ptr, sizeof(bad_addr));
+        if (refused != -EAGAIN) {
+            break;
+        }
+    }
+    assert(refused == -ECONNREFUSED);
+    assert(os::syscall(os::SYS_CLOSE, bad_client) == 0);
+
     int64_t connect_rc = os::syscall(os::SYS_CONNECT, client_fd, addr_ptr, sizeof(addr));
     assert(connect_rc == 0 || connect_rc == -EAGAIN);
 

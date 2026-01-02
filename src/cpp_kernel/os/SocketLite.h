@@ -20,6 +20,7 @@ static constexpr uint16_t kTcpLiteSyn = 1u << 0;
 static constexpr uint16_t kTcpLiteAck = 1u << 1;
 static constexpr uint16_t kTcpLiteFin = 1u << 2;
 static constexpr uint16_t kTcpLiteData = 1u << 3;
+static constexpr uint16_t kTcpLiteRst = 1u << 4;
 static constexpr uint32_t kNetLiteRetryTicks = 8u;
 static constexpr uint32_t kNetLiteConnectTimeout = 64u;
 static constexpr uint8_t kNetLiteMaxRetries = 3u;
@@ -329,6 +330,11 @@ inline NetWireState& net_wire_state() {
     return state;
 }
 
+inline NetWireState& net_out_state() {
+    static NetWireState state;
+    return state;
+}
+
 inline bool net_wire_push(const uint8_t* data, size_t len) {
     if (!data || len == 0) {
         return false;
@@ -345,6 +351,27 @@ inline bool net_wire_push(const uint8_t* data, size_t len) {
         wire.buffer[wire.tail] = *src++;
         wire.tail = (wire.tail + 1) % NetWireState::kCapacity;
         wire.size++;
+        remaining--;
+    }
+    return remaining == 0;
+}
+
+inline bool net_out_push(const uint8_t* data, size_t len) {
+    if (!data || len == 0) {
+        return false;
+    }
+    NetWireState& out = net_out_state();
+    size_t free_space = NetWireState::kCapacity - out.size;
+    if (len > free_space) {
+        out.drops++;
+        return false;
+    }
+    size_t remaining = len;
+    const uint8_t* src = data;
+    while (remaining > 0 && out.size < NetWireState::kCapacity) {
+        out.buffer[out.tail] = *src++;
+        out.tail = (out.tail + 1) % NetWireState::kCapacity;
+        out.size++;
         remaining--;
     }
     return remaining == 0;
@@ -392,6 +419,30 @@ inline void net_wire_consume(size_t len) {
     wire.size -= consume;
 }
 
+inline void net_out_flush() {
+    SocketManager& mgr = socket_manager();
+    if (!mgr.net_online()) {
+        return;
+    }
+    NetWireState& out = net_out_state();
+    while (out.size > 0) {
+        size_t contiguous = out.size;
+        size_t until_wrap = NetWireState::kCapacity - out.head;
+        if (contiguous > until_wrap) {
+            contiguous = until_wrap;
+        }
+        if (contiguous == 0) {
+            break;
+        }
+        int wrote = rse_net_write(out.buffer + out.head, (uint32_t)contiguous);
+        if (wrote <= 0) {
+            break;
+        }
+        out.head = (out.head + static_cast<size_t>(wrote)) % NetWireState::kCapacity;
+        out.size -= static_cast<size_t>(wrote);
+    }
+}
+
 inline int net_write_all(const uint8_t* data, uint32_t len) {
     if (!data || len == 0) {
         return 0;
@@ -414,19 +465,29 @@ inline int net_write_all(const uint8_t* data, uint32_t len) {
 
 inline int net_send_frame(uint16_t conn, uint16_t flags, const void* payload, uint32_t len) {
     TcpLiteHeader header{ kTcpLiteMagic, flags, conn, len };
-    int wrote = net_write_all(reinterpret_cast<const uint8_t*>(&header), sizeof(header));
-    if (wrote < 0) {
-        return wrote;
+    if (!socket_manager().net_online()) {
+        return -EIO;
     }
-    if (len == 0) {
-        return (int)sizeof(header);
+    size_t total = sizeof(header) + len;
+    if (total > NetWireState::kCapacity) {
+        return -EINVAL;
     }
-    const uint8_t* data = static_cast<const uint8_t*>(payload);
-    wrote = net_write_all(data, len);
-    if (wrote < 0) {
-        return wrote;
+    NetWireState& out = net_out_state();
+    if (out.size + total > NetWireState::kCapacity) {
+        out.drops++;
+        return -EAGAIN;
     }
-    return (int)(sizeof(header) + len);
+    if (!net_out_push(reinterpret_cast<const uint8_t*>(&header), sizeof(header))) {
+        return -EAGAIN;
+    }
+    if (len > 0) {
+        const uint8_t* data = static_cast<const uint8_t*>(payload);
+        if (!net_out_push(data, len)) {
+            return -EAGAIN;
+        }
+    }
+    net_out_flush();
+    return (int)total;
 }
 
 inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* payload, uint32_t len) {
@@ -445,16 +506,19 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
         std::memcpy(&syn, payload, sizeof(syn));
         SocketLite* listener = mgr.find_listener(syn.dest_port, SocketLite::Backend::NET_LITE);
         if (!listener) {
+            (void)net_send_frame(header.conn, kTcpLiteRst, nullptr, 0);
             return;
         }
         if (listener->backlog == 0) {
             listener->backlog = 1;
         }
         if (listener->pending_count >= listener->backlog) {
+            (void)net_send_frame(header.conn, kTcpLiteRst, nullptr, 0);
             return;
         }
         SocketLite* server_sock = mgr.allocate(SocketLite::Backend::NET_LITE);
         if (!server_sock) {
+            (void)net_send_frame(header.conn, kTcpLiteRst, nullptr, 0);
             return;
         }
         server_sock->state = SocketLite::State::CONNECTED;
@@ -495,6 +559,20 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
         return;
     }
 
+    if (header.flags & kTcpLiteRst) {
+        SocketLite* sock = mgr.find_by_conn(header.conn);
+        if (sock && sock->state != SocketLite::State::CLOSED) {
+            sock->reset_pending = true;
+            sock->peer_closed = false;
+            sock->state = SocketLite::State::CLOSED;
+            sock->peer_port = 0;
+            sock->connect_attempts = 0;
+            sock->connect_retry = 0;
+            sock->connect_deadline = 0;
+        }
+        return;
+    }
+
     if (header.flags & kTcpLiteData) {
         SocketLite* sock = mgr.find_by_conn(header.conn);
         if (!sock || sock->state != SocketLite::State::CONNECTED) {
@@ -519,6 +597,7 @@ inline void socket_poll_net() {
         return;
     }
     g_socket_net_ticks++;
+    net_out_flush();
     uint8_t scratch[256];
     while (true) {
         int got = rse_net_read(scratch, sizeof(scratch));

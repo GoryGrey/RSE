@@ -808,6 +808,8 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
         sock->connect_attempts = 0;
         sock->connect_retry = 0;
         sock->connect_deadline = 0;
+        sock->peer_closed = false;
+        sock->reset_pending = false;
     };
     if (addr_len < sizeof(rse_sockaddr)) {
         return -EINVAL;
@@ -837,6 +839,10 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
         socket_poll_net();
         if (sock->state == SocketLite::State::CONNECTED) {
             return 0;
+        }
+        if (sock->reset_pending) {
+            reset_netlite_connect(sock);
+            return -ECONNREFUSED;
         }
         if (sock->peer_port == 0 || sock->port == 0 || sock->conn_id == 0) {
             reset_netlite_connect(sock);

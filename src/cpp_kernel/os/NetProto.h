@@ -18,6 +18,7 @@ static constexpr uint16_t kTcpLiteSyn = 1u << 0;
 static constexpr uint16_t kTcpLiteAck = 1u << 1;
 static constexpr uint16_t kTcpLiteFin = 1u << 2;
 static constexpr uint16_t kTcpLiteData = 1u << 3;
+static constexpr uint16_t kTcpLiteRst = 1u << 4;
 
 inline int64_t tcp_lite_write(VFS* vfs, FileDescriptorTable* fdt, int32_t fd,
                               uint16_t conn, uint16_t flags,

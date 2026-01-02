@@ -47,7 +47,7 @@ Key properties:
 - Framebuffer dashboard with keyboard/mouse input.
 - Exec enforces executable permission bit on ELF targets.
 - Syscalls support default/ignore signal dispositions (SIGKILL/SIGSTOP immutable).
-- NET_LITE sockets return EOF on peer FIN and EPIPE on write after close.
+- NET_LITE sockets return EOF on peer FIN, EPIPE on write after close, and ECONNREFUSED on refused connect.
 - Braided runtime (single-node projections + constraint application).
 - Projection exchange across 3 VMs via IVSHMEM shared memory.
 - Block-backed persistence via BlockFS mounted at /persist with directories and basic permission checks.

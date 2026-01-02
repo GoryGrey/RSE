@@ -1626,6 +1626,8 @@ struct rse_bench_metrics {
     uint64_t net_arp_bytes;
     uint64_t net_arp_cycles;
     uint64_t net_queue_drops;
+    uint64_t net_rx_invalid;
+    uint64_t net_tx_full;
     uint64_t udp_rx;
     uint64_t udp_udp;
     uint64_t udp_http;
@@ -3300,6 +3302,7 @@ static int virtio_net_send(const void *buf, uint32_t len) {
             serial_write("\n");
             tx_stall_logged = 1;
         }
+        g_metrics.net_tx_full++;
         return -(int)RSE_EAGAIN;
     }
     if (tx_stall_logged) {
@@ -3364,7 +3367,8 @@ static int virtio_net_recv(void *buf, uint32_t len) {
             serial_write("[RSE] virtio-net rx invalid id\n");
             rx_bad_logged = 1;
         }
-        return -1;
+        g_metrics.net_rx_invalid++;
+        return 0;
     }
     uint32_t data_len = 0;
     if (elem.len < virtio_net_hdr_len || elem.len > VIRTIO_NET_BUF_SIZE) {
@@ -3374,6 +3378,7 @@ static int virtio_net_recv(void *buf, uint32_t len) {
             serial_write("\n");
             rx_bad_logged = 1;
         }
+        g_metrics.net_rx_invalid++;
     } else {
         data_len = elem.len - virtio_net_hdr_len;
         if (data_len > len) {
@@ -5071,6 +5076,10 @@ static void fb_draw_dashboard(struct limine_framebuffer *fb) {
     fb_draw_label_u64(fb, left_x + 12, line, "PROOF RX:", g_metrics.udp_rx, UI_MUTED, UI_TEXT);
     line += line_step;
     fb_draw_label_u64(fb, left_x + 12, line, "NET DROP:", g_metrics.net_queue_drops, UI_MUTED, UI_TEXT);
+    line += line_step;
+    fb_draw_label_u64(fb, left_x + 12, line, "NET RX BAD:", g_metrics.net_rx_invalid, UI_MUTED, UI_TEXT);
+    line += line_step;
+    fb_draw_label_u64(fb, left_x + 12, line, "NET TX FULL:", g_metrics.net_tx_full, UI_MUTED, UI_TEXT);
     line += line_step;
     fb_draw_label_u64(fb, left_x + 12, line, "ARP RX:", g_metrics.net_arp_bytes, UI_MUTED, UI_TEXT);
     line += line_step;

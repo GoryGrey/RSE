@@ -247,7 +247,7 @@ struct gdt_ptr {
     uint64_t base;
 } __attribute__((packed));
 
-enum { GDT_ENTRY_COUNT = 8 };
+enum { GDT_ENTRY_COUNT = 10 };
 static struct gdt_entry gdt_entries[GDT_ENTRY_COUNT];
 static struct gdt_ptr gdt_descriptor;
 
@@ -256,7 +256,9 @@ enum {
     GDT_KERNEL_DATA = 0x10,
     GDT_USER_CODE = 0x18,
     GDT_USER_DATA = 0x20,
-    GDT_TSS = 0x28
+    GDT_COMPAT_DATA = 0x30,
+    GDT_COMPAT_CODE = 0x38,
+    GDT_TSS = 0x40
 };
 
 struct tss64 {
@@ -979,7 +981,7 @@ static void init_tss(void) {
     memset(&g_tss, 0, sizeof(g_tss));
     g_tss.rsp0 = (uint64_t)(uintptr_t)g_user_kernel_stack + sizeof(g_user_kernel_stack);
     g_tss.iomap_base = sizeof(g_tss);
-    gdt_set_tss_descriptor(5, (uint64_t)(uintptr_t)&g_tss, sizeof(g_tss) - 1);
+    gdt_set_tss_descriptor(8, (uint64_t)(uintptr_t)&g_tss, sizeof(g_tss) - 1);
     __asm__ volatile("ltr %0" : : "r"((uint16_t)GDT_TSS));
 }
 
@@ -993,18 +995,22 @@ static void init_gdt_user_segments(void) {
     uint16_t cs = read_cs();
     uint16_t cs_index = (uint16_t)(cs >> 3);
 
+    __asm__ volatile("cli");
     gdt_set_entry(0, 0x00, 0x00);
     gdt_set_entry(1, 0x9A, 0x20);  // Kernel code, long mode
     gdt_set_entry(2, 0x92, 0x00);  // Kernel data
     gdt_set_entry(3, 0xFA, 0x20);  // User code, long mode
     gdt_set_entry(4, 0xF2, 0x00);  // User data
+    gdt_set_entry(6, 0x92, 0x00);  // Compatibility data (UEFI DS=0x30)
+    gdt_set_entry(7, 0x9A, 0x20);  // Compatibility code (UEFI CS=0x38)
 
     gdt_descriptor.limit = (uint16_t)(sizeof(gdt_entries) - 1);
     gdt_descriptor.base = (uint64_t)(uintptr_t)&gdt_entries[0];
 
     if (cs_index > 0 && cs_index < GDT_ENTRY_COUNT &&
         cs_index != (GDT_KERNEL_CODE >> 3) &&
-        cs_index != (GDT_USER_CODE >> 3)) {
+        cs_index != (GDT_USER_CODE >> 3) &&
+        cs_index != (GDT_COMPAT_DATA >> 3)) {
         gdt_set_entry((int)cs_index, 0x9A, 0x20);
     }
 

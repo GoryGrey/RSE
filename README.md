@@ -1,6 +1,6 @@
 # RSE (Resilient Spatial Execution)
 
-Last Updated: January 02, 2026 (sys_fork uid/gid + signal handler inheritance; sys_ps filters by uid for non-root; exec resets signal handlers (ignores preserved); memfs/persist ancestor exec enforcement; virtio-net TX backpressure + RX guardrails; empty net reads return EAGAIN; net queue + RX/TX error counters surfaced; BlockFS sanitize scrubs invalid entries and zeroes stale slots; BlockFS slot zeroing on create/remove; mergeable RX disabled pending reassembly; raw TCP socket backend for AF_INET when RSE_NET_RAW=1 with retransmit/backoff + window backpressure + close sweep + pending handshake cleanup; sys_kill uid enforcement; sys_socket_tcp_test)
+Last Updated: January 02, 2026 (UEFI GDT compatibility segments for loader selectors; sys_fork uid/gid + signal handler inheritance; sys_ps filters by uid for non-root; exec resets signal handlers (ignores preserved); memfs/persist ancestor exec enforcement; virtio-net TX backpressure + RX guardrails; empty net reads return EAGAIN; net queue + RX/TX error counters surfaced; BlockFS sanitize scrubs invalid entries and zeroes stale slots; BlockFS slot zeroing on create/remove; mergeable RX disabled pending reassembly; raw TCP socket backend for AF_INET when RSE_NET_RAW=1 with retransmit/backoff + window backpressure + close sweep + pending handshake cleanup; sys_kill uid enforcement; sys_socket_tcp_test)
 
 Status: Research prototype. Bootable UEFI kernel with an interactive dashboard and in-kernel workloads; braided projection exchange works in multi-VM via shared memory.
 
@@ -40,6 +40,7 @@ Key properties:
 ## What Works Today
 
 - Bootable UEFI kernel in QEMU (serial + framebuffer).
+- UEFI GDT compatibility segments to honor loader selectors (fixes early #GP).
 - In-kernel workloads: compute, memory, RAMFS I/O, UEFI FS/block I/O, HTTP loopback.
 - /dev/net0 UDP loopback plus raw Ethernet/IP/TCP backend for AF_INET sockets when `RSE_NET_RAW=1` (retransmit/backoff, FIN retry, window backpressure, ARP cache aging).
 - Cooperative userspace tasks + ring3 exec smoke (UEFI).
@@ -92,22 +93,22 @@ Key properties:
 
 Metrics are captured per run. Use logs to inspect real values:
 
-- Kernel + UEFI benchmarks: `./scripts/run_full_system_test.sh` (see `build/boot/boot.log` or `/tmp` overrides).
+- Kernel + UEFI benchmarks: `./scripts/run_full_system_test.sh` (see `build/boot/boot.log`; logged runs write to `build/boot/full_test.log` when using the logged wrapper).
 - Host baseline: `./scripts/run_linux_baseline.sh`.
 - Default smoke mode: `RSE_BENCH_SMOKE=1` (set `RSE_BENCH_SMOKE=0` to run full UEFI/virtio/net micro-benchmarks).
 
-Latest snapshot (Dec 28, 2025):
+Latest snapshot (January 02, 2026):
 
 | Metric | RSE (UEFI/QEMU, TSC-calibrated) | Linux baseline (host) | Notes |
 |--------|----------------------------------|------------------------|-------|
-| Compute | 55 ns/op (22,301,494 ns total) | 580.5 ns/op | Different workloads/environments |
-| Memory copy | 9 ns/byte (631,566,526 ns total) | 171.3 ns/byte | Different sizes/passes |
-| File I/O | RAMFS 11,078 ns/op | 30,625 ns/op | Different storage paths |
-| HTTP loopback | 434 ns/req | blocked (permission denied) | Network sandbox blocks host HTTP |
+| Compute | 17 ns/op (7,025,530 ns total) | 580.5 ns/op | Smoke run (UEFI) |
+| Memory copy | 5 ns/byte (385,899,666 ns total) | 171.3 ns/byte | Smoke run (UEFI) |
+| File I/O | RAMFS 21,825 ns/op | 30,625 ns/op | Smoke run (UEFI) |
+| HTTP loopback | skipped (smoke) | blocked (permission denied) | Not run in smoke mode |
 
 Notes:
 - RSE ns values are derived from TSC calibration via UEFI Stall; treat as approximate.
-- Source logs: `build/boot/boot.log` (RSE) and `benchmarks/linux_baseline.json` (Linux).
+- Source logs: `build/boot/full_test.log` (RSE; logged run) and `benchmarks/linux_baseline.json` (Linux).
 
 ---
 

@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: January 02, 2026 (PIT timer preemption; ring3 sleep/yield + timeslice; W^X mprotect checks; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + EOF/EPIPE + RST refused + seq/ack retransmit + outbound queue + overflow drops + conn collision checks; raw TCP socket backend (ARP/IPv4/TCP) for AF_INET when RSE_NET_RAW=1 with retransmit/backoff, FIN retry, window backpressure, ARP cache aging, close sweep, and pending handshake cleanup; sys_kill now enforces uid (root or same uid) even for sig=0 probe; sys_fork inherits uid/gid + signal handlers; sys_ps filters by uid for non-root callers; exec resets signal handlers to default (ignores preserved); virtio-net TX backpressure returns EAGAIN; virtio-net RX length/id guards; net reads return EAGAIN on empty; net queue drops + RX/TX error counters surfaced; mergeable RX disabled pending reassembly; virtio-net UEFI fallback only on hard errors; BlockFS checksum recovery + slot zeroing on create/remove; BlockFS sanitize now scrubs invalid entries and zeroes stale slots (mode bits masked to 0777); BlockFS journal recovery test hook (non-kernel); uid/gid ownership enforced for MemFS/BlockFS with stat reporting; CLOEXEC dup hygiene; persist dir open returns EISDIR; exec requires exec-bit; ancestor exec enforced for memfs/persist path traversal; signal ignore/default; stat parent-exec gating; workload yields; directory listing sort; ISO workflow scripts; logged test heartbeat; quick boot test runner)
+Last Updated: January 02, 2026 (UEFI GDT compatibility segments for loader selectors; PIT timer preemption; ring3 sleep/yield + timeslice; W^X mprotect checks; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + EOF/EPIPE + RST refused + seq/ack retransmit + outbound queue + overflow drops + conn collision checks; raw TCP socket backend (ARP/IPv4/TCP) for AF_INET when RSE_NET_RAW=1 with retransmit/backoff, FIN retry, window backpressure, ARP cache aging, close sweep, and pending handshake cleanup; sys_kill now enforces uid (root or same uid) even for sig=0 probe; sys_fork inherits uid/gid + signal handlers; sys_ps filters by uid for non-root callers; exec resets signal handlers to default (ignores preserved); virtio-net TX backpressure returns EAGAIN; virtio-net RX length/id guards; net reads return EAGAIN on empty; net queue drops + RX/TX error counters surfaced; mergeable RX disabled pending reassembly; virtio-net UEFI fallback only on hard errors; BlockFS checksum recovery + slot zeroing on create/remove; BlockFS sanitize now scrubs invalid entries and zeroes stale slots (mode bits masked to 0777); BlockFS journal recovery test hook (non-kernel); uid/gid ownership enforced for MemFS/BlockFS with stat reporting; CLOEXEC dup hygiene; persist dir open returns EISDIR; exec requires exec-bit; ancestor exec enforced for memfs/persist path traversal; signal ignore/default; stat parent-exec gating; workload yields; directory listing sort; ISO workflow scripts; logged test heartbeat; quick boot test runner)
 
 ---
 
@@ -55,7 +55,8 @@ Design guardrail:
 - `./scripts/run_full_system_test.sh` (build + native tests + UEFI boot + IVSHMEM exchange).
 - `./scripts/run_quick_system_test.sh` (UEFI boot + smoke benchmarks only).
 - `./scripts/run_linux_baseline.sh` (host baseline).
-- Latest full system run log: `build/boot/full_test.log` (Jan 01, 2026).
+- Latest full system run log: `build/boot/full_test.log` (Jan 02, 2026).
+- Latest projection exchange logs: `build/boot/net_exchange` (Jan 02, 2026).
 - Syscall + OS tests: `sys_wait_test`, `sys_kill_test`, `sys_ps_test`, `sys_stat_test`,
   `sys_memfs_dir_test`, `sys_user_isolation_test`, `sys_vfs_persist_test`,
   `sys_socket_test`, `sys_socket_net_test`, `sys_socket_tcp_test` (RSE_NET_RAW=1),
@@ -113,14 +114,14 @@ Key property: no global controller; coordination is constant-size and cyclic.
 
 ## Performance Snapshot (Real Logs Only)
 
-Latest snapshot (January 01, 2026):
+Latest snapshot (January 02, 2026):
 
 | Metric | RSE (UEFI/QEMU, TSC-calibrated) | Linux baseline (host) | Notes |
 |--------|----------------------------------|------------------------|-------|
-| Compute | 16 ns/op (6,685,442 ns total) | 580.5 ns/op | ~3.4x faster vs Dec 28 snapshot |
-| Memory copy | 6 ns/byte (415,030,802 ns total) | 171.3 ns/byte | ~1.5x faster vs Dec 28 snapshot |
-| File I/O | RAMFS 9,102 ns/op | 30,625 ns/op | ~1.2x faster vs Dec 28 snapshot |
-| HTTP loopback | 344 ns/req | blocked (permission denied) | ~1.3x faster vs Dec 28 snapshot |
+| Compute | 17 ns/op (7,025,530 ns total) | 580.5 ns/op | Smoke run (UEFI) |
+| Memory copy | 5 ns/byte (385,899,666 ns total) | 171.3 ns/byte | Smoke run (UEFI) |
+| File I/O | RAMFS 21,825 ns/op | 30,625 ns/op | Smoke run (UEFI) |
+| HTTP loopback | skipped (smoke) | blocked (permission denied) | Not run in smoke mode |
 
 Notes:
 - RSE ns values are derived from TSC calibration via UEFI `Stall`; treat as approximate.

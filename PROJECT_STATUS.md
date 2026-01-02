@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: January 01, 2026 (PIT timer preemption; ring3 sleep/yield + timeslice; W^X mprotect checks; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + overflow drops + conn collision checks; BlockFS checksum recovery; CLOEXEC dup hygiene; persist dir open returns EISDIR; workload yields; directory listing sort; ISO workflow scripts; logged test heartbeat; quick boot test runner)
+Last Updated: January 01, 2026 (PIT timer preemption; ring3 sleep/yield + timeslice; W^X mprotect checks; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + overflow drops + conn collision checks; BlockFS checksum recovery; CLOEXEC dup hygiene; persist dir open returns EISDIR; exec requires exec-bit; workload yields; directory listing sort; ISO workflow scripts; logged test heartbeat; quick boot test runner)
 
 ---
 
@@ -32,7 +32,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - Syscall dispatcher with user-range validation anchored to per-process code/stack bounds (including nanosleep/pipe/time pointers) and per-torus dispatch.
 - Ring3 page table mirroring only maps pages flagged as user in the process page tables.
 - ELF loader enforces the user virtual address window; out-of-range segments are rejected.
-- User mmap rejects overlaps; mmap/mprotect/munmap validate zero/unaligned sizes; PROT_EXEC blocked for anonymous mmap and limited to code pages; mprotect denies exec on writable pages and write access over code ranges; stack guard pages widened; mmap uses guard pages by default; read/write reject oversized counts; mprotect refuses unmapped ranges; VFS reserves `/dev` and rejects invalid `/persist` subpaths; net loopback backpressure returns `-EAGAIN`.
+- User mmap rejects overlaps; mmap/mprotect/munmap validate zero/unaligned sizes; PROT_EXEC blocked for anonymous mmap and limited to code pages; mprotect denies exec on writable pages and write access over code ranges; stack guard pages widened; mmap uses guard pages by default; read/write reject oversized counts; mprotect refuses unmapped ranges; exec requires exec-bit; VFS reserves `/dev` and rejects invalid `/persist` subpaths; net loopback backpressure returns `-EAGAIN`.
 - Ring3 exec smoke (UEFI): exec path works; isolation still evolving.
 - Ring3 init now loads a real freestanding ELF at `/bin/init` (no synthetic payloads).
 - Ring3 init supports script-driven workloads via `/persist/boot.rc` or `/boot.rc`.

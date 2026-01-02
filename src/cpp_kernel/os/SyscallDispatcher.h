@@ -1081,9 +1081,24 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
         return -EFAULT;
     }
 
+    rse_stat info = {};
+    int32_t stat_rc = current_torus_context->vfs->stat(path_buf, &info);
+    if (stat_rc != 0) {
+        return stat_rc;
+    }
+    if (info.type == RSE_STAT_DIR) {
+        return -EISDIR;
+    }
+    if (info.type != RSE_STAT_FILE) {
+        return -EACCES;
+    }
+    if ((info.mode & 0111u) == 0) {
+        return -EACCES;
+    }
+
     int32_t fd = current_torus_context->vfs->open(fdt, path_buf, O_RDONLY);
     if (fd < 0) {
-        return -ENOENT;
+        return fd;
     }
 
     static constexpr uint32_t kChunk = 4096;

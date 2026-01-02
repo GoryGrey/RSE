@@ -128,7 +128,8 @@ int main() {
   writeElfImage(image, reinterpret_cast<const uint8_t*>(payload), sizeof(payload), 0x500000);
 
   const char path[] = "/hello.elf";
-  int32_t fd = vfs.open(&proc.fd_table, path, os::O_CREAT | os::O_TRUNC | os::O_WRONLY);
+  int32_t fd = vfs.open(&proc.fd_table, path,
+                        os::O_CREAT | os::O_TRUNC | os::O_WRONLY, 0755);
   assert(fd >= 0);
   int64_t written = vfs.write(&proc.fd_table, fd, image.data(), image.size());
   assert(written == static_cast<int64_t>(image.size()));
@@ -136,13 +137,22 @@ int main() {
 
   const char bad_path[] = "/bad.bin";
   int32_t bad_fd = vfs.open(&proc.fd_table, bad_path,
-                            os::O_CREAT | os::O_TRUNC | os::O_WRONLY);
+                            os::O_CREAT | os::O_TRUNC | os::O_WRONLY, 0755);
   assert(bad_fd >= 0);
   const char bad_payload[] = "NOT-ELF";
   int64_t bad_written = vfs.write(&proc.fd_table, bad_fd, bad_payload,
                                   static_cast<uint32_t>(sizeof(bad_payload) - 1));
   assert(bad_written == static_cast<int64_t>(sizeof(bad_payload) - 1));
   vfs.close(&proc.fd_table, bad_fd);
+
+  const char noexec_path[] = "/noexec.elf";
+  int32_t noexec_fd = vfs.open(&proc.fd_table, noexec_path,
+                               os::O_CREAT | os::O_TRUNC | os::O_WRONLY, 0644);
+  assert(noexec_fd >= 0);
+  int64_t noexec_written = vfs.write(&proc.fd_table, noexec_fd,
+                                     image.data(), image.size());
+  assert(noexec_written == static_cast<int64_t>(image.size()));
+  vfs.close(&proc.fd_table, noexec_fd);
 
   int32_t cloexec_fd = vfs.open(&proc.fd_table, "/tmp.txt",
                                 os::O_CREAT | os::O_TRUNC | os::O_WRONLY | os::O_CLOEXEC);
@@ -159,6 +169,7 @@ int main() {
 
   uint64_t user_path = writeUserString(path);
   uint64_t bad_user_path = writeUserString(bad_path);
+  uint64_t noexec_user_path = writeUserString(noexec_path);
   uint64_t arg0 = writeUserString("hello");
   uint64_t arg1 = writeUserString("world");
   uint64_t env0 = writeUserString("RSE=1");
@@ -189,6 +200,11 @@ int main() {
                                  argv_mem,
                                  bad_ptr);
   assert(bad_envp == -os::EFAULT);
+  int64_t noexec_rc = os::syscall(os::SYS_EXEC,
+                                  noexec_user_path,
+                                  argv_mem,
+                                  envp_mem);
+  assert(noexec_rc == -os::EACCES);
 
   int64_t rc = os::syscall(os::SYS_EXEC,
                            user_path,

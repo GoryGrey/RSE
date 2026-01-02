@@ -1,6 +1,6 @@
 # RSE (Resilient Spatial Execution)
 
-Last Updated: January 01, 2026 (persist dir open returns EISDIR; /persist directory support + permissions; status refresh)
+Last Updated: January 01, 2026 (persist dir open returns EISDIR; exec requires exec-bit; /persist directory support + permissions; status refresh)
 
 Status: Research prototype. Bootable UEFI kernel with an interactive dashboard and in-kernel workloads; braided projection exchange works in multi-VM via shared memory.
 
@@ -45,6 +45,7 @@ Key properties:
 - Cooperative userspace tasks + ring3 exec smoke (UEFI).
 - Fast-path I/O device (/dev/fast0) using a native ring buffer.
 - Framebuffer dashboard with keyboard/mouse input.
+- Exec enforces executable permission bit on ELF targets.
 - Braided runtime (single-node projections + constraint application).
 - Projection exchange across 3 VMs via IVSHMEM shared memory.
 - Block-backed persistence via BlockFS mounted at /persist with directories and basic permission checks.

@@ -524,6 +524,9 @@ inline int64_t sys_kill(uint64_t pid, uint64_t sig, uint64_t,
     if (!target) {
         return -ESRCH;
     }
+    if (current->uid != 0 && current->uid != target->uid) {
+        return -EACCES;
+    }
     if (sig != SIGKILL && sig != SIGSTOP) {
         if (sig < OSProcess::kMaxSignals &&
             target->signal_handlers[sig] == SIG_IGN) {
@@ -1019,9 +1022,10 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
         sock->syn_seq = socket_manager().next_isn();
         sock->tx_seq = sock->syn_seq + 1;
         sock->tcp_syn_pending = true;
+        sock->peer_window = kTcpWindowBytes;
         uint32_t now = g_socket_net_ticks;
         sock->connect_attempts = 1;
-        sock->connect_retry = now + kTcpRetryTicks;
+        sock->connect_retry = now + tcp_backoff(kTcpRetryTicks, sock->connect_attempts);
         sock->connect_deadline = now + kTcpConnectTimeout;
         int rc = tcp_send_segment(sock, kTcpFlagSyn, nullptr, 0,
                                   sock->syn_seq, 0);

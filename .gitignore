@@ -37,3 +37,6 @@ package-lock.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+benchmarks/net_exchange/*.log

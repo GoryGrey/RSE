@@ -29,9 +29,12 @@ int main() {
     parent.initMemory(&phys_alloc);
     os::OSProcess child(2, 1, 0);
     child.initMemory(&phys_alloc);
+    os::OSProcess other(3, 2, 0);
+    other.initMemory(&phys_alloc);
 
     scheduler.addProcess(&parent);
     scheduler.addProcess(&child);
+    scheduler.addProcess(&other);
     scheduler.tick();
     assert(scheduler.getCurrentProcess() == &parent);
 
@@ -50,6 +53,11 @@ int main() {
     assert(exists_rc == 0);
     int64_t missing_rc = os::syscall(os::SYS_KILL, 999, 0);
     assert(missing_rc == -os::ESRCH);
+
+    scheduler.forceCurrentProcess(&other);
+    int64_t denied = os::syscall(os::SYS_KILL, 2, os::SIGTERM);
+    assert(denied == -os::EACCES);
+    scheduler.forceCurrentProcess(&parent);
 
     int64_t kill_rc = os::syscall(os::SYS_KILL, 2, 9);
     assert(kill_rc == 0);

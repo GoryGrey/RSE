@@ -1,6 +1,6 @@
 # RSE (Resilient Spatial Execution)
 
-Last Updated: January 01, 2026 (memfs/persist ancestor exec enforcement; virtio-net TX backpressure + RX guardrails; empty net reads return EAGAIN; net queue + RX/TX error counters surfaced; BlockFS slot zeroing on create/remove; mergeable RX disabled pending reassembly; raw TCP socket backend for AF_INET when RSE_NET_RAW=1; sys_socket_tcp_test)
+Last Updated: January 01, 2026 (memfs/persist ancestor exec enforcement; virtio-net TX backpressure + RX guardrails; empty net reads return EAGAIN; net queue + RX/TX error counters surfaced; BlockFS slot zeroing on create/remove; mergeable RX disabled pending reassembly; raw TCP socket backend for AF_INET when RSE_NET_RAW=1 with retransmit/backoff + window backpressure; sys_kill uid enforcement; sys_socket_tcp_test)
 
 Status: Research prototype. Bootable UEFI kernel with an interactive dashboard and in-kernel workloads; braided projection exchange works in multi-VM via shared memory.
 
@@ -41,12 +41,13 @@ Key properties:
 
 - Bootable UEFI kernel in QEMU (serial + framebuffer).
 - In-kernel workloads: compute, memory, RAMFS I/O, UEFI FS/block I/O, HTTP loopback.
-- /dev/net0 UDP loopback plus raw Ethernet/IP/TCP backend for AF_INET sockets when `RSE_NET_RAW=1`.
+- /dev/net0 UDP loopback plus raw Ethernet/IP/TCP backend for AF_INET sockets when `RSE_NET_RAW=1` (retransmit/backoff, FIN retry, window backpressure, ARP cache aging).
 - Cooperative userspace tasks + ring3 exec smoke (UEFI).
 - Fast-path I/O device (/dev/fast0) using a native ring buffer.
 - Framebuffer dashboard with keyboard/mouse input.
 - Exec enforces executable permission bit on ELF targets.
 - Syscalls support default/ignore signal dispositions (SIGKILL/SIGSTOP immutable).
+- sys_kill enforces uid (root or same uid).
 - NET_LITE sockets return EOF on peer FIN, EPIPE on write after close, and ECONNREFUSED on refused connect.
 - NET_LITE uses seq/ack + retransmit (stop-and-wait) for reliable delivery.
 - virtio-net driver returns EAGAIN on TX queue full/empty reads and validates RX descriptors; UDP queue drops and RX/TX error counters are tracked (mergeable RX disabled until reassembly support lands).

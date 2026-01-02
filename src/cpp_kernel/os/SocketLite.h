@@ -40,6 +40,7 @@ static constexpr uint32_t kTcpDataRetryTicks = 8u;
 static constexpr uint8_t kTcpDataMaxRetries = 5u;
 static constexpr uint16_t kTcpWindowBytes = 4096u;
 static constexpr uint16_t kTcpMss = 1200u;
+static constexpr uint32_t kArpEntryTtl = 256u;
 static constexpr uint16_t kEthertypeIPv4 = 0x0800;
 static constexpr uint16_t kEthertypeArp = 0x0806;
 static constexpr uint8_t kIpProtoTcp = 6;
@@ -110,8 +111,11 @@ struct SocketLite {
     TcpState tcp_state;
     bool tcp_syn_pending;
     bool tcp_fin_pending;
+    uint16_t peer_window;
     uint8_t peer_mac[6];
     uint8_t local_mac[6];
+    uint32_t fin_retry_at;
+    uint8_t fin_attempts;
     SocketLite* peer;
     SocketLite* pending;
     SocketLite* pending_next;
@@ -149,6 +153,9 @@ struct SocketLite {
           tcp_state(TcpState::CLOSED),
           tcp_syn_pending(false),
           tcp_fin_pending(false),
+          peer_window(kTcpWindowBytes),
+          fin_retry_at(0),
+          fin_attempts(0),
           peer(nullptr),
           pending(nullptr),
           pending_next(nullptr),
@@ -245,6 +252,17 @@ inline uint32_t net_ip_from_bytes(const uint8_t ip[4]) {
            (uint32_t)(ip[1] << 16) |
            (uint32_t)(ip[2] << 8) |
            (uint32_t)ip[3];
+}
+
+inline uint32_t tcp_backoff(uint32_t base, uint8_t attempt) {
+    if (attempt <= 1) {
+        return base;
+    }
+    uint8_t shift = (uint8_t)(attempt - 1);
+    if (shift > 5) {
+        shift = 5;
+    }
+    return base << shift;
 }
 
 struct __attribute__((packed)) net_eth_hdr {
@@ -514,11 +532,16 @@ public:
         return value;
     }
 
-    bool arp_lookup(uint32_t ip, uint8_t out_mac[6]) const {
+    bool arp_lookup(uint32_t ip, uint8_t out_mac[6]) {
         if (!out_mac || ip == 0) {
             return false;
         }
+        uint32_t now = g_socket_net_ticks;
         for (uint32_t i = 0; i < kArpEntries; ++i) {
+            if (arp_cache_[i].valid &&
+                (now - arp_cache_[i].last_seen) > kArpEntryTtl) {
+                arp_cache_[i].valid = false;
+            }
             if (arp_cache_[i].valid && arp_cache_[i].ip == ip) {
                 std::memcpy(out_mac, arp_cache_[i].mac, 6);
                 return true;
@@ -593,7 +616,31 @@ public:
             }
             SocketLite& sock = sockets_[i];
             if (sock.backend != SocketLite::Backend::TCP ||
-                sock.state != SocketLite::State::CONNECTED ||
+                sock.state == SocketLite::State::CLOSED) {
+                continue;
+            }
+            if (sock.tcp_fin_pending &&
+                (sock.tcp_state == TcpState::FIN_WAIT ||
+                 sock.tcp_state == TcpState::LAST_ACK)) {
+                if (sock.fin_retry_at == 0 || now >= sock.fin_retry_at) {
+                    if (sock.fin_attempts >= kTcpMaxRetries) {
+                        sock.reset_pending = true;
+                        sock.state = SocketLite::State::CLOSED;
+                        sock.tcp_state = TcpState::CLOSED;
+                        sock.tcp_fin_pending = false;
+                        sock.fin_attempts = 0;
+                        sock.fin_retry_at = 0;
+                    } else {
+                        int rc = tcp_send_segment(&sock, (uint8_t)(kTcpFlagFin | kTcpFlagAck),
+                                                  nullptr, 0, sock.fin_seq, sock.rx_seq);
+                        if (rc >= 0) {
+                            sock.fin_attempts++;
+                            sock.fin_retry_at = now + tcp_backoff(kTcpRetryTicks, sock.fin_attempts);
+                        }
+                    }
+                }
+            }
+            if (sock.state != SocketLite::State::CONNECTED ||
                 !sock.tx_pending) {
                 continue;
             }
@@ -617,7 +664,7 @@ public:
                 continue;
             }
             sock.tx_attempts++;
-            sock.tx_retry_at = now + kTcpDataRetryTicks;
+            sock.tx_retry_at = now + tcp_backoff(kTcpDataRetryTicks, sock.tx_attempts);
         }
     }
 
@@ -679,7 +726,7 @@ public:
                 continue;
             }
             sock.connect_attempts++;
-            sock.connect_retry = now + kTcpRetryTicks;
+            sock.connect_retry = now + tcp_backoff(kTcpRetryTicks, sock.connect_attempts);
             if (sock.connect_deadline == 0) {
                 sock.connect_deadline = now + kTcpConnectTimeout;
             }
@@ -1208,6 +1255,17 @@ inline bool tcp_is_local_ip(uint32_t ip) {
     return local != 0 && ip == local;
 }
 
+inline uint16_t tcp_local_window(const SocketLite* sock) {
+    if (!sock) {
+        return kTcpWindowBytes;
+    }
+    size_t avail = SocketLite::kBufferSize - sock->size;
+    if (avail > kTcpWindowBytes) {
+        avail = kTcpWindowBytes;
+    }
+    return (uint16_t)avail;
+}
+
 inline uint16_t tcp_checksum(uint32_t src_ip, uint32_t dst_ip,
                              const net_tcp_hdr* tcp,
                              const uint8_t* payload,
@@ -1367,7 +1425,7 @@ inline int tcp_send_segment(SocketLite* sock, uint8_t flags, const uint8_t* payl
     tcp.ack = net_htonl(ack);
     tcp.data_off = (uint8_t)(5u << 4);
     tcp.flags = flags;
-    tcp.window = net_htons(kTcpWindowBytes);
+    tcp.window = net_htons(tcp_local_window(sock));
     tcp.checksum = 0;
     tcp.urgent = 0;
     tcp.checksum = net_htons(tcp_checksum(sock->local_ip, sock->peer_ip, &tcp,
@@ -1462,6 +1520,7 @@ inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
     uint32_t seq = net_htonl(tcp->seq);
     uint32_t ack = net_htonl(tcp->ack);
     uint8_t flags = tcp->flags;
+    uint16_t window = net_htons(tcp->window);
 
     SocketManager& mgr = socket_manager();
     SocketLite* sock = mgr.find_tcp_socket(dst_port, src_port, src_ip);
@@ -1506,6 +1565,7 @@ inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
         server_sock->syn_seq = mgr.next_isn();
         server_sock->tx_seq = server_sock->syn_seq + 1;
         server_sock->tcp_syn_pending = true;
+        server_sock->peer_window = window;
         server_sock->connect_attempts = 1;
         server_sock->connect_retry = g_socket_net_ticks + kTcpRetryTicks;
         server_sock->connect_deadline = g_socket_net_ticks + kTcpConnectTimeout;
@@ -1545,6 +1605,7 @@ inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
         sock->state = SocketLite::State::CLOSED;
         sock->tcp_state = TcpState::CLOSED;
         sock->tx_pending = false;
+        sock->tcp_fin_pending = false;
         return;
     }
 
@@ -1558,6 +1619,7 @@ inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
             sock->connect_retry = 0;
             sock->connect_deadline = 0;
             sock->tcp_syn_pending = false;
+            sock->peer_window = window;
             std::memcpy(sock->peer_mac, eth->src, sizeof(sock->peer_mac));
             (void)tcp_send_segment(sock, kTcpFlagAck, nullptr, 0,
                                    sock->tx_seq, sock->rx_seq);
@@ -1566,6 +1628,7 @@ inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
     }
 
     if (flags & kTcpFlagAck) {
+        sock->peer_window = window;
         if (sock->tcp_state == TcpState::SYN_RCVD &&
             ack == sock->syn_seq + 1) {
             sock->state = SocketLite::State::CONNECTED;
@@ -1575,16 +1638,28 @@ inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
             sock->connect_deadline = 0;
             sock->tcp_syn_pending = false;
         }
-        if (sock->tx_pending &&
-            ack >= sock->tx_pending_seq + sock->tx_pending_len) {
-            sock->tx_pending = false;
-            sock->tx_pending_seq = 0;
-            sock->tx_pending_len = 0;
-            sock->tx_attempts = 0;
-            sock->tx_retry_at = 0;
-        }
-        if (sock->tcp_fin_pending && ack == sock->fin_seq + 1) {
-            sock->tcp_fin_pending = false;
+        if (ack <= sock->tx_seq) {
+            if (sock->tx_pending &&
+                ack >= sock->tx_pending_seq + sock->tx_pending_len) {
+                sock->tx_pending = false;
+                sock->tx_pending_seq = 0;
+                sock->tx_pending_len = 0;
+                sock->tx_attempts = 0;
+                sock->tx_retry_at = 0;
+            }
+            if (sock->tcp_fin_pending && ack == sock->fin_seq + 1) {
+                sock->tcp_fin_pending = false;
+                sock->fin_attempts = 0;
+                sock->fin_retry_at = 0;
+                if (sock->tcp_state == TcpState::LAST_ACK) {
+                    sock->tcp_state = TcpState::CLOSED;
+                    sock->state = SocketLite::State::CLOSED;
+                } else if (sock->tcp_state == TcpState::FIN_WAIT &&
+                           sock->peer_closed) {
+                    sock->tcp_state = TcpState::CLOSED;
+                    sock->state = SocketLite::State::CLOSED;
+                }
+            }
         }
     }
 
@@ -1614,8 +1689,14 @@ inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
         sock->rx_seq += 1;
         (void)tcp_send_segment(sock, kTcpFlagAck, nullptr, 0,
                                sock->tx_seq, sock->rx_seq);
-        sock->state = SocketLite::State::CLOSED;
-        sock->tcp_state = TcpState::CLOSED;
+        if (sock->tcp_state == TcpState::FIN_WAIT && !sock->tcp_fin_pending) {
+            sock->state = SocketLite::State::CLOSED;
+            sock->tcp_state = TcpState::CLOSED;
+        } else if (sock->tcp_state == TcpState::FIN_WAIT) {
+            sock->tcp_state = TcpState::LAST_ACK;
+        } else {
+            sock->tcp_state = TcpState::CLOSE_WAIT;
+        }
     }
 }
 
@@ -1791,10 +1872,15 @@ inline int socket_close(Device* dev) {
         (void)net_send_frame(sock->conn_id, kTcpLiteFin, nullptr, 0);
     }
     if (sock && sock->backend == SocketLite::Backend::TCP &&
-        sock->state == SocketLite::State::CONNECTED && !sock->peer_closed) {
+        sock->state == SocketLite::State::CONNECTED) {
         sock->fin_seq = sock->tx_seq;
         sock->tx_seq += 1;
         sock->tcp_fin_pending = true;
+        sock->fin_attempts = 1;
+        sock->fin_retry_at = g_socket_net_ticks + kTcpRetryTicks;
+        sock->tcp_state = (sock->tcp_state == TcpState::CLOSE_WAIT)
+            ? TcpState::LAST_ACK
+            : TcpState::FIN_WAIT;
         (void)tcp_send_segment(sock, (uint8_t)(kTcpFlagFin | kTcpFlagAck),
                                nullptr, 0, sock->fin_seq, sock->rx_seq);
     }
@@ -1902,7 +1988,18 @@ inline ssize_t socket_write(Device* dev, const void* buf, size_t count) {
             socket_poll_net();
             return -EAGAIN;
         }
+        uint16_t window = sock->peer_window;
+        if (window == 0) {
+            socket_poll_net();
+            return -EAGAIN;
+        }
         uint32_t to_write = count > kTcpMss ? kTcpMss : (uint32_t)count;
+        if (window < to_write) {
+            to_write = window;
+        }
+        if (to_write == 0) {
+            return -EAGAIN;
+        }
         std::memcpy(sock->tx_buffer, buf, to_write);
         sock->tx_pending = true;
         sock->tx_pending_seq = sock->tx_seq;

@@ -44,7 +44,7 @@ Success criteria:
 
 ### 2) Network Stack Hardening
 - Stable RX/TX under load (virtio-net).
-- Raw TCP socket backend is in place; harden connect/listen/accept/close beyond NET_LITE framing.
+- Raw TCP socket backend is in place (retransmit/backoff, FIN retry, window backpressure, ARP cache aging); harden connect/listen/accept/close beyond NET_LITE framing.
 - Better packet validation + timeouts.
 
 Success criteria:

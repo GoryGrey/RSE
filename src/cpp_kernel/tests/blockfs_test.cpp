@@ -53,9 +53,38 @@ int main() {
     assert(read == static_cast<int64_t>(sizeof(payload) - 1));
     assert(std::memcmp(out.data(), payload, sizeof(payload) - 1) == 0);
 
+    os::BlockFSEntry* wipe = fs.open("wipe.txt", true, 0644);
+    assert(wipe != nullptr);
+    const char wipe_payload[] = "wipe";
+    int64_t wipe_wrote = fs.write(wipe, 0, reinterpret_cast<const uint8_t*>(wipe_payload),
+                                  static_cast<uint32_t>(sizeof(wipe_payload) - 1));
+    assert(wipe_wrote == static_cast<int64_t>(sizeof(wipe_payload) - 1));
+    uint64_t wipe_lba = fs.getDataStartLba() + (uint64_t)wipe->slot_index * fs.getSlotBlocks();
+    std::array<uint8_t, 512> wipe_raw{};
+    int rc = os::rse_block_read(wipe_lba, wipe_raw.data(), 1);
+    assert(rc == 0);
+    assert(std::memcmp(wipe_raw.data(), wipe_payload, sizeof(wipe_payload) - 1) == 0);
+    bool removed_wipe = fs.remove("wipe.txt");
+    assert(removed_wipe);
+    std::array<uint8_t, 512> wiped{};
+    rc = os::rse_block_read(wipe_lba, wiped.data(), 1);
+    assert(rc == 0);
+    for (size_t i = 0; i < wiped.size(); ++i) {
+        assert(wiped[i] == 0);
+    }
+    os::BlockFSEntry* wipe2 = fs.open("wipe2.txt", true, 0644);
+    assert(wipe2 != nullptr);
+    uint64_t wipe2_lba = fs.getDataStartLba() + (uint64_t)wipe2->slot_index * fs.getSlotBlocks();
+    std::array<uint8_t, 512> wipe2_raw{};
+    rc = os::rse_block_read(wipe2_lba, wipe2_raw.data(), 1);
+    assert(rc == 0);
+    for (size_t i = 0; i < wipe2_raw.size(); ++i) {
+        assert(wipe2_raw[i] == 0);
+    }
+
     uint64_t base_lba = fs.getDataStartLba() + (uint64_t)entry->slot_index * fs.getSlotBlocks();
     std::array<uint8_t, 512> raw{};
-    int rc = os::rse_block_read(base_lba, raw.data(), 1);
+    rc = os::rse_block_read(base_lba, raw.data(), 1);
     assert(rc == 0);
     raw[0] ^= 0xFF;
     rc = os::rse_block_write(base_lba, raw.data(), 1);

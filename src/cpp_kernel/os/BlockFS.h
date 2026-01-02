@@ -396,6 +396,10 @@ public:
         uint16_t set_mode = mode != 0 ? mode : default_mode(kEntryFile);
         set_entry_mode(*free_slot, set_mode);
         uint32_t index = (uint32_t)(free_slot - entries_);
+        if (!zero_slot_data(free_slot->slot_index)) {
+            clear_entry(index);
+            return nullptr;
+        }
         if (!commit_entry(index)) {
             return nullptr;
         }
@@ -493,10 +497,12 @@ public:
             return false;
         }
         uint32_t index = (uint32_t)(entry - entries_);
+        uint32_t slot_index = entry->slot_index;
         clear_entry(index);
         if (!commit_entry(index)) {
             return false;
         }
+        (void)zero_slot_data(slot_index);
         return true;
     }
 
@@ -743,6 +749,26 @@ private:
             }
         }
         return nullptr;
+    }
+
+    bool zero_slot_data(uint32_t slot_index) {
+        if (slot_index >= kMaxFiles || block_size_ == 0 || slot_blocks_ == 0) {
+            return false;
+        }
+        uint8_t* zero = new (std::nothrow) uint8_t[block_size_];
+        if (!zero) {
+            return false;
+        }
+        std::memset(zero, 0, block_size_);
+        uint64_t lba_base = data_start_lba_ + (uint64_t)slot_index * slot_blocks_;
+        for (uint32_t i = 0; i < slot_blocks_; ++i) {
+            if (rse_block_write(lba_base + i, zero, 1) != 0) {
+                delete[] zero;
+                return false;
+            }
+        }
+        delete[] zero;
+        return true;
     }
 
     void clear_entry(uint32_t index) {

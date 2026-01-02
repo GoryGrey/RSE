@@ -1,6 +1,6 @@
 # RSE (Resilient Spatial Execution)
 
-Last Updated: January 01, 2026 (memfs/persist ancestor exec enforcement; virtio-net TX backpressure + RX guardrails; empty net reads return EAGAIN; net queue + RX/TX error counters surfaced; mergeable RX disabled pending reassembly; status refresh)
+Last Updated: January 01, 2026 (memfs/persist ancestor exec enforcement; virtio-net TX backpressure + RX guardrails; empty net reads return EAGAIN; net queue + RX/TX error counters surfaced; BlockFS slot zeroing on create/remove; mergeable RX disabled pending reassembly; status refresh)
 
 Status: Research prototype. Bootable UEFI kernel with an interactive dashboard and in-kernel workloads; braided projection exchange works in multi-VM via shared memory.
 
@@ -54,6 +54,7 @@ Key properties:
 - Braided runtime (single-node projections + constraint application).
 - Projection exchange across 3 VMs via IVSHMEM shared memory.
 - Block-backed persistence via BlockFS mounted at /persist with directories and basic permission checks.
+- BlockFS zeroes slot data on create/remove to avoid stale payload leakage.
 
 ## Known Limitations
 

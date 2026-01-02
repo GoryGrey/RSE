@@ -135,6 +135,20 @@ int main() {
                                       os::O_CREAT | os::O_TRUNC | os::O_RDWR);
     assert(noexec_open == -os::EACCES);
 
+    assert(memfs.mkdir("/locked", 0200));
+    assert(memfs.mkdir("/locked/open", 0755));
+    const char locked_dir[] = "/locked/open";
+    uint64_t locked_dir_addr = write_user_string(proc, locked_dir);
+    int64_t locked_list = os::syscall(os::SYS_LIST, locked_dir_addr,
+                                      perm_list_addr, perm_list_buf.size());
+    assert(locked_list == -os::EACCES);
+
+    const char locked_file[] = "/locked/open/secret.txt";
+    uint64_t locked_file_addr = write_user_string(proc, locked_file);
+    int64_t locked_open = os::syscall(os::SYS_OPEN, locked_file_addr,
+                                      os::O_CREAT | os::O_TRUNC | os::O_RDWR);
+    assert(locked_open == -os::EACCES);
+
     const char ro_path[] = "/ro.txt";
     uint64_t ro_addr = write_user_string(proc, ro_path);
     int64_t ro_fd = os::syscall(os::SYS_OPEN, ro_addr,

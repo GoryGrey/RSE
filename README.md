@@ -1,6 +1,6 @@
 # RSE (Resilient Spatial Execution)
 
-Last Updated: January 01, 2026 (virtio-net TX backpressure + RX guardrails; empty net reads return EAGAIN; net queue drop counter surfaced; mergeable RX disabled pending reassembly; status refresh)
+Last Updated: January 01, 2026 (memfs/persist ancestor exec enforcement; virtio-net TX backpressure + RX guardrails; empty net reads return EAGAIN; net queue drop counter surfaced; mergeable RX disabled pending reassembly; status refresh)
 
 Status: Research prototype. Bootable UEFI kernel with an interactive dashboard and in-kernel workloads; braided projection exchange works in multi-VM via shared memory.
 
@@ -50,6 +50,7 @@ Key properties:
 - NET_LITE sockets return EOF on peer FIN, EPIPE on write after close, and ECONNREFUSED on refused connect.
 - NET_LITE uses seq/ack + retransmit (stop-and-wait) for reliable delivery.
 - virtio-net driver returns EAGAIN on TX queue full/empty reads and validates RX descriptors; UDP queue drops are counted (mergeable RX disabled until reassembly support lands).
+- MemFS/persist path traversal enforces execute permission on all ancestor directories.
 - Braided runtime (single-node projections + constraint application).
 - Projection exchange across 3 VMs via IVSHMEM shared memory.
 - Block-backed persistence via BlockFS mounted at /persist with directories and basic permission checks.

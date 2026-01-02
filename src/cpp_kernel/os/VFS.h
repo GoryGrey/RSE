@@ -397,15 +397,11 @@ public:
             if (!split_parent_rel(persist, parent, sizeof(parent))) {
                 return -EINVAL;
             }
-            uint16_t parent_mode = 0;
-            if (!persist_dir_mode(parent, &parent_mode)) {
-                return -ENOENT;
-            }
             uint16_t need = kPermExec;
             if (flags & O_CREAT) {
                 need = static_cast<uint16_t>(need | kPermWrite);
             }
-            if (!check_mode(parent_mode, need)) {
+            if (!persist_dir_access(parent, need)) {
                 return -EACCES;
             }
             BlockFSEntry* entry = blockfs_->open(persist, (flags & O_CREAT) != 0,
@@ -452,15 +448,11 @@ public:
         if (!split_parent_abs(path, parent, sizeof(parent))) {
             return -EINVAL;
         }
-        uint16_t parent_mode = 0;
-        if (!memfs_dir_mode(parent, &parent_mode)) {
-            return -ENOENT;
-        }
         uint16_t need = kPermExec;
         if (flags & O_CREAT) {
             need = static_cast<uint16_t>(need | kPermWrite);
         }
-        if (!check_mode(parent_mode, need)) {
+        if (!memfs_dir_access(parent, need)) {
             return -EACCES;
         }
 
@@ -931,11 +923,7 @@ public:
             if (!split_parent_rel(persist, parent, sizeof(parent))) {
                 return -EINVAL;
             }
-            uint16_t parent_mode = 0;
-            if (!persist_dir_mode(parent, &parent_mode)) {
-                return -ENOENT;
-            }
-            if (!check_mode(parent_mode, static_cast<uint16_t>(kPermWrite | kPermExec))) {
+            if (!persist_dir_access(parent, static_cast<uint16_t>(kPermWrite | kPermExec))) {
                 return -EACCES;
             }
             return blockfs_->remove(persist) ? 0 : -1;
@@ -953,11 +941,7 @@ public:
         if (!split_parent_abs(path, parent, sizeof(parent))) {
             return -EINVAL;
         }
-        uint16_t parent_mode = 0;
-        if (!memfs_dir_mode(parent, &parent_mode)) {
-            return -ENOENT;
-        }
-        if (!check_mode(parent_mode, static_cast<uint16_t>(kPermWrite | kPermExec))) {
+        if (!memfs_dir_access(parent, static_cast<uint16_t>(kPermWrite | kPermExec))) {
             return -EACCES;
         }
         if (fs_->remove(path)) {
@@ -1039,11 +1023,7 @@ public:
             }
             return blockfs_->listDirectory(persist, buf, max);
         }
-        uint16_t mode = 0;
-        if (!memfs_dir_mode(target, &mode)) {
-            return -ENOENT;
-        }
-        if (!check_mode(mode, static_cast<uint16_t>(kPermRead | kPermExec))) {
+        if (!memfs_dir_access(target, static_cast<uint16_t>(kPermRead | kPermExec))) {
             return -EACCES;
         }
         return fs_->list(target, buf, max);
@@ -1188,11 +1168,7 @@ public:
             if (!split_parent_rel(persist, parent, sizeof(parent))) {
                 return -EINVAL;
             }
-            uint16_t parent_mode = 0;
-            if (!persist_dir_mode(parent, &parent_mode)) {
-                return -ENOENT;
-            }
-            if (!check_mode(parent_mode, static_cast<uint16_t>(kPermWrite | kPermExec))) {
+            if (!persist_dir_access(parent, static_cast<uint16_t>(kPermWrite | kPermExec))) {
                 return -EACCES;
             }
             return blockfs_->mkdir(persist, (uint16_t)mode) ? 0 : -1;
@@ -1207,11 +1183,7 @@ public:
         if (!split_parent_abs(path, parent, sizeof(parent))) {
             return -EINVAL;
         }
-        uint16_t parent_mode = 0;
-        if (!memfs_dir_mode(parent, &parent_mode)) {
-            return -ENOENT;
-        }
-        if (!check_mode(parent_mode, static_cast<uint16_t>(kPermWrite | kPermExec))) {
+        if (!memfs_dir_access(parent, static_cast<uint16_t>(kPermWrite | kPermExec))) {
             return -EACCES;
         }
         return fs_->mkdir(path, mode) ? 0 : -1;

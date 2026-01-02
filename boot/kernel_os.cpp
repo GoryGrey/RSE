@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <stdint.h>
+#include <new>
 
 #include "rse_syscalls.h"
 
@@ -440,6 +441,26 @@ void operator delete[](void* ptr) noexcept {
 }
 
 void operator delete[](void* ptr, size_t) noexcept {
+    free(ptr);
+}
+
+namespace std {
+const nothrow_t nothrow = {};
+}
+
+void* operator new(size_t size, const std::nothrow_t&) noexcept {
+    return malloc(size);
+}
+
+void* operator new[](size_t size, const std::nothrow_t&) noexcept {
+    return malloc(size);
+}
+
+void operator delete(void* ptr, const std::nothrow_t&) noexcept {
+    free(ptr);
+}
+
+void operator delete[](void* ptr, const std::nothrow_t&) noexcept {
     free(ptr);
 }
 

@@ -190,6 +190,20 @@ public:
         memory.heap_brk = vmem->getHeapBrk();
     }
 
+    void resetSignalsForExec() {
+        for (uint32_t i = 0; i < kMaxSignals; ++i) {
+            if (signal_handlers[i] != SIG_IGN) {
+                signal_handlers[i] = SIG_DFL;
+            }
+        }
+        if (SIGKILL < kMaxSignals) {
+            signal_handlers[SIGKILL] = SIG_DFL;
+        }
+        if (SIGSTOP < kMaxSignals) {
+            signal_handlers[SIGSTOP] = SIG_DFL;
+        }
+    }
+
     bool loadElfImage(const uint8_t* data, size_t size, uint64_t stack_size = 64 * 1024) {
         if (!vmem || !data || size == 0) {
             return false;

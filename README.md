@@ -1,6 +1,6 @@
 # RSE (Resilient Spatial Execution)
 
-Last Updated: January 02, 2026 (sys_fork uid/gid + signal handler inheritance; sys_ps filters by uid for non-root; memfs/persist ancestor exec enforcement; virtio-net TX backpressure + RX guardrails; empty net reads return EAGAIN; net queue + RX/TX error counters surfaced; BlockFS slot zeroing on create/remove; mergeable RX disabled pending reassembly; raw TCP socket backend for AF_INET when RSE_NET_RAW=1 with retransmit/backoff + window backpressure; sys_kill uid enforcement; sys_socket_tcp_test)
+Last Updated: January 02, 2026 (sys_fork uid/gid + signal handler inheritance; sys_ps filters by uid for non-root; exec resets signal handlers (ignores preserved); memfs/persist ancestor exec enforcement; virtio-net TX backpressure + RX guardrails; empty net reads return EAGAIN; net queue + RX/TX error counters surfaced; BlockFS slot zeroing on create/remove; mergeable RX disabled pending reassembly; raw TCP socket backend for AF_INET when RSE_NET_RAW=1 with retransmit/backoff + window backpressure; sys_kill uid enforcement; sys_socket_tcp_test)
 
 Status: Research prototype. Bootable UEFI kernel with an interactive dashboard and in-kernel workloads; braided projection exchange works in multi-VM via shared memory.
 
@@ -48,7 +48,7 @@ Key properties:
 - Exec enforces executable permission bit on ELF targets.
 - Syscalls support default/ignore signal dispositions (SIGKILL/SIGSTOP immutable).
 - sys_kill enforces uid (root or same uid).
-- sys_fork inherits uid/gid + signal handlers; sys_ps filters by uid for non-root callers.
+- sys_fork inherits uid/gid + signal handlers; sys_ps filters by uid for non-root callers; exec resets signal handlers to default (ignores preserved).
 - NET_LITE sockets return EOF on peer FIN, EPIPE on write after close, and ECONNREFUSED on refused connect.
 - NET_LITE uses seq/ack + retransmit (stop-and-wait) for reliable delivery.
 - virtio-net driver returns EAGAIN on TX queue full/empty reads and validates RX descriptors; UDP queue drops and RX/TX error counters are tracked (mergeable RX disabled until reassembly support lands).

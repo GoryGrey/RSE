@@ -61,6 +61,12 @@ int main() {
     assert(child->gid == proc.gid);
     assert(child->signal_handlers[os::SIGTERM] == os::SIG_IGN);
 
+    proc.signal_handlers[os::SIGINT] = 0x1234;
+    proc.signal_handlers[os::SIGTERM] = os::SIG_IGN;
+    proc.resetSignalsForExec();
+    assert(proc.signal_handlers[os::SIGINT] == os::SIG_DFL);
+    assert(proc.signal_handlers[os::SIGTERM] == os::SIG_IGN);
+
     uint64_t guard_bytes = proc.vmem->getStackGuardBytes();
     if (guard_bytes > 0) {
         uint64_t guard_start = proc.vmem->getStackMappedStart() - guard_bytes;

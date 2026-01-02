@@ -522,15 +522,15 @@ inline int64_t sys_kill(uint64_t pid, uint64_t sig, uint64_t,
     if (sig > 31) {
         return -EINVAL;
     }
-    if (sig == 0) {
-        return scheduler->hasProcess(static_cast<uint32_t>(pid)) ? 0 : -ESRCH;
-    }
     OSProcess* target = scheduler->findProcess(static_cast<uint32_t>(pid));
     if (!target) {
         return -ESRCH;
     }
     if (current->uid != 0 && current->uid != target->uid) {
         return -EACCES;
+    }
+    if (sig == 0) {
+        return 0;
     }
     if (sig != SIGKILL && sig != SIGSTOP) {
         if (sig < OSProcess::kMaxSignals &&
@@ -1382,6 +1382,7 @@ inline int64_t sys_exec(uint64_t path_ptr, uint64_t argv_ptr, uint64_t envp_ptr,
         delete old_mem.page_table;
     }
     current->setUserEntry(nullptr, nullptr, nullptr);
+    current->resetSignalsForExec();
 #ifndef RSE_KERNEL
     delete[] image_buf;
 #endif

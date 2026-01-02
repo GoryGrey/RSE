@@ -26,10 +26,13 @@ int main() {
     os::current_torus_context = &ctx;
 
     os::OSProcess parent(1, 0, 0);
+    parent.uid = 0;
     parent.initMemory(&phys_alloc);
     os::OSProcess child(2, 1, 0);
+    child.uid = 1001;
     child.initMemory(&phys_alloc);
     os::OSProcess other(3, 2, 0);
+    other.uid = 1002;
     other.initMemory(&phys_alloc);
 
     scheduler.addProcess(&parent);
@@ -53,6 +56,11 @@ int main() {
     assert(exists_rc == 0);
     int64_t missing_rc = os::syscall(os::SYS_KILL, 999, 0);
     assert(missing_rc == -os::ESRCH);
+
+    parent.uid = 1000;
+    int64_t denied_probe = os::syscall(os::SYS_KILL, 2, 0);
+    assert(denied_probe == -os::EACCES);
+    parent.uid = 0;
 
     scheduler.forceCurrentProcess(&other);
     int64_t denied = os::syscall(os::SYS_KILL, 2, os::SIGTERM);

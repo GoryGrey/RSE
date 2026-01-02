@@ -35,6 +35,22 @@ int main() {
     scheduler.tick();
     assert(scheduler.getCurrentProcess() == &parent);
 
+    int64_t prev_term = os::syscall(os::SYS_SIGNAL, os::SIGTERM, os::SIG_IGN);
+    assert(prev_term == os::SIG_DFL);
+    int64_t bad_sig = os::syscall(os::SYS_SIGNAL, os::SIGKILL, os::SIG_IGN);
+    assert(bad_sig == -os::EINVAL);
+    int64_t bad_handler = os::syscall(os::SYS_SIGNAL, os::SIGTERM, 0xdeadbeef);
+    assert(bad_handler == -os::ENOSYS);
+
+    int64_t ignored = os::syscall(os::SYS_KILL, 1, os::SIGTERM);
+    assert(ignored == 0);
+    assert(scheduler.hasProcess(1));
+
+    int64_t exists_rc = os::syscall(os::SYS_KILL, 2, 0);
+    assert(exists_rc == 0);
+    int64_t missing_rc = os::syscall(os::SYS_KILL, 999, 0);
+    assert(missing_rc == -os::ESRCH);
+
     int64_t kill_rc = os::syscall(os::SYS_KILL, 2, 9);
     assert(kill_rc == 0);
 

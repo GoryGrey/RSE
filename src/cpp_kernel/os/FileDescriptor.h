@@ -274,6 +274,15 @@ public:
         }
     }
 
+    void closeAll(bool keep_std = true) {
+        uint32_t start = keep_std ? 3 : 0;
+        for (uint32_t i = start; i < MAX_FDS; i++) {
+            if (fds_[i].in_use) {
+                free(static_cast<int32_t>(i));
+            }
+        }
+    }
+
     /**
      * Bind stdin/stdout/stderr to a device.
      */

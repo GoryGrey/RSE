@@ -46,6 +46,7 @@ Key properties:
 - Fast-path I/O device (/dev/fast0) using a native ring buffer.
 - Framebuffer dashboard with keyboard/mouse input.
 - Exec enforces executable permission bit on ELF targets.
+- Syscalls support default/ignore signal dispositions (SIGKILL/SIGSTOP immutable).
 - Braided runtime (single-node projections + constraint application).
 - Projection exchange across 3 VMs via IVSHMEM shared memory.
 - Block-backed persistence via BlockFS mounted at /persist with directories and basic permission checks.
@@ -53,6 +54,7 @@ Key properties:
 ## Known Limitations
 
 - User-mode isolation and permissions are still evolving.
+- Custom signal handlers are not wired yet (default/ignore only).
 - Network RX/TX needs hardening; no TCP yet.
 - BlockFS is fixed-slot; ownership model is still missing and permissions are basic.
 - Workload init is one-shot per boot.

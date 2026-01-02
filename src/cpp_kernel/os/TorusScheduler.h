@@ -423,6 +423,56 @@ public:
         return current_process_;
     }
 
+    bool hasProcess(uint32_t pid) const {
+        if (pid == 0) {
+            return false;
+        }
+        if (current_process_ && current_process_->pid == pid) {
+            return true;
+        }
+        for (size_t i = 0; i < ready_queue_.size(); ++i) {
+            if (ready_queue_[i] && ready_queue_[i]->pid == pid) {
+                return true;
+            }
+        }
+        for (size_t i = 0; i < blocked_queue_.size(); ++i) {
+            if (blocked_queue_[i] && blocked_queue_[i]->pid == pid) {
+                return true;
+            }
+        }
+        for (size_t i = 0; i < zombie_queue_.size(); ++i) {
+            if (zombie_queue_[i] && zombie_queue_[i]->pid == pid) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    OSProcess* findProcess(uint32_t pid) const {
+        if (pid == 0) {
+            return nullptr;
+        }
+        if (current_process_ && current_process_->pid == pid) {
+            return current_process_;
+        }
+        for (size_t i = 0; i < ready_queue_.size(); ++i) {
+            if (ready_queue_[i] && ready_queue_[i]->pid == pid) {
+                return ready_queue_[i];
+            }
+        }
+        for (size_t i = 0; i < blocked_queue_.size(); ++i) {
+            if (blocked_queue_[i] && blocked_queue_[i]->pid == pid) {
+                return blocked_queue_[i];
+            }
+        }
+        for (size_t i = 0; i < zombie_queue_.size(); ++i) {
+            if (zombie_queue_[i] && zombie_queue_[i]->pid == pid) {
+                return zombie_queue_[i];
+            }
+        }
+        return nullptr;
+    }
+
     bool sleepCurrent(uint64_t ticks) {
         if (!current_process_) {
             return false;

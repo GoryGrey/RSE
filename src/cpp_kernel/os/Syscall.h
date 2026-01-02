@@ -195,6 +195,15 @@ constexpr int SEEK_END  = 2;  // Seek from end of file
 constexpr int WNOHANG   = 1;  // Don't block if no child has exited
 #endif
 
+// ========== Signals ==========
+
+constexpr int SIG_DFL  = 0;
+constexpr int SIG_IGN  = 1;
+constexpr int SIGINT   = 2;
+constexpr int SIGKILL  = 9;
+constexpr int SIGTERM  = 15;
+constexpr int SIGSTOP  = 19;
+
 // ========== System Call Handler Type ==========
 
 typedef int64_t (*syscall_handler_t)(uint64_t arg1, uint64_t arg2, 

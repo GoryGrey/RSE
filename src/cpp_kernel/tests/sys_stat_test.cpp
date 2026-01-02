@@ -76,6 +76,19 @@ int main() {
     assert(ok);
     assert(st.type == os::RSE_STAT_DIR);
 
+    const char noexec_dir[] = "/noexec";
+    int32_t noexec_mkdir = vfs.mkdir(noexec_dir, 0200);
+    assert(noexec_mkdir == 0);
+    os::MemFSFile* secret = memfs.create("/noexec/secret.txt", 0644);
+    assert(secret != nullptr);
+
+    const char noexec_path[] = "/noexec/secret.txt";
+    uint64_t noexec_addr = proc.vmem->allocate(sizeof(noexec_path));
+    assert(noexec_addr != 0);
+    assert(proc.vmem->writeUser(noexec_addr, noexec_path, sizeof(noexec_path)));
+    int64_t noexec_stat = os::syscall(os::SYS_STAT, noexec_addr, stat_addr);
+    assert(noexec_stat == -EACCES);
+
     uint64_t bad_stat_addr = proc.vmem->getStackEnd() + 0x1000;
     rc = os::syscall(os::SYS_STAT, root_addr, bad_stat_addr);
     assert(rc == -EFAULT);

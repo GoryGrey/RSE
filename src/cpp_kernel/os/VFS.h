@@ -229,6 +229,55 @@ private:
         }
         return true;
     }
+
+    bool memfs_dir_access(const char* path, uint16_t needed) const {
+        if (!fs_) {
+            return false;
+        }
+        if (!path || std::strcmp(path, "/") == 0 || std::strcmp(path, "") == 0) {
+            return check_mode(kRootMode, needed);
+        }
+        char prefix[256] = {};
+        size_t prefix_len = 0;
+        const char* cursor = path;
+        if (cursor[0] == '/') {
+            cursor++;
+        }
+        while (*cursor) {
+            const char* slash = std::strchr(cursor, '/');
+            size_t seg_len = slash ? static_cast<size_t>(slash - cursor)
+                                   : std::strlen(cursor);
+            if (seg_len == 0) {
+                return false;
+            }
+            size_t needed_len = prefix_len + 1 + seg_len;
+            if (needed_len >= sizeof(prefix)) {
+                return false;
+            }
+            prefix[prefix_len++] = '/';
+            std::memcpy(prefix + prefix_len, cursor, seg_len);
+            prefix_len += seg_len;
+            prefix[prefix_len] = '\0';
+            uint32_t size = 0;
+            bool is_dir = false;
+            uint32_t mode = 0;
+            if (!fs_->stat(prefix, &size, &is_dir, &mode)) {
+                return false;
+            }
+            if (!is_dir) {
+                return false;
+            }
+            uint16_t need = slash ? kPermExec : needed;
+            if (!check_mode(static_cast<uint16_t>(mode), need)) {
+                return false;
+            }
+            if (!slash) {
+                break;
+            }
+            cursor = slash + 1;
+        }
+        return true;
+    }
     
 public:
     VFS(MemFS* fs)
@@ -1005,6 +1054,9 @@ public:
             return -EINVAL;
         }
         if (strcmp(path, "/") == 0 || strcmp(path, "") == 0) {
+            if (!check_mode(kRootMode, kPermExec)) {
+                return -EACCES;
+            }
             out->size = 0;
             out->mode = kRootMode;
             out->type = RSE_STAT_DIR;
@@ -1013,6 +1065,9 @@ public:
         if (strcmp(path, "/dev") == 0 || strcmp(path, "/dev/") == 0) {
             if (!device_mgr_) {
                 return -ENOENT;
+            }
+            if (!check_mode(kDevRootMode, kPermExec)) {
+                return -EACCES;
             }
             out->size = 0;
             out->mode = kDevRootMode;
@@ -1023,6 +1078,9 @@ public:
             if (!blockfs_ || !blockfs_->isMounted()) {
                 return -ENOENT;
             }
+            if (!check_mode(kPersistRootMode, kPermExec)) {
+                return -EACCES;
+            }
             out->size = 0;
             out->mode = kPersistRootMode;
             out->type = RSE_STAT_DIR;
@@ -1031,6 +1089,9 @@ public:
 
         Device* dev = lookupDevice(path);
         if (dev) {
+            if (!check_mode(kDevRootMode, kPermExec)) {
+                return -EACCES;
+            }
             out->size = 0;
             out->mode = 0666;
             out->type = RSE_STAT_DEVICE;
@@ -1051,6 +1112,13 @@ public:
             if (!blockfs_ || !blockfs_->isMounted()) {
                 return -ENOENT;
             }
+            char parent[BlockFS::kNameMax + 1] = {};
+            if (!split_parent_rel(persist, parent, sizeof(parent))) {
+                return -EINVAL;
+            }
+            if (!persist_dir_access(parent, kPermExec)) {
+                return -EACCES;
+            }
             uint32_t size = 0;
             uint8_t type = 0;
             uint16_t mode = 0;
@@ -1068,6 +1136,13 @@ public:
         }
         if (!fs_->isValidPath(path, false)) {
             return -EINVAL;
+        }
+        char parent[256] = {};
+        if (!split_parent_abs(path, parent, sizeof(parent))) {
+            return -EINVAL;
+        }
+        if (!memfs_dir_access(parent, kPermExec)) {
+            return -EACCES;
         }
         uint32_t size = 0;
         bool is_dir = false;

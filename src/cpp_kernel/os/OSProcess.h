@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include "Syscall.h"
 #include "VirtualAllocator.h"
 #include "ElfLoader.h"
 #include "FileDescriptor.h"
@@ -102,6 +103,7 @@ struct MemoryLayout {
  */
 class OSProcess {
 public:
+    static constexpr uint32_t kMaxSignals = 32;
     // ========== Identity ==========
     uint32_t pid;               // Process ID
     uint32_t parent_pid;        // Parent process ID
@@ -132,6 +134,8 @@ public:
 
     VirtualAllocator* vmem;
 
+    uint64_t signal_handlers[kMaxSignals];
+
     // Optional userspace entry hook (cooperative in-kernel runner)
     using UserStepFn = void (*)(OSProcess* proc, void* user_ctx, const ::rse_syscalls* sys);
     UserStepFn user_step;
@@ -160,11 +164,15 @@ public:
           sleep_until_tick(0),
           fd_table(),
           vmem(nullptr),
+          signal_handlers{},
           user_step(nullptr),
           user_ctx(nullptr),
           syscalls(nullptr),
           x(0), y(0), z(0)
     {
+        for (uint32_t i = 0; i < kMaxSignals; ++i) {
+            signal_handlers[i] = SIG_DFL;
+        }
     }
 
     void initMemory(PhysicalAllocator* phys_alloc) {

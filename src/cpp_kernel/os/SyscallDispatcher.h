@@ -378,6 +378,8 @@ inline int64_t sys_exit(uint64_t status, uint64_t, uint64_t,
         return -ESRCH;
     }
     
+    current->fd_table.closeAll();
+
     // Mark process as zombie
     current->setZombie(status);
     
@@ -512,14 +514,52 @@ inline int64_t sys_kill(uint64_t pid, uint64_t sig, uint64_t,
     if (pid == 0) {
         return -EINVAL;
     }
-    if (current->pid == pid && sig == 0) {
-        return 0;
+    if (sig > 31) {
+        return -EINVAL;
+    }
+    if (sig == 0) {
+        return scheduler->hasProcess(static_cast<uint32_t>(pid)) ? 0 : -ESRCH;
+    }
+    OSProcess* target = scheduler->findProcess(static_cast<uint32_t>(pid));
+    if (!target) {
+        return -ESRCH;
+    }
+    if (sig != SIGKILL && sig != SIGSTOP) {
+        if (sig < OSProcess::kMaxSignals &&
+            target->signal_handlers[sig] == SIG_IGN) {
+            return 0;
+        }
     }
     int exit_code = 128 + static_cast<int>(sig & 0x7F);
     if (!scheduler->killProcess(static_cast<uint32_t>(pid), exit_code)) {
         return -ESRCH;
     }
     return 0;
+}
+
+inline int64_t sys_signal(uint64_t sig, uint64_t handler, uint64_t,
+                          uint64_t, uint64_t, uint64_t) {
+    OSProcess* current = get_current_process();
+    if (!current) {
+        return -ESRCH;
+    }
+    if (sig == 0 || sig >= OSProcess::kMaxSignals) {
+        return -EINVAL;
+    }
+    if (sig == SIGKILL || sig == SIGSTOP) {
+        return -EINVAL;
+    }
+    if (handler > SIG_IGN) {
+        if (enforce_user_memory(current)) {
+            if (!current->vmem || !current->vmem->isUserRange(handler, 1)) {
+                return -EFAULT;
+            }
+        }
+        return -ENOSYS;
+    }
+    uint64_t prev = current->signal_handlers[sig];
+    current->signal_handlers[sig] = handler;
+    return static_cast<int64_t>(prev);
 }
 
 inline int64_t sys_pipe(uint64_t fds_addr, uint64_t, uint64_t,
@@ -1773,6 +1813,7 @@ public:
         register_handler(SYS_PS, sys_ps);
         register_handler(SYS_EXEC, sys_exec);
         register_handler(SYS_PIPE, sys_pipe);
+        register_handler(SYS_SIGNAL, sys_signal);
         register_handler(SYS_SOCKET, sys_socket);
         register_handler(SYS_BIND, sys_bind);
         register_handler(SYS_LISTEN, sys_listen);

@@ -1700,11 +1700,28 @@ inline int64_t sys_mprotect(uint64_t addr, uint64_t size, uint64_t prot,
     if ((prot & (PROT_EXEC | PROT_WRITE)) == (PROT_EXEC | PROT_WRITE)) {
         return -EACCES;
     }
+    uint64_t end = addr + size;
+    if (prot & PROT_WRITE) {
+        if (current->memory.code_start != 0 && current->memory.code_end != 0 &&
+            end > current->memory.code_start && addr < current->memory.code_end) {
+            return -EACCES;
+        }
+    }
     if (prot & PROT_EXEC) {
-        uint64_t end = addr + size;
         if (current->memory.code_start == 0 || current->memory.code_end == 0 ||
             addr < current->memory.code_start || end > current->memory.code_end) {
             return -EACCES;
+        }
+        PageTable* pt = current->memory.page_table;
+        if (pt) {
+            uint64_t virt_start = align_down(addr);
+            uint64_t virt_end = align_up(end);
+            for (uint64_t virt = virt_start; virt < virt_end; virt += PAGE_SIZE) {
+                const PageTableEntry* pte = pt->getPTE(virt);
+                if (pte && pte->isPresent() && pte->isWritable()) {
+                    return -EACCES;
+                }
+            }
         }
     }
     if (enforce_user_memory(current) &&

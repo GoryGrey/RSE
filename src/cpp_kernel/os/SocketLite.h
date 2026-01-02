@@ -425,6 +425,9 @@ inline int net_send_frame(uint16_t conn, uint16_t flags, const void* payload, ui
 
 inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* payload, uint32_t len) {
     SocketManager& mgr = socket_manager();
+    if (header.conn == 0) {
+        return;
+    }
     if (header.flags & kTcpLiteSyn) {
         if (len < sizeof(TcpLiteSynPayload)) {
             return;
@@ -467,7 +470,8 @@ inline void net_dispatch_frame(const TcpLiteHeader& header, const uint8_t* paylo
 
     if (header.flags & kTcpLiteFin) {
         SocketLite* sock = mgr.find_by_conn(header.conn);
-        if (sock) {
+        if (sock && (sock->state == SocketLite::State::CONNECTED ||
+                     sock->state == SocketLite::State::CONNECTING)) {
             sock->state = SocketLite::State::CLOSED;
             sock->peer_port = 0;
             sock->connect_attempts = 0;

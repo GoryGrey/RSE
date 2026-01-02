@@ -22,6 +22,35 @@ static uint64_t write_user(os::OSProcess& proc, const void* data, size_t size) {
     return addr;
 }
 
+static void write_exact(int64_t fd, uint64_t buf, size_t size) {
+    for (int attempt = 0; attempt < 16; ++attempt) {
+        int64_t wrote = os::syscall(os::SYS_WRITE, fd, buf, size);
+        if (wrote == static_cast<int64_t>(size)) {
+            return;
+        }
+        if (wrote == -os::EAGAIN) {
+            continue;
+        }
+        assert(false);
+    }
+    assert(false);
+}
+
+static void read_exact(int64_t fd, uint64_t buf, size_t size) {
+    size_t remaining = size;
+    uint64_t cursor = buf;
+    for (int attempt = 0; attempt < 32 && remaining > 0; ++attempt) {
+        int64_t got = os::syscall(os::SYS_READ, fd, cursor, remaining);
+        if (got == -os::EAGAIN) {
+            continue;
+        }
+        assert(got >= 0);
+        remaining -= static_cast<size_t>(got);
+        cursor += static_cast<uint64_t>(got);
+    }
+    assert(remaining == 0);
+}
+
 int main() {
     std::cout << "[sys_socket_net Tests]" << std::endl;
 
@@ -113,6 +142,33 @@ int main() {
     assert(reply_read == static_cast<int64_t>(sizeof(reply) - 1));
     assert(proc.vmem->readUser(reply_buf.data(), reply_buf_ptr, reply_buf.size()));
     assert(std::memcmp(reply_buf.data(), reply, sizeof(reply) - 1) == 0);
+
+    static constexpr size_t kBulkSize = 256;
+    std::array<uint8_t, kBulkSize> bulk{};
+    std::array<uint8_t, kBulkSize> bulk_out{};
+    uint64_t bulk_send_ptr = proc.vmem->allocate(kBulkSize);
+    uint64_t bulk_recv_ptr = proc.vmem->allocate(kBulkSize);
+    assert(bulk_send_ptr != 0);
+    assert(bulk_recv_ptr != 0);
+
+    for (uint8_t iter = 0; iter < 16; ++iter) {
+        for (size_t i = 0; i < bulk.size(); ++i) {
+            bulk[i] = static_cast<uint8_t>(iter + i);
+        }
+        assert(proc.vmem->writeUser(bulk_send_ptr, bulk.data(), bulk.size()));
+        write_exact(client_fd, bulk_send_ptr, bulk.size());
+        read_exact(accept_fd, bulk_recv_ptr, bulk.size());
+        assert(proc.vmem->readUser(bulk_out.data(), bulk_recv_ptr, bulk_out.size()));
+        assert(std::memcmp(bulk_out.data(), bulk.data(), bulk.size()) == 0);
+
+        bulk[0] ^= 0x5a;
+        assert(proc.vmem->writeUser(bulk_send_ptr, bulk.data(), bulk.size()));
+        write_exact(accept_fd, bulk_send_ptr, bulk.size());
+        read_exact(client_fd, bulk_recv_ptr, bulk.size());
+        assert(proc.vmem->readUser(bulk_out.data(), bulk_recv_ptr, bulk_out.size()));
+        assert(std::memcmp(bulk_out.data(), bulk.data(), bulk.size()) == 0);
+    }
+    assert(os::net_wire_state().drops == 0);
 
     std::cout << "  ✓ all tests passed" << std::endl;
     return 0;

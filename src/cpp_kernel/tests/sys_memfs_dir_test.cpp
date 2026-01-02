@@ -52,6 +52,16 @@ int main() {
     int64_t mkdir_rc = os::syscall(os::SYS_MKDIR, dir_addr, 0755);
     assert(mkdir_rc == 0);
 
+    const char dot_path[] = "/./bad";
+    uint64_t dot_addr = write_user_string(proc, dot_path);
+    int64_t dot_rc = os::syscall(os::SYS_MKDIR, dot_addr, 0755);
+    assert(dot_rc == -os::EINVAL);
+
+    const char dotdot_path[] = "/../bad";
+    uint64_t dotdot_addr = write_user_string(proc, dotdot_path);
+    int64_t dotdot_rc = os::syscall(os::SYS_MKDIR, dotdot_addr, 0755);
+    assert(dotdot_rc == -os::EINVAL);
+
     uint64_t stat_addr = proc.vmem->allocate(sizeof(os::rse_stat));
     assert(stat_addr != 0);
     int64_t stat_rc = os::syscall(os::SYS_STAT, dir_addr, stat_addr);

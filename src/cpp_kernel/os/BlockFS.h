@@ -837,7 +837,8 @@ private:
             }
             if (entry_type(entries_[i]) == kEntryFile &&
                 !verify_checksum(&entries_[i])) {
-                clear_entry(i);
+                entries_[i].size = 0;
+                entries_[i].checksum = 0;
                 changed = true;
             }
         }

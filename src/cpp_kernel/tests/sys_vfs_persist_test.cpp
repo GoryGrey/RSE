@@ -158,6 +158,18 @@ int main() {
                                       os::O_CREAT | os::O_TRUNC | os::O_RDWR);
     assert(direct_invalid == -os::EINVAL);
 
+    const char dot_persist[] = "/persist/./bad";
+    uint64_t dot_addr = write_user_string(proc, dot_persist);
+    int64_t dot_rc = os::syscall(os::SYS_OPEN, dot_addr,
+                                 os::O_CREAT | os::O_TRUNC | os::O_RDWR);
+    assert(dot_rc == -os::EINVAL);
+
+    const char dotdot_persist[] = "/persist/dir/../bad";
+    uint64_t dotdot_addr = write_user_string(proc, dotdot_persist);
+    int64_t dotdot_rc = os::syscall(os::SYS_OPEN, dotdot_addr,
+                                    os::O_CREAT | os::O_TRUNC | os::O_RDWR);
+    assert(dotdot_rc == -os::EINVAL);
+
     list_buf.fill(0);
     uint64_t dir_list_addr = proc.vmem->allocate(list_buf.size());
     assert(dir_list_addr != 0);

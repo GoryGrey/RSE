@@ -20,6 +20,12 @@ int main() {
     assert(bad == nullptr);
     bool removed_bad = fs.remove(nested_name);
     assert(!removed_bad);
+    const char dot_name[] = "bad/./name";
+    os::BlockFSEntry* dot_entry = fs.open(dot_name, true, 0644);
+    assert(dot_entry == nullptr);
+    const char dotdot_name[] = "bad/../name";
+    os::BlockFSEntry* dotdot_entry = fs.open(dotdot_name, true, 0644);
+    assert(dotdot_entry == nullptr);
 
     bool made_dir = fs.mkdir("bad", 0755);
     assert(made_dir);
@@ -87,7 +93,8 @@ int main() {
     assert(mounted2);
 
     os::BlockFSEntry* alpha_after = fs2.open("alpha.txt", false, 0);
-    assert(alpha_after == nullptr);
+    assert(alpha_after != nullptr);
+    assert(alpha_after->size == 0);
     bool removed_dup = fs2.remove("dup.txt");
     assert(removed_dup);
     os::BlockFSEntry* dup_after = fs2.open("dup.txt", false, 0);

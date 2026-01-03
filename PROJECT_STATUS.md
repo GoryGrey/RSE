@@ -55,14 +55,15 @@ Design guardrail:
 - `./scripts/run_full_system_test.sh` (build + native tests + UEFI boot + IVSHMEM exchange).
 - `./scripts/run_quick_system_test.sh` (UEFI boot + smoke benchmarks only).
 - `./scripts/run_linux_baseline.sh` (host baseline).
-- Latest full system run log: `build/boot/full_test.log` (Jan 02, 2026).
-- Latest projection exchange logs: `build/boot/net_exchange` (Jan 02, 2026).
+- Latest full system run log: `/tmp/rse_full_test.log` (Jan 02, 2026; TIMEOUT_BOOT=90).
+- Latest projection exchange logs: `/tmp/rse_net_exchange` (Jan 02, 2026).
+- Prior repo log snapshot: `build/boot/full_test.log` (Jan 02, 2026).
 - Syscall + OS tests: `sys_wait_test`, `sys_kill_test`, `sys_ps_test`, `sys_stat_test`,
   `sys_memfs_dir_test`, `sys_user_isolation_test`, `sys_vfs_persist_test`,
   `sys_socket_test`, `sys_socket_net_test`, `sys_socket_tcp_test` (RSE_NET_RAW=1),
   `sys_pipe_test`, `sys_dup_test`, `sys_mmap_test`, `exec_vfs_test`.
 - Devices: `blockfs_test`, `net_device_test`.
-- Recent local runs: `blockfs_test`, `sys_ps_test`, `sys_kill_test`, `sys_user_isolation_test`, `sys_socket_test`, `sys_socket_net_test`, `sys_socket_tcp_test`, `net_device_test` (Jan 02, 2026).
+- Recent local runs: full system test (logged), `blockfs_test`, `sys_ps_test`, `sys_kill_test`, `sys_user_isolation_test`, `sys_socket_test`, `sys_socket_net_test`, `sys_socket_tcp_test`, `net_device_test` (Jan 02, 2026).
 
 Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal and redirect logs outside the repo:
 `NET_LOG_DIR=/tmp/rse_net_exchange TIMEOUT_EXCHANGE=90 TIMEOUT_BOOT=120 ./scripts/run_full_system_test.sh`

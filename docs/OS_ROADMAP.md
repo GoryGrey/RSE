@@ -14,6 +14,7 @@ This roadmap tracks the path from the current prototype to a production-grade OS
 ## Current Baseline (Now)
 
 - Bootable UEFI kernel (serial + framebuffer) with dashboard.
+- SIGSTOP/SIGCONT stop/resume support in sys_kill.
 - UEFI GDT compatibility segments to honor loader selectors (fixes early #GP).
 - Syscall dispatcher with user-pointer validation and per-torus dispatch.
 - User isolation progress: sys_fork inherits uid/gid + signal handlers; sys_ps filters by uid for non-root callers.

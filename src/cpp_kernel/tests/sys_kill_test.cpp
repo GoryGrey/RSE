@@ -67,6 +67,16 @@ int main() {
     assert(denied == -os::EACCES);
     scheduler.forceCurrentProcess(&parent);
 
+    int64_t stop_rc = os::syscall(os::SYS_KILL, 2, os::SIGSTOP);
+    assert(stop_rc == 0);
+    assert(child.isBlocked());
+    assert(child.isStopped());
+
+    int64_t cont_rc = os::syscall(os::SYS_KILL, 2, os::SIGCONT);
+    assert(cont_rc == 0);
+    assert(!child.isStopped());
+    assert(child.isReady());
+
     int64_t kill_rc = os::syscall(os::SYS_KILL, 2, 9);
     assert(kill_rc == 0);
 

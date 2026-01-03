@@ -211,6 +211,7 @@ constexpr int SIG_IGN  = 1;
 constexpr int SIGINT   = 2;
 constexpr int SIGKILL  = 9;
 constexpr int SIGTERM  = 15;
+constexpr int SIGCONT  = 18;
 constexpr int SIGSTOP  = 19;
 
 // ========== System Call Handler Type ==========

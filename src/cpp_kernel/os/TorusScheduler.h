@@ -58,7 +58,15 @@ private:
         }
         for (size_t i = 0; i < blocked_queue_.size();) {
             OSProcess* proc = blocked_queue_[i];
-            if (!proc || proc->sleep_until_tick == 0 || proc->sleep_until_tick > total_ticks_) {
+            if (!proc) {
+                ++i;
+                continue;
+            }
+            if (proc->isStopped()) {
+                ++i;
+                continue;
+            }
+            if (proc->sleep_until_tick == 0 || proc->sleep_until_tick > total_ticks_) {
                 ++i;
                 continue;
             }
@@ -207,6 +215,86 @@ public:
             }
         }
         
+        return false;
+    }
+
+    bool stopProcess(uint32_t pid) {
+        if (pid == 0) {
+            return false;
+        }
+        if (current_process_ && current_process_->pid == pid) {
+            if (!blocked_queue_.push_back(current_process_)) {
+                return false;
+            }
+            current_process_->setStopped(true);
+            current_process_->setBlocked();
+            current_process_ = nullptr;
+            context_switches_++;
+            return true;
+        }
+        for (size_t i = 0; i < ready_queue_.size(); ++i) {
+            OSProcess* proc = ready_queue_[i];
+            if (proc && proc->pid == pid) {
+                ready_queue_.erase_at(i);
+                proc->setStopped(true);
+                proc->setBlocked();
+                if (!blocked_queue_.push_back(proc)) {
+                    proc->setStopped(false);
+                    proc->setReady();
+                    (void)ready_queue_.push_back(proc);
+                    return false;
+                }
+                return true;
+            }
+        }
+        for (size_t i = 0; i < blocked_queue_.size(); ++i) {
+            OSProcess* proc = blocked_queue_[i];
+            if (proc && proc->pid == pid) {
+                proc->setStopped(true);
+                return true;
+            }
+        }
+        for (size_t i = 0; i < zombie_queue_.size(); ++i) {
+            if (zombie_queue_[i] && zombie_queue_[i]->pid == pid) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool continueProcess(uint32_t pid) {
+        if (pid == 0) {
+            return false;
+        }
+        if (current_process_ && current_process_->pid == pid) {
+            current_process_->setStopped(false);
+            return true;
+        }
+        for (size_t i = 0; i < blocked_queue_.size(); ++i) {
+            OSProcess* proc = blocked_queue_[i];
+            if (proc && proc->pid == pid) {
+                proc->setStopped(false);
+                if (proc->sleep_until_tick == 0 || proc->sleep_until_tick <= total_ticks_) {
+                    if (ready_queue_.push_back(proc)) {
+                        blocked_queue_.erase_at(i);
+                        proc->setReady();
+                    }
+                }
+                return true;
+            }
+        }
+        for (size_t i = 0; i < ready_queue_.size(); ++i) {
+            OSProcess* proc = ready_queue_[i];
+            if (proc && proc->pid == pid) {
+                proc->setStopped(false);
+                return true;
+            }
+        }
+        for (size_t i = 0; i < zombie_queue_.size(); ++i) {
+            if (zombie_queue_[i] && zombie_queue_[i]->pid == pid) {
+                return true;
+            }
+        }
         return false;
     }
 

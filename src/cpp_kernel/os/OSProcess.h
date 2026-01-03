@@ -115,6 +115,7 @@ public:
     ProcessState state;
     int exit_code;              // Exit code (if zombie)
     bool kernel_owned;          // True if allocated by kernel heap
+    bool stopped;               // Stopped via signal (SIGSTOP)
     
     // ========== CPU Context ==========
     CPUContext context;
@@ -157,6 +158,7 @@ public:
           state(ProcessState::READY),
           exit_code(0),
           kernel_owned(false),
+          stopped(false),
           context(),
           saved_context(),
           context_saved(false),
@@ -301,6 +303,7 @@ public:
     bool isRunning() const { return state == ProcessState::RUNNING; }
     bool isBlocked() const { return state == ProcessState::BLOCKED; }
     bool isZombie() const { return state == ProcessState::ZOMBIE; }
+    bool isStopped() const { return stopped; }
     
     void setReady() { state = ProcessState::READY; }
     void setRunning() { state = ProcessState::RUNNING; }
@@ -308,7 +311,9 @@ public:
     void setZombie(int code) { 
         state = ProcessState::ZOMBIE; 
         exit_code = code;
+        stopped = false;
     }
+    void setStopped(bool value) { stopped = value; }
 
     void setKernelOwned(bool owned) {
         kernel_owned = owned;

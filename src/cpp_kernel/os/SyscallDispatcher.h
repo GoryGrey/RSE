@@ -532,6 +532,12 @@ inline int64_t sys_kill(uint64_t pid, uint64_t sig, uint64_t,
     if (sig == 0) {
         return 0;
     }
+    if (sig == SIGSTOP) {
+        return scheduler->stopProcess(static_cast<uint32_t>(pid)) ? 0 : -ESRCH;
+    }
+    if (sig == SIGCONT) {
+        return scheduler->continueProcess(static_cast<uint32_t>(pid)) ? 0 : -ESRCH;
+    }
     if (sig != SIGKILL && sig != SIGSTOP) {
         if (sig < OSProcess::kMaxSignals &&
             target->signal_handlers[sig] == SIG_IGN) {

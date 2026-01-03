@@ -2004,6 +2004,8 @@ inline ssize_t socket_read(Device* dev, void* buf, size_t count) {
     if (!sock) {
         return -ENOTCONN;
     }
+    const bool is_tcp = (sock->backend == SocketLite::Backend::TCP);
+    size_t prev_size = is_tcp ? sock->size : 0;
     if (sock->backend == SocketLite::Backend::NET_LITE ||
         sock->backend == SocketLite::Backend::TCP) {
         socket_poll_net();
@@ -2028,6 +2030,13 @@ inline ssize_t socket_read(Device* dev, void* buf, size_t count) {
         sock->head = (sock->head + 1) % SocketLite::kBufferSize;
     }
     sock->size -= to_read;
+    if (is_tcp && prev_size == SocketLite::kBufferSize &&
+        sock->size < SocketLite::kBufferSize &&
+        sock->state == SocketLite::State::CONNECTED &&
+        !sock->reset_pending) {
+        (void)tcp_send_segment(sock, kTcpFlagAck, nullptr, 0,
+                               sock->tx_seq, sock->rx_seq);
+    }
     return (ssize_t)to_read;
 }
 

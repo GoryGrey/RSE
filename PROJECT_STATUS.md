@@ -55,8 +55,9 @@ Design guardrail:
 - `./scripts/run_full_system_test.sh` (build + native tests + UEFI boot + IVSHMEM exchange).
 - `./scripts/run_quick_system_test.sh` (UEFI boot + smoke benchmarks only).
 - `./scripts/run_linux_baseline.sh` (host baseline).
-- Latest full system run log: `/tmp/rse_full_test.log` (Jan 02, 2026; TIMEOUT_BOOT=90).
-- Latest projection exchange logs: `/tmp/rse_net_exchange` (Jan 02, 2026).
+- Latest full system run log: `/tmp/rse_full_test.log` (Jan 02, 2026; full run, default timeouts).
+- Latest projection exchange logs: `benchmarks/net_exchange` (Jan 02, 2026).
+- Prior short-timeout run: `/tmp/rse_net_exchange` (Jan 02, 2026; TIMEOUT_BOOT=90).
 - Prior repo log snapshot: `build/boot/full_test.log` (Jan 02, 2026).
 - Syscall + OS tests: `sys_wait_test`, `sys_kill_test`, `sys_ps_test`, `sys_stat_test`,
   `sys_memfs_dir_test`, `sys_user_isolation_test`, `sys_vfs_persist_test`,

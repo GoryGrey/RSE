@@ -1,6 +1,6 @@
 # RSE (Resilient Spatial Execution)
 
-Last Updated: January 02, 2026 (ring3 user-mode signal delivery via handler trampoline; ring3 scheduler skips stopped/blocked/waiting processes; sys_kill SIGSTOP/SIGCONT support with pending user signal queueing; kernel-mode custom signal handlers for cooperative tasks; sys_wait blocks on child exit with wakeup on zombie; net frame send rejects null payload; UEFI GDT compatibility segments for loader selectors; sys_fork uid/gid + signal handler inheritance; sys_ps filters by uid for non-root; exec resets signal handlers (ignores preserved); memfs/persist ancestor exec enforcement; virtio-net TX backpressure + RX guardrails; empty net reads return EAGAIN; net queue + RX/TX error counters surfaced; BlockFS sanitize scrubs invalid entries and zeroes stale slots; BlockFS slot zeroing on create/remove; mergeable RX disabled pending reassembly; raw TCP socket backend for AF_INET when RSE_NET_RAW=1 with retransmit/backoff + window backpressure + close sweep + pending handshake cleanup; sys_kill uid enforcement; sys_socket_tcp_test)
+Last Updated: January 02, 2026 (ring3 user-mode signal delivery via handler trampoline; ring3 scheduler skips stopped/blocked/waiting processes; sys_kill SIGSTOP/SIGCONT support with pending user signal queueing; kernel-mode custom signal handlers for cooperative tasks; sys_wait blocks on child exit with wakeup on zombie; net frame send rejects null payload; NET_LITE close retries for FIN; UEFI GDT compatibility segments for loader selectors; sys_fork uid/gid + signal handler inheritance; sys_ps filters by uid for non-root; exec resets signal handlers (ignores preserved); memfs/persist ancestor exec enforcement; virtio-net TX backpressure + RX guardrails; empty net reads return EAGAIN; net queue + RX/TX error counters surfaced; BlockFS sanitize scrubs invalid entries and zeroes stale slots; BlockFS slot zeroing on create/remove; mergeable RX disabled pending reassembly; raw TCP socket backend for AF_INET when RSE_NET_RAW=1 with retransmit/backoff + window backpressure + close sweep + pending handshake cleanup; sys_kill uid enforcement; sys_socket_tcp_test)
 
 Status: Research prototype. Bootable UEFI kernel with an interactive dashboard and in-kernel workloads; braided projection exchange works in multi-VM via shared memory.
 
@@ -54,7 +54,7 @@ Key properties:
 - Ring3 scheduler skips stopped/blocked/waiting processes when rotating slots.
 - sys_kill enforces uid (root or same uid).
 - sys_fork inherits uid/gid + signal handlers; sys_ps filters by uid for non-root callers; exec resets signal handlers to default (ignores preserved).
-- NET_LITE sockets return EOF on peer FIN, EPIPE on write after close, and ECONNREFUSED on refused connect.
+- NET_LITE sockets return EOF on peer FIN, EPIPE on write after close, and ECONNREFUSED on refused connect (FIN retries before close timeout).
 - NET_LITE uses seq/ack + retransmit (stop-and-wait) for reliable delivery.
 - TCP/NET_LITE close paths now defer release and sweep closed sockets; pending handshakes are released on timeout/reset.
 - virtio-net driver returns EAGAIN on TX queue full/empty reads and validates RX descriptors; UDP queue drops and RX/TX error counters are tracked (mergeable RX disabled until reassembly support lands).

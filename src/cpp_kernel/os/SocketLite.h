@@ -33,6 +33,8 @@ static constexpr uint8_t kNetLiteMaxRetries = 3u;
 static constexpr uint8_t kNetLiteMaxBacklog = 4u;
 static constexpr uint32_t kNetLiteDataRetryTicks = 8u;
 static constexpr uint8_t kNetLiteDataMaxRetries = 5u;
+static constexpr uint32_t kNetLiteCloseRetryTicks = 8u;
+static constexpr uint8_t kNetLiteCloseMaxRetries = 3u;
 static constexpr uint32_t kNetLiteCloseTimeout = 32u;
 static constexpr uint32_t kTcpRetryTicks = 8u;
 static constexpr uint32_t kTcpConnectTimeout = 128u;
@@ -587,9 +589,22 @@ public:
                 continue;
             }
             SocketLite& sock = sockets_[i];
-            if (sock.backend != SocketLite::Backend::NET_LITE ||
-                sock.state != SocketLite::State::CONNECTED ||
-                !sock.tx_pending) {
+            if (sock.backend != SocketLite::Backend::NET_LITE) {
+                continue;
+            }
+            if (sock.close_requested && sock.conn_id != 0 &&
+                !sock.peer_closed && !sock.reset_pending) {
+                if (sock.fin_retry_at == 0 || now >= sock.fin_retry_at) {
+                    if (sock.fin_attempts >= kNetLiteCloseMaxRetries) {
+                        sock.reset_pending = true;
+                    } else {
+                        (void)net_send_frame(sock.conn_id, kTcpLiteFin, nullptr, 0);
+                        sock.fin_attempts++;
+                        sock.fin_retry_at = now + kNetLiteCloseRetryTicks;
+                    }
+                }
+            }
+            if (sock.state != SocketLite::State::CONNECTED || !sock.tx_pending) {
                 continue;
             }
             if (sock.peer_closed || sock.reset_pending) {
@@ -1946,6 +1961,8 @@ inline int socket_close(Device* dev) {
         }
         if (sock->conn_id != 0 && !sock->peer_closed) {
             (void)net_send_frame(sock->conn_id, kTcpLiteFin, nullptr, 0);
+            sock->fin_attempts = 1;
+            sock->fin_retry_at = g_socket_net_ticks + kNetLiteCloseRetryTicks;
         }
         sock->close_requested = true;
         sock->close_deadline = g_socket_net_ticks + kNetLiteCloseTimeout;

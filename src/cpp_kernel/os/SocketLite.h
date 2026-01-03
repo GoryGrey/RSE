@@ -1130,6 +1130,9 @@ inline int net_send_frame(uint16_t conn, uint16_t flags, const void* payload,
     if (!socket_manager().net_online()) {
         return -EIO;
     }
+    if (len > 0 && !payload) {
+        return -EINVAL;
+    }
     size_t total = sizeof(header) + len;
     if (total > NetWireState::kCapacity) {
         return -EINVAL;

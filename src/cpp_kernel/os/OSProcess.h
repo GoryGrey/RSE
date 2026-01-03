@@ -116,6 +116,7 @@ public:
     int exit_code;              // Exit code (if zombie)
     bool kernel_owned;          // True if allocated by kernel heap
     bool stopped;               // Stopped via signal (SIGSTOP)
+    bool waiting_for_child;     // Waiting for any child to exit
     
     // ========== CPU Context ==========
     CPUContext context;
@@ -159,6 +160,7 @@ public:
           exit_code(0),
           kernel_owned(false),
           stopped(false),
+          waiting_for_child(false),
           context(),
           saved_context(),
           context_saved(false),

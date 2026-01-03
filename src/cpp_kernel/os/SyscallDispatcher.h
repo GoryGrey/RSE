@@ -482,7 +482,15 @@ inline int64_t sys_wait(uint64_t status_ptr, uint64_t, uint64_t,
                 has_child = true;
             }
         });
-        return has_child ? -EAGAIN : -ECHILD;
+        if (!has_child) {
+            current->waiting_for_child = false;
+            return -ECHILD;
+        }
+        current->waiting_for_child = true;
+        if (!scheduler->blockProcess(current->pid)) {
+            current->waiting_for_child = false;
+        }
+        return -EAGAIN;
     }
 
     if (status_ptr != 0) {
@@ -500,6 +508,7 @@ inline int64_t sys_wait(uint64_t status_ptr, uint64_t, uint64_t,
     if (zombie->isKernelOwned()) {
         delete zombie;
     }
+    current->waiting_for_child = false;
     return pid;
 }
 
@@ -544,6 +553,16 @@ inline int64_t sys_kill(uint64_t pid, uint64_t sig, uint64_t,
             return 0;
         }
     }
+    if (sig < OSProcess::kMaxSignals && target->signal_handlers[sig] > SIG_IGN) {
+        if (!enforce_user_memory(target)) {
+            using SignalHandler = void (*)(int);
+            SignalHandler handler = reinterpret_cast<SignalHandler>(target->signal_handlers[sig]);
+            if (handler) {
+                handler(static_cast<int>(sig));
+                return 0;
+            }
+        }
+    }
     int exit_code = 128 + static_cast<int>(sig & 0x7F);
     if (!scheduler->killProcess(static_cast<uint32_t>(pid), exit_code)) {
         return -ESRCH;
@@ -568,8 +587,11 @@ inline int64_t sys_signal(uint64_t sig, uint64_t handler, uint64_t,
             if (!current->vmem || !current->vmem->isUserRange(handler, 1)) {
                 return -EFAULT;
             }
+            return -ENOSYS;
         }
-        return -ENOSYS;
+        uint64_t prev = current->signal_handlers[sig];
+        current->signal_handlers[sig] = handler;
+        return static_cast<int64_t>(prev);
     }
     uint64_t prev = current->signal_handlers[sig];
     current->signal_handlers[sig] = handler;

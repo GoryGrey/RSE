@@ -119,6 +119,7 @@ public:
             std::cerr << "[TorusScheduler " << torus_id_ << "] Zombie queue full!" << std::endl;
             return false;
         }
+        wakeParent(proc);
         return true;
     }
 
@@ -137,6 +138,23 @@ public:
             }
         }
         return nullptr;
+    }
+
+    void wakeParent(OSProcess* child) {
+        if (!child || child->parent_pid == 0) {
+            return;
+        }
+        OSProcess* parent = findProcess(child->parent_pid);
+        if (!parent || !parent->waiting_for_child) {
+            return;
+        }
+        if (parent->isStopped()) {
+            return;
+        }
+        parent->waiting_for_child = false;
+        if (parent->isBlocked()) {
+            (void)unblockProcess(parent->pid);
+        }
     }
     
     /**

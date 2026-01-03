@@ -11,6 +11,14 @@ namespace os {
 TorusContext* current_torus_context = nullptr;
 }
 
+static int g_signal_seen = 0;
+
+static void test_signal_handler(int sig) {
+    g_signal_seen = sig;
+}
+
+static void noop_user_step(os::OSProcess*, void*, const rse_syscalls*) {}
+
 int main() {
     std::cout << "[sys_kill Tests]" << std::endl;
 
@@ -47,6 +55,17 @@ int main() {
     assert(bad_sig == -os::EINVAL);
     int64_t bad_handler = os::syscall(os::SYS_SIGNAL, os::SIGTERM, 0xdeadbeef);
     assert(bad_handler == -os::ENOSYS);
+
+    parent.setUserEntry(noop_user_step, nullptr, nullptr);
+    int64_t handler_prev = os::syscall(os::SYS_SIGNAL, os::SIGTERM,
+                                       (uint64_t)test_signal_handler);
+    assert(handler_prev == os::SIG_DFL);
+    int64_t handler_kill = os::syscall(os::SYS_KILL, 1, os::SIGTERM);
+    assert(handler_kill == 0);
+    assert(g_signal_seen == os::SIGTERM);
+    assert(scheduler.hasProcess(1));
+    parent.setUserEntry(nullptr, nullptr, nullptr);
+    parent.signal_handlers[os::SIGTERM] = os::SIG_DFL;
 
     int64_t ignored = os::syscall(os::SYS_KILL, 1, os::SIGTERM);
     assert(ignored == 0);

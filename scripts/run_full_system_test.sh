@@ -70,6 +70,7 @@ CPP_TESTS=(
   sys_vfs_persist_test
   sys_socket_test
   sys_socket_net_test
+  sys_socket_tcp_test
   sys_pipe_test
   sys_dup_test
   sys_mmap_test

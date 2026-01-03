@@ -1757,13 +1757,17 @@ inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
             return;
         }
         size_t space = SocketLite::kBufferSize - sock->size;
-        size_t to_write = payload_len < space ? payload_len : space;
-        for (size_t i = 0; i < to_write; ++i) {
+        if (space == 0 || payload_len > space) {
+            (void)tcp_send_segment(sock, kTcpFlagAck, nullptr, 0,
+                                   sock->tx_seq, sock->rx_seq);
+            return;
+        }
+        for (size_t i = 0; i < payload_len; ++i) {
             sock->buffer[sock->tail] = tcp_payload[i];
             sock->tail = (sock->tail + 1) % SocketLite::kBufferSize;
         }
-        sock->size += to_write;
-        sock->rx_seq += (uint32_t)to_write;
+        sock->size += payload_len;
+        sock->rx_seq += (uint32_t)payload_len;
         (void)tcp_send_segment(sock, kTcpFlagAck, nullptr, 0,
                                sock->tx_seq, sock->rx_seq);
     }

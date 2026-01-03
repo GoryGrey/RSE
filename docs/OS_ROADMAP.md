@@ -23,7 +23,7 @@ This roadmap tracks the path from the current prototype to a production-grade OS
 - Syscall dispatcher with user-pointer validation and per-torus dispatch.
 - User isolation progress: sys_fork inherits uid/gid + signal handlers; sys_ps filters by uid for non-root callers.
 - ELF loader enforces the user virtual address window (rejects out-of-range segments).
-- MemFS + BlockFS with checksum journal; /persist mounted with directory paths; MemFS supports nested paths, deterministic list order, uid/gid ownership, and permission checks (including ancestor exec); BlockFS sanitizes invalid entries on mount, scrubs stale slots, and zeroes slots on create/remove.
+- MemFS + BlockFS with checksum journal; /persist mounted with directory paths; MemFS supports nested paths, deterministic list order, uid/gid ownership, and permission checks (including ancestor exec); BlockFS sanitizes invalid entries on mount, scrubs checksum-mismatch/stale slots, and zeroes slots on create/remove.
 - Minimal network stack (ARP/UDP parsing + loopback) with NET_LITE socket syscalls and a raw Ethernet/IP/TCP backend for AF_INET sockets when `RSE_NET_RAW=1` (basic handshake/data/FIN with close retries, close sweep, pending handshake cleanup).
 - UEFI kernel build is freestanding with minimal string/mem shims for kernel C++ code.
 - Ring3 init loads a real freestanding user ELF at `/bin/init`, can run `/persist/boot.rc` or `/boot.rc` scripts, and yields/sleeps across ring3 slots on syscall ticks.

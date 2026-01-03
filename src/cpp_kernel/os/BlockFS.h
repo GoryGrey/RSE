@@ -952,6 +952,7 @@ private:
                 !verify_checksum(&entries_[i])) {
                 entries_[i].size = 0;
                 entries_[i].checksum = 0;
+                scrub_slots[i] = true;
                 changed = true;
             }
         }

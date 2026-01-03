@@ -554,7 +554,13 @@ inline int64_t sys_kill(uint64_t pid, uint64_t sig, uint64_t,
         }
     }
     if (sig < OSProcess::kMaxSignals && target->signal_handlers[sig] > SIG_IGN) {
-        if (!enforce_user_memory(target)) {
+        if (enforce_user_memory(target)) {
+            if (target->pending_signal == 0 || target->pending_signal == sig) {
+                target->pending_signal = static_cast<uint32_t>(sig);
+                return 0;
+            }
+            return -EAGAIN;
+        } else {
             using SignalHandler = void (*)(int);
             SignalHandler handler = reinterpret_cast<SignalHandler>(target->signal_handlers[sig]);
             if (handler) {
@@ -587,7 +593,9 @@ inline int64_t sys_signal(uint64_t sig, uint64_t handler, uint64_t,
             if (!current->vmem || !current->vmem->isUserRange(handler, 1)) {
                 return -EFAULT;
             }
-            return -ENOSYS;
+            uint64_t prev = current->signal_handlers[sig];
+            current->signal_handlers[sig] = handler;
+            return static_cast<int64_t>(prev);
         }
         uint64_t prev = current->signal_handlers[sig];
         current->signal_handlers[sig] = handler;

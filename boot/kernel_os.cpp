@@ -1060,7 +1060,7 @@ static int os_ps_dump(char *buf, uint32_t len) {
 #endif
 
 static bool ring3_ready(os::OSProcess* proc) {
-    if (!proc || proc->isZombie()) {
+    if (!proc || proc->isZombie() || proc->isStopped()) {
         return false;
     }
     uint32_t torus_id = proc->torus_id;
@@ -1145,6 +1145,44 @@ struct Ring3Frame {
     uint64_t r8, r9, r10, r11, r12, r13, r14, r15;
     uint64_t rip, cs, rflags, rsp, ss;
 };
+
+static bool ring3_deliver_signal(Ring3Frame* frame) {
+    if (!g_ring3_proc || !frame) {
+        return false;
+    }
+    uint32_t sig = g_ring3_proc->pending_signal;
+    if (sig == 0 || sig >= os::OSProcess::kMaxSignals) {
+        g_ring3_proc->pending_signal = 0;
+        return false;
+    }
+    uint64_t handler = g_ring3_proc->signal_handlers[sig];
+    g_ring3_proc->pending_signal = 0;
+    if (handler <= os::SIG_IGN) {
+        return false;
+    }
+    if (!g_ring3_proc->vmem || !g_ring3_proc->vmem->isUserRange(handler, 1)) {
+        g_ring3_proc->setZombie(128 + static_cast<int>(sig & 0x7F));
+        return false;
+    }
+    uint64_t rsp = frame->rsp ? frame->rsp : g_ring3_proc->memory.stack_pointer;
+    uint64_t new_rsp = rsp - sizeof(uint64_t);
+    if (!g_ring3_proc->vmem->isUserRange(new_rsp, sizeof(uint64_t)) ||
+        !g_ring3_proc->vmem->writeUser(new_rsp, &frame->rip, sizeof(uint64_t))) {
+        g_ring3_proc->setZombie(128 + static_cast<int>(sig & 0x7F));
+        return false;
+    }
+    frame->rsp = new_rsp;
+    frame->rdi = sig;
+    frame->rip = handler;
+    g_ring3_proc->context.rsp = new_rsp;
+    g_ring3_proc->context.rdi = sig;
+    g_ring3_proc->context.rip = handler;
+    return true;
+}
+
+extern "C" int rse_os_ring3_apply_signal(void* frame_ptr) {
+    return ring3_deliver_signal(static_cast<Ring3Frame*>(frame_ptr)) ? 1 : 0;
+}
 
 extern "C" void rse_os_sync_ring3_frame(const void* frame_ptr) {
     if (!g_ring3_proc || !frame_ptr) {

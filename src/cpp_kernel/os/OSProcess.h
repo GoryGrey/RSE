@@ -117,6 +117,7 @@ public:
     bool kernel_owned;          // True if allocated by kernel heap
     bool stopped;               // Stopped via signal (SIGSTOP)
     bool waiting_for_child;     // Waiting for any child to exit
+    uint32_t pending_signal;    // Pending user-mode signal (0 = none)
     
     // ========== CPU Context ==========
     CPUContext context;
@@ -161,6 +162,7 @@ public:
           kernel_owned(false),
           stopped(false),
           waiting_for_child(false),
+          pending_signal(0),
           context(),
           saved_context(),
           context_saved(false),

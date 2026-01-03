@@ -44,6 +44,7 @@ extern void rse_os_sync_ring3_frame(const void *frame_ptr);
 extern int rse_os_ring3_load_frame(void *frame_ptr);
 extern int rse_os_ring3_yield(uint64_t *entry_out, uint64_t *stack_out);
 extern int rse_os_ring3_tick(void);
+extern int rse_os_ring3_apply_signal(void *frame_ptr);
 extern int rse_os_fastio_bench(uint64_t *bytes_out, uint64_t *cycles_out,
                                uint64_t *cycles_per_byte_out);
 
@@ -509,6 +510,7 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
                 (void)rse_os_ring3_load_frame(frame);
                 frame->rip = entry;
                 frame->rsp = stack ? stack : USER_STACK_TOP;
+                (void)rse_os_ring3_apply_signal(frame);
                 user_cr3 = g_user_cr3;
                 if (kernel_cr3) {
                     write_cr3(user_cr3);
@@ -542,6 +544,7 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
         if (rse_os_ring3_yield(&entry, &stack)) {
             if (refresh_user_page_table(entry, stack)) {
                 (void)rse_os_ring3_load_frame(frame);
+                (void)rse_os_ring3_apply_signal(frame);
                 user_cr3 = g_user_cr3;
                 if (kernel_cr3) {
                     write_cr3(user_cr3);
@@ -585,6 +588,7 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
                 (void)rse_os_ring3_load_frame(frame);
                 frame->rip = entry;
                 frame->rsp = stack ? stack : USER_STACK_TOP;
+                (void)rse_os_ring3_apply_signal(frame);
                 user_cr3 = g_user_cr3;
                 if (kernel_cr3) {
                     write_cr3(user_cr3);
@@ -593,6 +597,7 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
             }
         }
     }
+    (void)rse_os_ring3_apply_signal(frame);
     if (kernel_cr3) {
         write_cr3(user_cr3);
     }
@@ -625,6 +630,7 @@ __attribute__((used)) static void irq0_handler(struct int80_frame* frame) {
             }
         }
     }
+    (void)rse_os_ring3_apply_signal(frame);
     pic_eoi();
     if (kernel_cr3) {
         write_cr3(user_cr3);

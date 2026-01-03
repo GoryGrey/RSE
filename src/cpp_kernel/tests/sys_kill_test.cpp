@@ -54,7 +54,13 @@ int main() {
     int64_t bad_sig = os::syscall(os::SYS_SIGNAL, os::SIGKILL, os::SIG_IGN);
     assert(bad_sig == -os::EINVAL);
     int64_t bad_handler = os::syscall(os::SYS_SIGNAL, os::SIGTERM, 0xdeadbeef);
-    assert(bad_handler == -os::ENOSYS);
+    assert(bad_handler == -os::EFAULT);
+
+    uint64_t user_handler_addr = parent.vmem->allocate(sizeof(uint64_t));
+    assert(user_handler_addr != 0);
+    int64_t user_prev = os::syscall(os::SYS_SIGNAL, os::SIGTERM, user_handler_addr);
+    assert(user_prev == os::SIG_DFL);
+    parent.signal_handlers[os::SIGTERM] = os::SIG_DFL;
 
     parent.setUserEntry(noop_user_step, nullptr, nullptr);
     int64_t handler_prev = os::syscall(os::SYS_SIGNAL, os::SIGTERM,

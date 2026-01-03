@@ -1,6 +1,6 @@
 # RSE Operating System: Roadmap
 
-Last Updated: January 02, 2026 (UEFI GDT compatibility segments; full system test log refreshed)
+Last Updated: January 02, 2026 (ring3 scheduler skips stopped/blocked/waiting processes; pending user signals queued; UEFI GDT compatibility segments; full system test log refreshed)
 Status: Active development (prototype)
 
 ---
@@ -18,6 +18,7 @@ This roadmap tracks the path from the current prototype to a production-grade OS
 - Kernel-mode custom signal handlers for cooperative tasks.
 - sys_wait blocks on child exit with wakeup on zombie.
 - Ring3 user-mode signal delivery (basic trampoline).
+- Ring3 scheduling skips stopped/blocked/waiting processes while rotating slots.
 - UEFI GDT compatibility segments to honor loader selectors (fixes early #GP).
 - Syscall dispatcher with user-pointer validation and per-torus dispatch.
 - User isolation progress: sys_fork inherits uid/gid + signal handlers; sys_ps filters by uid for non-root callers.

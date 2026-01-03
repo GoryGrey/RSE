@@ -1060,7 +1060,8 @@ static int os_ps_dump(char *buf, uint32_t len) {
 #endif
 
 static bool ring3_ready(os::OSProcess* proc) {
-    if (!proc || proc->isZombie() || proc->isStopped()) {
+    if (!proc || proc->isZombie() || proc->isStopped() || proc->isBlocked() ||
+        proc->waiting_for_child) {
         return false;
     }
     uint32_t torus_id = proc->torus_id;
@@ -1279,6 +1280,15 @@ extern "C" int rse_os_ring3_tick(void) {
         g_ring3_ticks[torus_id]++;
     }
     uint64_t now = torus_id < kTorusCount ? g_ring3_ticks[torus_id] : 0;
+    if (g_ring3_proc->isStopped() || g_ring3_proc->isBlocked() ||
+        g_ring3_proc->waiting_for_child) {
+        uint32_t slot = 0;
+        os::OSProcess* next = ring3_pick_next(torus_id, &slot);
+        if (next && next != g_ring3_proc) {
+            return 1;
+        }
+        return 0;
+    }
     if (g_ring3_proc->sleep_until_tick != 0) {
         if (now < g_ring3_proc->sleep_until_tick) {
             uint32_t slot = 0;

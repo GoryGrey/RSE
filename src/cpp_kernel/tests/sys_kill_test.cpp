@@ -62,6 +62,11 @@ int main() {
     assert(user_prev == os::SIG_DFL);
     parent.signal_handlers[os::SIGTERM] = os::SIG_DFL;
 
+    int64_t queued = os::syscall(os::SYS_KILL, 2, os::SIGTERM);
+    assert(queued == 0);
+    assert(child.pending_signal == os::SIGTERM);
+    child.pending_signal = 0;
+
     parent.setUserEntry(noop_user_step, nullptr, nullptr);
     int64_t handler_prev = os::syscall(os::SYS_SIGNAL, os::SIGTERM,
                                        (uint64_t)test_signal_handler);

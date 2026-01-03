@@ -67,6 +67,20 @@ int main() {
     assert(child.pending_signal == os::SIGTERM);
     child.pending_signal = 0;
 
+    uint64_t child_handler_addr = child.vmem->allocate(sizeof(uint64_t));
+    assert(child_handler_addr != 0);
+    child.signal_handlers[os::SIGTERM] = child_handler_addr;
+    child.waiting_for_child = true;
+    bool blocked = scheduler.blockProcess(child.pid);
+    assert(blocked);
+    assert(child.isBlocked());
+    int64_t wake_rc = os::syscall(os::SYS_KILL, 2, os::SIGTERM);
+    assert(wake_rc == 0);
+    assert(child.pending_signal == os::SIGTERM);
+    assert(!child.waiting_for_child);
+    assert(child.isReady());
+    child.pending_signal = 0;
+
     parent.setUserEntry(noop_user_step, nullptr, nullptr);
     int64_t handler_prev = os::syscall(os::SYS_SIGNAL, os::SIGTERM,
                                        (uint64_t)test_signal_handler);

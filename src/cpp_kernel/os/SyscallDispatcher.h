@@ -66,6 +66,19 @@ inline bool enforce_user_memory(OSProcess* proc) {
     return proc && proc->vmem && !proc->user_step;
 }
 
+inline void wake_on_signal(TorusScheduler* scheduler, OSProcess* target) {
+    if (!scheduler || !target || target->isStopped()) {
+        return;
+    }
+    target->waiting_for_child = false;
+    if (target->sleep_until_tick != 0) {
+        target->sleep_until_tick = 0;
+    }
+    if (target->isBlocked()) {
+        (void)scheduler->unblockProcess(target->pid);
+    }
+}
+
 inline bool validate_user_range(OSProcess* proc, uint64_t addr, uint64_t size, bool write) {
     if (!enforce_user_memory(proc)) {
         return true;
@@ -476,6 +489,10 @@ inline int64_t sys_wait(uint64_t status_ptr, uint64_t, uint64_t,
     int exit_code = 0;
     OSProcess* zombie = scheduler->reapZombie(current->pid, &exit_code);
     if (!zombie) {
+        if (enforce_user_memory(current) && current->pending_signal != 0) {
+            current->waiting_for_child = false;
+            return -EINTR;
+        }
         bool has_child = false;
         scheduler->forEachProcess([&](OSProcess* proc) {
             if (proc && proc->parent_pid == current->pid) {
@@ -557,6 +574,7 @@ inline int64_t sys_kill(uint64_t pid, uint64_t sig, uint64_t,
         if (enforce_user_memory(target)) {
             if (target->pending_signal == 0 || target->pending_signal == sig) {
                 target->pending_signal = static_cast<uint32_t>(sig);
+                wake_on_signal(scheduler, target);
                 return 0;
             }
             return -EAGAIN;
@@ -565,6 +583,7 @@ inline int64_t sys_kill(uint64_t pid, uint64_t sig, uint64_t,
             SignalHandler handler = reinterpret_cast<SignalHandler>(target->signal_handlers[sig]);
             if (handler) {
                 handler(static_cast<int>(sig));
+                wake_on_signal(scheduler, target);
                 return 0;
             }
         }
@@ -1186,6 +1205,9 @@ inline int64_t sys_sleep(uint64_t seconds, uint64_t, uint64_t,
         return -ESRCH;
     }
     if (enforce_user_memory(current)) {
+        if (current->pending_signal != 0) {
+            return -EINTR;
+        }
         uint64_t now = rse_os_ring3_now(current->torus_id);
         current->sleep_until_tick = now + ticks;
         return 0;
@@ -1238,6 +1260,12 @@ inline int64_t sys_nanosleep(uint64_t req_ptr, uint64_t rem_ptr, uint64_t,
         }
     }
     if (enforce_user_memory(current)) {
+        if (current->pending_signal != 0) {
+            if (rem_ptr != 0) {
+                (void)write_user_bytes(current, rem_ptr, &req, sizeof(req));
+            }
+            return -EINTR;
+        }
         uint64_t now = rse_os_ring3_now(current->torus_id);
         current->sleep_until_tick = now + ticks;
         return 0;

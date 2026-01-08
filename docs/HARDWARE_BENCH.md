@@ -20,6 +20,14 @@ The ISO will be at `build/boot/rse_efi.iso`.
 
 ## Write the ISO to USB
 
+Recommended helper:
+
+```bash
+./scripts/install_usb.sh /dev/sdX
+```
+
+Or manually:
+
 ```bash
 sudo dd if=build/boot/rse_efi.iso of=/dev/sdX bs=4M status=progress oflag=sync
 ```

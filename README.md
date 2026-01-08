@@ -32,6 +32,11 @@ make -f boot/Makefile.uefi run-iso
 ```
 
 Write `build/boot/rse_efi.iso` to a USB drive to boot on real hardware.
+Helper script:
+
+```bash
+./scripts/install_usb.sh /dev/sdX
+```
 
 Use the envvars below for specific flows:
 

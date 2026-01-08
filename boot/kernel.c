@@ -1862,7 +1862,8 @@ enum ui_action {
     UI_ACT_NONE = 0,
     UI_ACT_BENCH = 1,
     UI_ACT_NET = 2,
-    UI_ACT_RESET = 3
+    UI_ACT_RESET = 3,
+    UI_ACT_POWEROFF = 4
 };
 
 struct ui_icon {
@@ -1874,7 +1875,7 @@ struct ui_icon {
     size_t h;
 };
 
-static struct ui_icon g_icons[3];
+static struct ui_icon g_icons[4];
 static int g_ui_hover = -1;
 static size_t g_cursor_x = 16;
 static size_t g_cursor_y = 16;
@@ -5351,7 +5352,7 @@ static void ui_layout_icons(size_t panel_x, size_t panel_y, size_t panel_w, size
     size_t icon_w = 70;
     size_t spacing = 10;
     size_t row_y = panel_y + panel_h - icon_h - 12;
-    size_t total_w = icon_w * 3 + spacing * 2;
+    size_t total_w = icon_w * 4 + spacing * 3;
     size_t start_x = panel_x + (panel_w > total_w ? (panel_w - total_w) / 2 : 6);
     if (row_y + icon_h > panel_y + panel_h) {
         row_y = panel_y + 12;
@@ -5360,10 +5361,11 @@ static void ui_layout_icons(size_t panel_x, size_t panel_y, size_t panel_w, size
     g_icons[0] = (struct ui_icon){ "BENCH", UI_ACT_BENCH, start_x, row_y, icon_w, icon_h };
     g_icons[1] = (struct ui_icon){ "NET", UI_ACT_NET, start_x + icon_w + spacing, row_y, icon_w, icon_h };
     g_icons[2] = (struct ui_icon){ "RESET", UI_ACT_RESET, start_x + (icon_w + spacing) * 2, row_y, icon_w, icon_h };
+    g_icons[3] = (struct ui_icon){ "POWER", UI_ACT_POWEROFF, start_x + (icon_w + spacing) * 3, row_y, icon_w, icon_h };
 }
 
 static int ui_hit_test(size_t x, size_t y) {
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 4; ++i) {
         if (x >= g_icons[i].x && x < g_icons[i].x + g_icons[i].w &&
             y >= g_icons[i].y && y < g_icons[i].y + g_icons[i].h) {
             return i;
@@ -5373,7 +5375,7 @@ static int ui_hit_test(size_t x, size_t y) {
 }
 
 static void ui_draw_icons(struct limine_framebuffer *fb) {
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 4; ++i) {
         uint32_t fill = (i == g_ui_hover) ? 0x00283a4c : 0x00181f28;
         uint32_t border = (i == g_ui_hover) ? UI_ACCENT : 0x00304455;
         fb_fill_rect(fb, g_icons[i].x, g_icons[i].y, g_icons[i].w, g_icons[i].h, fill);
@@ -5589,6 +5591,10 @@ static void ui_run_action(enum ui_action action, struct rse_boot_info *boot_info
         memset(&g_metrics, 0, sizeof(g_metrics));
         g_metrics.metrics_valid = 0;
         break;
+    case UI_ACT_POWEROFF:
+        serial_write("[RSE] ui shutdown\n");
+        rse_poweroff();
+        break;
     default:
         break;
     }
@@ -5674,11 +5680,11 @@ static void ui_event_loop(struct rse_boot_info *boot_info) {
             if (got > 0) {
                 int new_hover = g_ui_hover;
                 if (key.ScanCode == SCAN_LEFT || key.UnicodeChar == 'a' || key.UnicodeChar == 'A') {
-                    new_hover = (g_ui_hover + 2) % 3;
+                    new_hover = (g_ui_hover + 3) % 4;
                 } else if (key.ScanCode == SCAN_RIGHT || key.UnicodeChar == 'd' || key.UnicodeChar == 'D') {
-                    new_hover = (g_ui_hover + 1) % 3;
+                    new_hover = (g_ui_hover + 1) % 4;
                 } else if (key.UnicodeChar == '\t') {
-                    new_hover = (g_ui_hover + 1) % 3;
+                    new_hover = (g_ui_hover + 1) % 4;
                 } else if (key.UnicodeChar == ' ') {
                     ui_run_action(g_icons[g_ui_hover].action, boot_info);
                     needs_redraw = 1;
@@ -5693,6 +5699,10 @@ static void ui_event_loop(struct rse_boot_info *boot_info) {
                     needs_redraw = 1;
                 } else if (key.UnicodeChar == 'r' || key.UnicodeChar == 'R') {
                     ui_run_action(UI_ACT_RESET, boot_info);
+                    needs_redraw = 1;
+                } else if (key.UnicodeChar == 'p' || key.UnicodeChar == 'P' ||
+                           key.UnicodeChar == 'q' || key.UnicodeChar == 'Q') {
+                    ui_run_action(UI_ACT_POWEROFF, boot_info);
                     needs_redraw = 1;
                 }
 
@@ -5715,6 +5725,15 @@ static void kmain(struct rse_boot_info *boot_info) {
     g_boot_info = boot_info;
     serial_init();
     serial_write("[RSE] UEFI kernel start\n");
+    serial_write("[RSE] boot config net_raw=");
+    serial_write_u64((uint64_t)RSE_NET_RAW);
+    serial_write(" bench_smoke=");
+    serial_write_u64((uint64_t)RSE_BENCH_SMOKE);
+    serial_write(" auto_exit=");
+    serial_write_u64((uint64_t)RSE_AUTO_EXIT);
+    serial_write(" rawtcp_only=");
+    serial_write_u64((uint64_t)RSE_RAWTCP_ONLY);
+    serial_write("\n");
     g_kernel_cr3 = read_cr3();
     init_gdt_user_segments();
     init_timer_preemption();

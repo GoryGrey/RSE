@@ -38,7 +38,7 @@ export RSE_BENCH_SMOKE
 rm -f "${BOOT_LOG}"
 set +e
 QEMU_SERIAL_LOG="${BOOT_LOG}" \
-  timeout "${TIMEOUT_BOOT}s" make -B -f "${ROOT_DIR}/boot/Makefile.uefi" run-iso >"${BOOT_MAKE_LOG}" 2>&1
+  timeout "${TIMEOUT_BOOT}s" make -B -f "${ROOT_DIR}/boot/Makefile.uefi" RSE_AUTO_EXIT=1 run-iso >"${BOOT_MAKE_LOG}" 2>&1
 boot_rc=$?
 set -e
 if [[ "${boot_rc}" -ne 0 && "${boot_rc}" -ne 124 ]]; then

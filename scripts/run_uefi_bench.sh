@@ -13,7 +13,7 @@ mkdir -p "$LOG_DIR"
 # Capture serial output from QEMU run.
 set +e
 rm -f "$LOG_FILE"
-QEMU_SERIAL_LOG="$LOG_FILE" timeout 40s make -B -f "$ROOT_DIR/boot/Makefile.uefi" run-iso >"$MAKE_LOG" 2>&1
+QEMU_SERIAL_LOG="$LOG_FILE" timeout 40s make -B -f "$ROOT_DIR/boot/Makefile.uefi" RSE_AUTO_EXIT=1 run-iso >"$MAKE_LOG" 2>&1
 set -e
 
 python3 "$ROOT_DIR/scripts/parse_uefi_bench.py" \

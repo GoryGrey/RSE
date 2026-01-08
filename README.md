@@ -39,6 +39,8 @@ RSE_BENCH_SMOKE=0 make -f boot/Makefile.uefi run-iso # full benchmarks
 make -f boot/Makefile.uefi run                       # framebuffer dashboard
 ```
 
+In the UI, use `B` (bench), `N` (net), `R` (reset), and `P`/`Q` (power off). Headless scripts set `RSE_AUTO_EXIT=1` so the ISO shuts down after benchmarks.
+
 ## Verification / Production Trace
 
 ```bash

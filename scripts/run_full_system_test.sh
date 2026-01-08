@@ -103,7 +103,7 @@ export RSE_BENCH_SMOKE
 rm -f "${BOOT_LOG}"
 set +e
 QEMU_SERIAL_LOG="${BOOT_LOG}" \
-  timeout "${QEMU_BOOT_TIMEOUT}s" make -f "${ROOT_DIR}/boot/Makefile.uefi" run-iso >"${BOOT_MAKE_LOG}" 2>&1
+  timeout "${QEMU_BOOT_TIMEOUT}s" make -f "${ROOT_DIR}/boot/Makefile.uefi" RSE_AUTO_EXIT=1 run-iso >"${BOOT_MAKE_LOG}" 2>&1
 boot_rc=$?
 set -e
 if [[ "${boot_rc}" -ne 0 && "${boot_rc}" -ne 124 ]]; then
@@ -118,7 +118,7 @@ if [[ "${RSE_NET_RAW_TEST}" == "1" ]]; then
   rm -f "${BOOT_LOG_RAW}"
   set +e
   QEMU_SERIAL_LOG="${BOOT_LOG_RAW}" \
-  timeout "${QEMU_BOOT_TIMEOUT}s" make -f "${ROOT_DIR}/boot/Makefile.uefi" RSE_NET_RAW=1 run-iso >"${BOOT_RAW_MAKE_LOG}" 2>&1
+    timeout "${QEMU_BOOT_TIMEOUT}s" make -f "${ROOT_DIR}/boot/Makefile.uefi" RSE_NET_RAW=1 RSE_AUTO_EXIT=1 run-iso >"${BOOT_RAW_MAKE_LOG}" 2>&1
   boot_raw_rc=$?
   set -e
   if [[ "${boot_raw_rc}" -ne 0 && "${boot_raw_rc}" -ne 124 ]]; then

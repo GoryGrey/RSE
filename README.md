@@ -31,6 +31,8 @@ cmake --build build/cpp_kernel
 make -f boot/Makefile.uefi run-iso
 ```
 
+Write `build/boot/rse_efi.iso` to a USB drive to boot on real hardware.
+
 Use the envvars below for specific flows:
 
 ```bash

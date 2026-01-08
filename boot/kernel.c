@@ -538,6 +538,25 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
                                          frame->rdi, frame->rsi, frame->rdx,
                                          frame->r10, frame->r8, frame->r9);
     frame->rax = (uint64_t)rc;
+    if (call == 54) {
+        serial_write("[RSE] int80 connect rc=");
+        if (rc < 0) {
+            serial_write("-");
+            serial_write_u64((uint64_t)(-rc));
+        } else {
+            serial_write_u64((uint64_t)rc);
+        }
+        serial_write("\n");
+        serial_write("[RSE] int80 connect frame rip=");
+        serial_write_u64(frame->rip);
+        serial_write(" rsp=");
+        serial_write_u64(frame->rsp);
+        serial_write(" cs=");
+        serial_write_u64(frame->cs);
+        serial_write(" ss=");
+        serial_write_u64(frame->ss);
+        serial_write("\n");
+    }
     if (call == RSE_SYS_EXIT) {
         uint64_t entry = 0;
         uint64_t stack = 0;
@@ -598,6 +617,9 @@ __attribute__((used)) static void int80_handler(struct int80_frame* frame) {
         }
     }
     (void)rse_os_ring3_apply_signal(frame);
+    if (call == 54) {
+        serial_write("[RSE] int80 connect exit\n");
+    }
     if (kernel_cr3) {
         write_cr3(user_cr3);
     }
@@ -674,6 +696,26 @@ static void exception_return_to_kernel(struct exc_frame *frame) {
 __attribute__((used)) static void gp_handler(struct exc_frame *frame) {
     exception_dump("#GP", frame, 0);
     exception_return_to_kernel(frame);
+}
+
+__attribute__((used)) static void ts_handler(struct exc_frame *frame) {
+    exception_dump("#TS", frame, 0);
+    exception_return_to_kernel(frame);
+}
+
+__attribute__((used)) static void np_handler(struct exc_frame *frame) {
+    exception_dump("#NP", frame, 0);
+    exception_return_to_kernel(frame);
+}
+
+__attribute__((used)) static void ss_handler(struct exc_frame *frame) {
+    exception_dump("#SS", frame, 0);
+    exception_return_to_kernel(frame);
+}
+
+__attribute__((used)) static void df_handler(struct exc_frame *frame) {
+    exception_dump("#DF", frame, 0);
+    hlt_loop();
 }
 
 __attribute__((used)) static void pf_handler(struct exc_frame *frame) {
@@ -753,6 +795,158 @@ __attribute__((naked, unused)) static void irq0_stub(void) {
         "pop %r13\n"
         "pop %r14\n"
         "pop %r15\n"
+        "iretq\n");
+}
+
+__attribute__((naked, unused)) static void df_stub(void) {
+    __asm__ volatile(
+        "push %r15\n"
+        "push %r14\n"
+        "push %r13\n"
+        "push %r12\n"
+        "push %r11\n"
+        "push %r10\n"
+        "push %r9\n"
+        "push %r8\n"
+        "push %rbp\n"
+        "push %rdi\n"
+        "push %rsi\n"
+        "push %rdx\n"
+        "push %rcx\n"
+        "push %rbx\n"
+        "push %rax\n"
+        "mov %rsp, %rdi\n"
+        "call df_handler\n"
+        "pop %rax\n"
+        "pop %rbx\n"
+        "pop %rcx\n"
+        "pop %rdx\n"
+        "pop %rsi\n"
+        "pop %rdi\n"
+        "pop %rbp\n"
+        "pop %r8\n"
+        "pop %r9\n"
+        "pop %r10\n"
+        "pop %r11\n"
+        "pop %r12\n"
+        "pop %r13\n"
+        "pop %r14\n"
+        "pop %r15\n"
+        "add $8, %rsp\n"
+        "iretq\n");
+}
+
+__attribute__((naked, unused)) static void ts_stub(void) {
+    __asm__ volatile(
+        "push %r15\n"
+        "push %r14\n"
+        "push %r13\n"
+        "push %r12\n"
+        "push %r11\n"
+        "push %r10\n"
+        "push %r9\n"
+        "push %r8\n"
+        "push %rbp\n"
+        "push %rdi\n"
+        "push %rsi\n"
+        "push %rdx\n"
+        "push %rcx\n"
+        "push %rbx\n"
+        "push %rax\n"
+        "mov %rsp, %rdi\n"
+        "call ts_handler\n"
+        "pop %rax\n"
+        "pop %rbx\n"
+        "pop %rcx\n"
+        "pop %rdx\n"
+        "pop %rsi\n"
+        "pop %rdi\n"
+        "pop %rbp\n"
+        "pop %r8\n"
+        "pop %r9\n"
+        "pop %r10\n"
+        "pop %r11\n"
+        "pop %r12\n"
+        "pop %r13\n"
+        "pop %r14\n"
+        "pop %r15\n"
+        "add $8, %rsp\n"
+        "iretq\n");
+}
+
+__attribute__((naked, unused)) static void np_stub(void) {
+    __asm__ volatile(
+        "push %r15\n"
+        "push %r14\n"
+        "push %r13\n"
+        "push %r12\n"
+        "push %r11\n"
+        "push %r10\n"
+        "push %r9\n"
+        "push %r8\n"
+        "push %rbp\n"
+        "push %rdi\n"
+        "push %rsi\n"
+        "push %rdx\n"
+        "push %rcx\n"
+        "push %rbx\n"
+        "push %rax\n"
+        "mov %rsp, %rdi\n"
+        "call np_handler\n"
+        "pop %rax\n"
+        "pop %rbx\n"
+        "pop %rcx\n"
+        "pop %rdx\n"
+        "pop %rsi\n"
+        "pop %rdi\n"
+        "pop %rbp\n"
+        "pop %r8\n"
+        "pop %r9\n"
+        "pop %r10\n"
+        "pop %r11\n"
+        "pop %r12\n"
+        "pop %r13\n"
+        "pop %r14\n"
+        "pop %r15\n"
+        "add $8, %rsp\n"
+        "iretq\n");
+}
+
+__attribute__((naked, unused)) static void ss_stub(void) {
+    __asm__ volatile(
+        "push %r15\n"
+        "push %r14\n"
+        "push %r13\n"
+        "push %r12\n"
+        "push %r11\n"
+        "push %r10\n"
+        "push %r9\n"
+        "push %r8\n"
+        "push %rbp\n"
+        "push %rdi\n"
+        "push %rsi\n"
+        "push %rdx\n"
+        "push %rcx\n"
+        "push %rbx\n"
+        "push %rax\n"
+        "mov %rsp, %rdi\n"
+        "call ss_handler\n"
+        "pop %rax\n"
+        "pop %rbx\n"
+        "pop %rcx\n"
+        "pop %rdx\n"
+        "pop %rsi\n"
+        "pop %rdi\n"
+        "pop %rbp\n"
+        "pop %r8\n"
+        "pop %r9\n"
+        "pop %r10\n"
+        "pop %r11\n"
+        "pop %r12\n"
+        "pop %r13\n"
+        "pop %r14\n"
+        "pop %r15\n"
+        "add $8, %rsp\n"
         "iretq\n");
 }
 
@@ -949,10 +1143,10 @@ __attribute__((unused)) static void init_idt(void) {
     for (int i = 0; i < 256; ++i) {
         set_idt_entry(i, ignore_stub, 0x8E);
     }
-    set_idt_entry(0x08, ignore_err_stub, 0x8E);
-    set_idt_entry(0x0A, ignore_err_stub, 0x8E);
-    set_idt_entry(0x0B, ignore_err_stub, 0x8E);
-    set_idt_entry(0x0C, ignore_err_stub, 0x8E);
+    set_idt_entry(0x08, df_stub, 0x8E);
+    set_idt_entry(0x0A, ts_stub, 0x8E);
+    set_idt_entry(0x0B, np_stub, 0x8E);
+    set_idt_entry(0x0C, ss_stub, 0x8E);
     set_idt_entry(0x20, irq0_stub, 0x8E);
     for (int vec = 0x21; vec <= 0x2F; ++vec) {
         set_idt_entry(vec, irq_stub, 0x8E);
@@ -1738,6 +1932,18 @@ static struct net_payload net_queue[NET_QUEUE_DEPTH];
 static uint32_t net_queue_head;
 static uint32_t net_queue_tail;
 static uint32_t net_queue_count;
+#if RSE_NET_RAW
+#define NET_RAW_FRAME_MAX 1600
+struct net_raw_frame {
+    uint32_t len;
+    uint8_t data[NET_RAW_FRAME_MAX];
+};
+static struct net_raw_frame net_raw_queue[NET_QUEUE_DEPTH];
+static uint32_t net_raw_head;
+static uint32_t net_raw_tail;
+static uint32_t net_raw_count;
+static volatile int net_raw_lock;
+#endif
 
 static int net_backend_write(const void *buf, uint32_t len);
 static int net_backend_read(void *buf, uint32_t len);
@@ -3534,6 +3740,59 @@ static int net_ensure_mac(void) {
     return 0;
 }
 
+#if RSE_NET_RAW
+static void net_raw_lock_acquire(void) {
+    while (__sync_lock_test_and_set(&net_raw_lock, 1)) {
+    }
+}
+
+static void net_raw_lock_release(void) {
+    __sync_lock_release(&net_raw_lock);
+}
+
+static int net_raw_queue_push(const uint8_t *data, uint32_t len) {
+    if (!data || len == 0 || len > NET_RAW_FRAME_MAX) {
+        return 0;
+    }
+    net_raw_lock_acquire();
+    if (net_raw_count >= NET_QUEUE_DEPTH) {
+        net_raw_lock_release();
+        return 0;
+    }
+    struct net_raw_frame *slot = &net_raw_queue[net_raw_head];
+    slot->len = len;
+    memcpy(slot->data, data, len);
+    net_raw_head = (net_raw_head + 1) % NET_QUEUE_DEPTH;
+    net_raw_count++;
+    net_raw_lock_release();
+    return 1;
+}
+
+static uint32_t net_raw_queue_pop(uint8_t *buf, uint32_t max_len) {
+    if (!buf || max_len == 0 || net_raw_count == 0) {
+        return 0;
+    }
+    net_raw_lock_acquire();
+    if (net_raw_count == 0) {
+        net_raw_lock_release();
+        return 0;
+    }
+    struct net_raw_frame *slot = &net_raw_queue[net_raw_tail];
+    if (slot->len > max_len) {
+        net_raw_tail = (net_raw_tail + 1) % NET_QUEUE_DEPTH;
+        net_raw_count--;
+        net_raw_lock_release();
+        return 0;
+    }
+    memcpy(buf, slot->data, slot->len);
+    uint32_t len = slot->len;
+    net_raw_tail = (net_raw_tail + 1) % NET_QUEUE_DEPTH;
+    net_raw_count--;
+    net_raw_lock_release();
+    return len;
+}
+#endif
+
 struct __attribute__((packed)) net_eth_hdr {
     uint8_t dst[6];
     uint8_t src[6];
@@ -3572,10 +3831,71 @@ struct __attribute__((packed)) net_arp_pkt {
     uint8_t tpa[4];
 };
 
+#if RSE_NET_RAW
+static int net_ip_is_local(const uint8_t ip[4]) {
+    if (!ip) {
+        return 0;
+    }
+    if (ip[0] == 127 && ip[1] == 0 && ip[2] == 0 && ip[3] == 1) {
+        return 1;
+    }
+    return ip[0] == net_ip_addr[0] &&
+           ip[1] == net_ip_addr[1] &&
+           ip[2] == net_ip_addr[2] &&
+           ip[3] == net_ip_addr[3];
+}
+
+static int net_should_loopback(const void *buf, uint32_t len) {
+    if (!buf || len < sizeof(struct net_eth_hdr)) {
+        return 0;
+    }
+    if (net_ensure_mac() != 0) {
+        const struct net_eth_hdr *eth = (const struct net_eth_hdr *)buf;
+        uint16_t ethertype = net_htons(eth->ethertype);
+        if (ethertype == 0x0800 &&
+            len >= sizeof(struct net_eth_hdr) + sizeof(struct net_ipv4_hdr)) {
+            const struct net_ipv4_hdr *ip = (const struct net_ipv4_hdr *)(eth + 1);
+            return net_ip_is_local(ip->dst);
+        }
+        if (ethertype == 0x0806 &&
+            len >= sizeof(struct net_eth_hdr) + sizeof(struct net_arp_pkt)) {
+            const struct net_arp_pkt *arp = (const struct net_arp_pkt *)(eth + 1);
+            return net_ip_is_local(arp->tpa);
+        }
+        return 0;
+    }
+    const struct net_eth_hdr *eth = (const struct net_eth_hdr *)buf;
+    for (uint32_t i = 0; i < 6; ++i) {
+        if (eth->dst[i] != net_mac_addr[i]) {
+            uint16_t ethertype = net_htons(eth->ethertype);
+            if (ethertype == 0x0800 &&
+                len >= sizeof(struct net_eth_hdr) + sizeof(struct net_ipv4_hdr)) {
+                const struct net_ipv4_hdr *ip = (const struct net_ipv4_hdr *)(eth + 1);
+                return net_ip_is_local(ip->dst);
+            }
+            if (ethertype == 0x0806 &&
+                len >= sizeof(struct net_eth_hdr) + sizeof(struct net_arp_pkt)) {
+                const struct net_arp_pkt *arp = (const struct net_arp_pkt *)(eth + 1);
+                return net_ip_is_local(arp->tpa);
+            }
+            return 0;
+        }
+    }
+    return 1;
+}
+#endif
+
 static int net_backend_write(const void *buf, uint32_t len) {
     if (!buf || len == 0) {
         return -1;
     }
+#if RSE_NET_RAW
+    if (net_should_loopback(buf, len)) {
+        return net_raw_queue_push((const uint8_t *)buf, len)
+            ? (int)len
+            : -(int)RSE_EAGAIN;
+    }
+#endif
     if (g_net_backend == NET_BACKEND_NONE && rse_net_init() != 0) {
         return -1;
     }
@@ -3609,6 +3929,12 @@ static int net_backend_read(void *buf, uint32_t len) {
     if (!buf || len == 0) {
         return -1;
     }
+#if RSE_NET_RAW
+    uint32_t looped = net_raw_queue_pop((uint8_t *)buf, len);
+    if (looped > 0) {
+        return (int)looped;
+    }
+#endif
     if (g_net_backend == NET_BACKEND_NONE && rse_net_init() != 0) {
         return -1;
     }

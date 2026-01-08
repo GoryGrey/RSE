@@ -297,6 +297,11 @@ struct idt_ptr {
 
 static struct tss64 g_tss;
 static uint8_t g_user_kernel_stack[16384] __attribute__((aligned(16)));
+#define IST_STACK_SIZE 4096
+static uint8_t g_df_stack[IST_STACK_SIZE] __attribute__((aligned(16)));
+static uint8_t g_ts_stack[IST_STACK_SIZE] __attribute__((aligned(16)));
+static uint8_t g_np_stack[IST_STACK_SIZE] __attribute__((aligned(16)));
+static uint8_t g_ss_stack[IST_STACK_SIZE] __attribute__((aligned(16)));
 static uint8_t *g_user_code_page;
 static uint8_t *g_user_stack_page;
 static uint64_t g_user_pml4_storage[512] __attribute__((aligned(4096)));
@@ -388,11 +393,12 @@ static void gdt_set_tss_descriptor(int idx, uint64_t base, uint32_t limit) {
     high[7] = 0;
 }
 
-static void set_idt_entry(int vec, void (*handler)(void), uint8_t type_attr) {
+static void set_idt_entry(int vec, void (*handler)(void), uint8_t type_attr,
+                          uint8_t ist) {
     uint64_t addr = (uint64_t)(uintptr_t)handler;
     g_idt[vec].offset_low = (uint16_t)(addr & 0xFFFF);
     g_idt[vec].selector = GDT_KERNEL_CODE;
-    g_idt[vec].ist = 0;
+    g_idt[vec].ist = ist;
     g_idt[vec].type_attr = type_attr;
     g_idt[vec].offset_mid = (uint16_t)((addr >> 16) & 0xFFFF);
     g_idt[vec].offset_high = (uint32_t)(addr >> 32);
@@ -1141,21 +1147,21 @@ static bool build_user_page_table(uint64_t code_vaddr, uint64_t stack_vaddr,
 __attribute__((unused)) static void init_idt(void) {
     memset(g_idt, 0, sizeof(g_idt));
     for (int i = 0; i < 256; ++i) {
-        set_idt_entry(i, ignore_stub, 0x8E);
+        set_idt_entry(i, ignore_stub, 0x8E, 0);
     }
-    set_idt_entry(0x08, df_stub, 0x8E);
-    set_idt_entry(0x0A, ts_stub, 0x8E);
-    set_idt_entry(0x0B, np_stub, 0x8E);
-    set_idt_entry(0x0C, ss_stub, 0x8E);
-    set_idt_entry(0x20, irq0_stub, 0x8E);
+    set_idt_entry(0x08, df_stub, 0x8E, 1);
+    set_idt_entry(0x0A, ts_stub, 0x8E, 2);
+    set_idt_entry(0x0B, np_stub, 0x8E, 3);
+    set_idt_entry(0x0C, ss_stub, 0x8E, 4);
+    set_idt_entry(0x20, irq0_stub, 0x8E, 0);
     for (int vec = 0x21; vec <= 0x2F; ++vec) {
-        set_idt_entry(vec, irq_stub, 0x8E);
+        set_idt_entry(vec, irq_stub, 0x8E, 0);
     }
-    set_idt_entry(0x80, int80_stub, 0xEE);
-    set_idt_entry(0x0D, gp_stub, 0x8E);
-    set_idt_entry(0x0E, pf_stub, 0x8E);
-    set_idt_entry(0x11, ignore_err_stub, 0x8E);
-    set_idt_entry(0x1E, ignore_err_stub, 0x8E);
+    set_idt_entry(0x80, int80_stub, 0xEE, 0);
+    set_idt_entry(0x0D, gp_stub, 0x8E, 0);
+    set_idt_entry(0x0E, pf_stub, 0x8E, 0);
+    set_idt_entry(0x11, ignore_err_stub, 0x8E, 0);
+    set_idt_entry(0x1E, ignore_err_stub, 0x8E, 0);
     g_idt_desc.limit = (uint16_t)(sizeof(g_idt) - 1);
     g_idt_desc.base = (uint64_t)(uintptr_t)&g_idt[0];
     __asm__ volatile("lidt %0" : : "m"(g_idt_desc));
@@ -1180,6 +1186,10 @@ static void init_timer_preemption(void) {
 static void init_tss(void) {
     memset(&g_tss, 0, sizeof(g_tss));
     g_tss.rsp0 = (uint64_t)(uintptr_t)g_user_kernel_stack + sizeof(g_user_kernel_stack);
+    g_tss.ist1 = (uint64_t)(uintptr_t)(g_df_stack + IST_STACK_SIZE);
+    g_tss.ist2 = (uint64_t)(uintptr_t)(g_ts_stack + IST_STACK_SIZE);
+    g_tss.ist3 = (uint64_t)(uintptr_t)(g_np_stack + IST_STACK_SIZE);
+    g_tss.ist4 = (uint64_t)(uintptr_t)(g_ss_stack + IST_STACK_SIZE);
     g_tss.iomap_base = sizeof(g_tss);
     gdt_set_tss_descriptor(8, (uint64_t)(uintptr_t)&g_tss, sizeof(g_tss) - 1);
     __asm__ volatile("ltr %0" : : "r"((uint16_t)GDT_TSS));

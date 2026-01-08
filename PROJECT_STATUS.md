@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: January 02, 2026 (ring3 user-mode signal delivery via handler trampoline; ring3 scheduler skips stopped/blocked/waiting processes; sys_kill supports SIGSTOP/SIGCONT stop-resume (ring3-aware) and queues pending user signals with wake for blocked/sleeping targets; sys_wait returns EINTR when a pending signal exists; kernel-mode custom signal handlers for cooperative tasks; sys_wait blocks current process when waiting for child (wakes on zombie); net frame send rejects null payload; NET_LITE close retries for FIN; raw TCP drops payloads when recv buffer is full (no partial accept) and emits window update on drain; UEFI raw TCP smoke test when RSE_NET_RAW=1; UEFI GDT compatibility segments for loader selectors; PIT timer preemption; ring3 sleep/yield + timeslice; W^X mprotect checks; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + EOF/EPIPE + RST refused + seq/ack retransmit + outbound queue + overflow drops + conn collision checks; raw TCP socket backend (ARP/IPv4/TCP) for AF_INET when RSE_NET_RAW=1 with retransmit/backoff, FIN retry, window backpressure, recv buffer window updates, ARP cache aging, close sweep, and pending handshake cleanup; sys_kill now enforces uid (root or same uid) even for sig=0 probe; sys_fork inherits uid/gid + signal handlers; sys_ps filters by uid for non-root callers; exec resets signal handlers to default (ignores preserved); virtio-net TX backpressure returns EAGAIN; virtio-net RX length/id guards; net reads return EAGAIN on empty; net queue drops + RX/TX error counters surfaced; mergeable RX disabled pending reassembly; virtio-net UEFI fallback only on hard errors; BlockFS checksum recovery + slot zeroing on create/remove + scrub on checksum mismatch; BlockFS sanitize now scrubs invalid entries and zeroes stale slots (mode bits masked to 0777); BlockFS journal recovery test hook (non-kernel); uid/gid ownership enforced for MemFS/BlockFS with stat reporting; CLOEXEC dup hygiene; persist dir open returns EISDIR; exec requires exec-bit; ancestor exec enforced for memfs/persist path traversal; signal ignore/default; stat parent-exec gating; workload yields; directory listing sort; ISO workflow scripts; logged test heartbeat; quick boot test runner)
+Last Updated: January 08, 2026 (ring3 user-mode signal delivery via handler trampoline; ring3 scheduler skips stopped/blocked/waiting processes; sys_kill supports SIGSTOP/SIGCONT stop-resume (ring3-aware) and queues pending user signals with wake for blocked/sleeping targets; sys_wait returns EINTR when a pending signal exists; kernel-mode custom signal handlers for cooperative tasks; sys_wait blocks current process when waiting for child (wakes on zombie); net frame send rejects null payload; NET_LITE close retries for FIN; raw TCP drops payloads when recv buffer is full (no partial accept) and emits window update on drain; UEFI raw TCP smoke test when RSE_NET_RAW=1; UEFI GDT compatibility segments for loader selectors; PIT timer preemption; ring3 sleep/yield + timeslice; W^X mprotect checks; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + EOF/EPIPE + RST refused + seq/ack retransmit + outbound queue + overflow drops + conn collision checks; raw TCP socket backend (ARP/IPv4/TCP) for AF_INET when RSE_NET_RAW=1 with retransmit/backoff, FIN retry, window backpressure, recv buffer window updates, ARP cache aging, close sweep, and pending handshake cleanup; sys_kill now enforces uid (root or same uid) even for sig=0 probe; sys_fork inherits uid/gid + signal handlers; sys_ps filters by uid for non-root callers; exec resets signal handlers to default (ignores preserved); virtio-net TX backpressure returns EAGAIN; virtio-net RX length/id guards; net reads return EAGAIN on empty; net queue drops + RX/TX error counters surfaced; mergeable RX disabled pending reassembly; virtio-net UEFI fallback only on hard errors; BlockFS checksum recovery + slot zeroing on create/remove + scrub on checksum mismatch; BlockFS sanitize now scrubs invalid entries and zeroes stale slots (mode bits masked to 0777); BlockFS journal recovery test hook (non-kernel); uid/gid ownership enforced for MemFS/BlockFS with stat reporting; CLOEXEC dup hygiene; persist dir open returns EISDIR; exec requires exec-bit; ancestor exec enforced for memfs/persist path traversal; signal ignore/default; stat parent-exec gating; workload yields; directory listing sort; ISO workflow scripts; quick boot test runner; UI power-off action and auto-exit support for headless runs; boot config logged on serial)
 
 ---
 
@@ -46,6 +46,8 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - Projection exchange across 3 VMs via IVSHMEM shared memory.
 - BraidShell demo with telemetry sourced from real logs.
 - ISO build/run scripts for bootable testing (`scripts/build_iso.sh`, `scripts/run_iso.sh`).
+- UI POWER icon + keyboard shortcuts (P/Q) trigger `rse_poweroff` for clean shutdowns; headless runs default to `RSE_AUTO_EXIT=1`.
+- Boot config flags (net/raw/smoke/auto-exit) are logged on startup for reproducible traces.
 
 Design guardrail:
 - Bootstrapping userland must stay true to the braided, decentralized model: any bootstrap init is minimal, non-monolithic, and must not hinder torus autonomy or system capabilities.
@@ -56,6 +58,7 @@ Design guardrail:
 - `./scripts/run_quick_system_test.sh` (UEFI boot + smoke benchmarks only).
 - `./scripts/run_linux_baseline.sh` (host baseline).
 - Raw TCP full system verification: `RSE_NET_RAW_TEST=1 ./scripts/run_full_system_test.sh`.
+- Latest full system run (terminal, QEMU_BOOT_TIMEOUT=300): `build/boot/boot.log` (Jan 08, 2026; raw TCP smoke + benchmarks).
 - Latest full system run log: `/tmp/rse_full_test.log` (Jan 02, 2026; full run, default timeouts).
 - Latest projection exchange logs: `benchmarks/net_exchange` (Jan 02, 2026).
 - Prior short-timeout run: `/tmp/rse_net_exchange` (Jan 02, 2026; TIMEOUT_BOOT=90).
@@ -69,6 +72,8 @@ Design guardrail:
 
 Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal and redirect logs outside the repo:
 `NET_LOG_DIR=/tmp/rse_net_exchange TIMEOUT_EXCHANGE=90 TIMEOUT_BOOT=120 ./scripts/run_full_system_test.sh`
+
+Note: The Codex CLI imposes a 120s command cap; use a terminal for full headless boots with `QEMU_BOOT_TIMEOUT=300`.
 
 ### Known Limitations
 

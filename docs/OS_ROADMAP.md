@@ -107,6 +107,7 @@ Success criteria:
 - Use real logs only; no synthetic numbers.
 - Run `./scripts/run_full_system_test.sh` and `./scripts/run_linux_baseline.sh` for snapshots.
 - Optional raw TCP pass: `RSE_NET_RAW_TEST=1 ./scripts/run_full_system_test.sh`.
+- For headless boots with long benchmarks, set `QEMU_BOOT_TIMEOUT=300` (or higher).
 - Quick UEFI boot check: `./scripts/run_quick_system_test.sh` (smoke benchmarks only).
 - Default runs use smoke mode (`RSE_BENCH_SMOKE=1`) to validate real workloads; set `RSE_BENCH_SMOKE=0` for full UEFI/virtio/net micro-benchmarks.
 - Keep benchmarks apples-to-apples before claiming comparisons.
@@ -116,6 +117,7 @@ Success criteria:
 - Build: `./scripts/build_iso.sh`
 - Run: `./scripts/run_iso.sh`
 - Scripted workloads: `boot/boot.rc.sample` → `/persist/boot.rc`
+- UI shutdown: `P`/`Q` in the dashboard; headless runs use `RSE_AUTO_EXIT=1`.
 
 ---
 

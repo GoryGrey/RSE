@@ -417,7 +417,11 @@ struct int80_frame {
 #define USER_STACK_SIZE 0x10000ull
 #define USER_STACK_TOP (USER_VADDR_BASE + USER_WINDOW_SIZE - 0x1000ull)
 #define USER_STACK_VADDR (USER_STACK_TOP - USER_STACK_SIZE)
+#if RSE_SINGLE_TORUS
+#define RSE_TORUS_COUNT 1u
+#else
 #define RSE_TORUS_COUNT 3u
+#endif
 
 static bool build_user_page_table(uint64_t code_vaddr, uint64_t stack_vaddr,
                                   uint64_t code_phys, uint64_t stack_phys);
@@ -5733,6 +5737,8 @@ static void kmain(struct rse_boot_info *boot_info) {
     serial_write_u64((uint64_t)RSE_AUTO_EXIT);
     serial_write(" rawtcp_only=");
     serial_write_u64((uint64_t)RSE_RAWTCP_ONLY);
+    serial_write(" single_torus=");
+    serial_write_u64((uint64_t)RSE_SINGLE_TORUS);
     serial_write("\n");
     g_kernel_cr3 = read_cr3();
     init_gdt_user_segments();

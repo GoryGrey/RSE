@@ -1,5 +1,5 @@
 # RSE PROJECT STATUS
-Last Updated: January 08, 2026 (ring3 user-mode signal delivery via handler trampoline; ring3 scheduler skips stopped/blocked/waiting processes; sys_kill supports SIGSTOP/SIGCONT stop-resume (ring3-aware) and queues pending user signals with wake for blocked/sleeping targets; sys_wait returns EINTR when a pending signal exists; kernel-mode custom signal handlers for cooperative tasks; sys_wait blocks current process when waiting for child (wakes on zombie); net frame send rejects null payload; NET_LITE close retries for FIN; raw TCP drops payloads when recv buffer is full (no partial accept) and emits window update on drain; UEFI raw TCP smoke test when RSE_NET_RAW=1; UEFI GDT compatibility segments for loader selectors; PIT timer preemption; ring3 sleep/yield + timeslice; W^X mprotect checks; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + EOF/EPIPE + RST refused + seq/ack retransmit + outbound queue + overflow drops + conn collision checks; raw TCP socket backend (ARP/IPv4/TCP) for AF_INET when RSE_NET_RAW=1 with retransmit/backoff, FIN retry, window backpressure, recv buffer window updates, ARP cache aging, close sweep, and pending handshake cleanup; sys_kill now enforces uid (root or same uid) even for sig=0 probe; sys_fork inherits uid/gid + signal handlers; sys_ps filters by uid for non-root callers; exec resets signal handlers to default (ignores preserved); virtio-net TX backpressure returns EAGAIN; virtio-net RX length/id guards; net reads return EAGAIN on empty; net queue drops + RX/TX error counters surfaced; mergeable RX disabled pending reassembly; virtio-net UEFI fallback only on hard errors; BlockFS checksum recovery + slot zeroing on create/remove + scrub on checksum mismatch; BlockFS sanitize now scrubs invalid entries and zeroes stale slots (mode bits masked to 0777); BlockFS journal recovery test hook (non-kernel); uid/gid ownership enforced for MemFS/BlockFS with stat reporting; CLOEXEC dup hygiene; persist dir open returns EISDIR; exec requires exec-bit; ancestor exec enforced for memfs/persist path traversal; signal ignore/default; stat parent-exec gating; workload yields; directory listing sort; ISO workflow scripts; quick boot test runner; UI power-off action and auto-exit support for headless runs; boot config logged on serial)
+Last Updated: January 08, 2026 (ring3 user-mode signal delivery via handler trampoline; ring3 scheduler skips stopped/blocked/waiting processes; sys_kill supports SIGSTOP/SIGCONT stop-resume (ring3-aware) and queues pending user signals with wake for blocked/sleeping targets; sys_wait returns EINTR when a pending signal exists; kernel-mode custom signal handlers for cooperative tasks; sys_wait blocks current process when waiting for child (wakes on zombie); net frame send rejects null payload; NET_LITE close retries for FIN; raw TCP drops payloads when recv buffer is full (no partial accept) and emits window update on drain; UEFI raw TCP smoke test when RSE_NET_RAW=1; UEFI GDT compatibility segments for loader selectors; PIT timer preemption; ring3 sleep/yield + timeslice; W^X mprotect checks; user-pointer bounds tightened; ring3 maps user-only pages; NET_LITE connect retries/backlog/FIN handling + EOF/EPIPE + RST refused + seq/ack retransmit + outbound queue + overflow drops + conn collision checks; raw TCP socket backend (ARP/IPv4/TCP) for AF_INET when RSE_NET_RAW=1 with retransmit/backoff, FIN retry, window backpressure, recv buffer window updates, ARP cache aging, close sweep, and pending handshake cleanup; sys_kill now enforces uid (root or same uid) even for sig=0 probe; sys_fork inherits uid/gid + signal handlers; sys_ps filters by uid for non-root callers; exec resets signal handlers to default (ignores preserved); virtio-net TX backpressure returns EAGAIN; virtio-net RX length/id guards; net reads return EAGAIN on empty; net queue drops + RX/TX error counters surfaced; mergeable RX disabled pending reassembly; virtio-net UEFI fallback only on hard errors; BlockFS checksum recovery + slot zeroing on create/remove + scrub on checksum mismatch; BlockFS sanitize now scrubs invalid entries and zeroes stale slots (mode bits masked to 0777); BlockFS journal recovery test hook (non-kernel); uid/gid ownership enforced for MemFS/BlockFS with stat reporting; CLOEXEC dup hygiene; persist dir open returns EISDIR; exec requires exec-bit; ancestor exec enforced for memfs/persist path traversal; signal ignore/default; stat parent-exec gating; workload yields; directory listing sort; ISO workflow scripts; quick boot test runner; UI power-off action and auto-exit support for headless runs; boot config logged on serial; single-torus boot option via RSE_SINGLE_TORUS=1)
 
 ---
 
@@ -48,6 +48,7 @@ This status covers both the Betti-RDL runtime and the OS scaffold in this repo.
 - ISO build/run scripts for bootable testing (`scripts/build_iso.sh`, `scripts/run_iso.sh`).
 - UI POWER icon + keyboard shortcuts (P/Q) trigger `rse_poweroff` for clean shutdowns; headless runs default to `RSE_AUTO_EXIT=1`.
 - Boot config flags (net/raw/smoke/auto-exit) are logged on startup for reproducible traces.
+- Single-torus boot mode (`RSE_SINGLE_TORUS=1`) skips braid/projection exchange and multi-torus net/shm tests for single-VM runs.
 
 Design guardrail:
 - Bootstrapping userland must stay true to the braided, decentralized model: any bootstrap init is minimal, non-monolithic, and must not hinder torus autonomy or system capabilities.
@@ -59,6 +60,8 @@ Design guardrail:
 - `./scripts/run_linux_baseline.sh` (host baseline).
 - Raw TCP full system verification: `RSE_NET_RAW_TEST=1 ./scripts/run_full_system_test.sh`.
 - Latest full system run (terminal, QEMU_BOOT_TIMEOUT=300): `build/boot/boot.log` (Jan 08, 2026; raw TCP smoke + benchmarks).
+- Single-torus UEFI run: `benchmarks/uefi_single_torus.log` (RSE_SINGLE_TORUS=1; benchmarks + auto shutdown).
+- Single-torus raw-TCP run: `benchmarks/uefi_single_torus_rawtcp.log` (RSE_SINGLE_TORUS=1 RSE_NET_RAW=1; benchmarks + auto shutdown).
 - Latest full system run log: `/tmp/rse_full_test.log` (Jan 02, 2026; full run, default timeouts).
 - Latest projection exchange logs: `benchmarks/net_exchange` (Jan 02, 2026).
 - Prior short-timeout run: `/tmp/rse_net_exchange` (Jan 02, 2026; TIMEOUT_BOOT=90).
@@ -74,6 +77,7 @@ Note: If the IDE freezes during the 3-VM exchange step, run it from a terminal a
 `NET_LOG_DIR=/tmp/rse_net_exchange TIMEOUT_EXCHANGE=90 TIMEOUT_BOOT=120 ./scripts/run_full_system_test.sh`
 
 Note: The Codex CLI imposes a 120s command cap; use a terminal for full headless boots with `QEMU_BOOT_TIMEOUT=300`.
+Note: For hardware apples-to-apples, follow `docs/HARDWARE_BENCH.md` and save logs in `benchmarks/`.
 
 ### Known Limitations
 
@@ -122,19 +126,19 @@ Key property: no global controller; coordination is constant-size and cyclic.
 
 ## Performance Snapshot (Real Logs Only)
 
-Latest snapshot (January 02, 2026):
+Latest snapshot (single-torus UEFI QEMU, January 08, 2026):
 
 | Metric | RSE (UEFI/QEMU, TSC-calibrated) | Linux baseline (host) | Notes |
 |--------|----------------------------------|------------------------|-------|
-| Compute | 17 ns/op (7,025,530 ns total) | 580.5 ns/op | Smoke run (UEFI) |
-| Memory copy | 5 ns/byte (385,899,666 ns total) | 171.3 ns/byte | Smoke run (UEFI) |
-| File I/O | RAMFS 21,825 ns/op | 30,625 ns/op | Smoke run (UEFI) |
-| HTTP loopback | skipped (smoke) | blocked (permission denied) | Not run in smoke mode |
+| Compute | 15 ns/op (6,093,453 ns total) | 488 ns/op | Single-torus full bench |
+| Memory copy | 5 ns/byte (340,520,967 ns total) | 157 ns/byte | Single-torus full bench |
+| File I/O | RAMFS 20,086 ns/op | 30,163 ns/op | Single-torus full bench |
+| HTTP loopback | 274 ns/req | 232,180 ns/req | Not apples-to-apples (kernel loopback vs Linux userspace/net stack) |
 
 Notes:
 - RSE ns values are derived from TSC calibration via UEFI `Stall`; treat as approximate.
-- Source logs: `build/boot/full_test.log` (RSE; logged run) and `benchmarks/linux_baseline.json` (Linux).
-- Capture fresh runs with `./scripts/run_full_system_test_logged.sh` and `./scripts/run_linux_baseline.sh`.
+- Source logs: `benchmarks/uefi_single_torus.log` (RSE) and `benchmarks/linux_baseline.json` (Linux).
+- For hardware runs, follow `docs/HARDWARE_BENCH.md` and save logs in `benchmarks/`.
 
 ---
 
@@ -143,10 +147,13 @@ Notes:
 - Full system verification: `./scripts/run_full_system_test.sh`
 - Full system verification (logged): `LOG_PATH=/tmp/rse_full_test.log ./scripts/run_full_system_test_logged.sh`
 - Quick UEFI verification: `./scripts/run_quick_system_test.sh`
+- Single-torus UEFI boot: `RSE_SINGLE_TORUS=1 make -f boot/Makefile.uefi run-iso`
+- Single-torus UEFI + raw TCP: `RSE_SINGLE_TORUS=1 RSE_NET_RAW=1 make -f boot/Makefile.uefi run-iso`
 - Logged runs can show liveness: `LIVE_TAIL=1 HEARTBEAT_SECS=15 ./scripts/run_full_system_test_logged.sh`
 - Smoke benchmark default: `RSE_BENCH_SMOKE=1` (set `RSE_BENCH_SMOKE=0` for full UEFI/virtio/net micro-benchmarks).
 - Projection exchange only: `./scripts/run_projection_exchange.sh`
 - Host baseline: `./scripts/run_linux_baseline.sh`
+- Host baseline (HTTP loopback requires root): `sudo ./scripts/run_linux_baseline.sh`
 - BraidShell telemetry: set `RSE_METRICS_PATH` to a real metrics log.
 
 Build kernel/tests:

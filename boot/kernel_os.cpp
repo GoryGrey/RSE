@@ -47,6 +47,9 @@ static uint8_t heap_area[8 * 1024 * 1024];
 static size_t heap_offset;
 alignas(4096) static uint8_t phys_mem[16 * 1024 * 1024];
 static constexpr uint32_t kTorusCount = 3;
+static inline uint32_t active_torus_count() {
+    return RSE_SINGLE_TORUS ? 1u : kTorusCount;
+}
 static constexpr uint32_t kExtraProcs = 4;
 static constexpr uint32_t kRing3Slots = 3;
 static constexpr uint64_t kRing3TimeSlice = 64;
@@ -733,6 +736,10 @@ extern "C" uint64_t rse_block_total_blocks(void);
 extern "C" int rse_net_init(void);
 
 extern "C" void rse_braid_smoke(void) {
+    if (active_torus_count() < 3) {
+        serial_write("[RSE] braided smoke skipped (single torus)\n");
+        return;
+    }
     serial_write("[RSE] braided smoke start\n");
 
     alignas(braided::BraidedKernel) static uint8_t torus_a_storage[sizeof(braided::BraidedKernel)];
@@ -1030,7 +1037,7 @@ static int os_ps_dump(char *buf, uint32_t len) {
     };
 
     bool wrote = false;
-    for (uint32_t torus_id = 0; torus_id < kTorusCount; ++torus_id) {
+    for (uint32_t torus_id = 0; torus_id < torus_count; ++torus_id) {
         TorusRuntime &rt = g_runtimes[torus_id];
         if (!rt.scheduler) {
             continue;
@@ -1355,24 +1362,30 @@ extern "C" int rse_os_ring3_context(uint64_t* entry_out, uint64_t* stack_out) {
 }
 
 static void braid_log_loads(TorusRuntime* runtimes) {
+    const uint32_t torus_count = active_torus_count();
     serial_write("[RSE] torus load a=");
     serial_write_u64(runtimes[0].scheduler->getProcessCount());
-    serial_write(" b=");
-    serial_write_u64(runtimes[1].scheduler->getProcessCount());
-    serial_write(" c=");
-    serial_write_u64(runtimes[2].scheduler->getProcessCount());
+    if (torus_count > 1) {
+        serial_write(" b=");
+        serial_write_u64(runtimes[1].scheduler->getProcessCount());
+    }
+    if (torus_count > 2) {
+        serial_write(" c=");
+        serial_write_u64(runtimes[2].scheduler->getProcessCount());
+    }
     serial_write("\n");
 }
 
 [[maybe_unused]] static void braid_balance(TorusRuntime* runtimes) {
     uint32_t loads[kTorusCount] = {};
-    for (uint32_t i = 0; i < kTorusCount; ++i) {
+    const uint32_t torus_count = active_torus_count();
+    for (uint32_t i = 0; i < torus_count; ++i) {
         loads[i] = runtimes[i].scheduler->getProcessCount();
     }
 
     uint32_t max_idx = 0;
     uint32_t min_idx = 0;
-    for (uint32_t i = 1; i < kTorusCount; ++i) {
+    for (uint32_t i = 1; i < torus_count; ++i) {
         if (loads[i] > loads[max_idx]) {
             max_idx = i;
         }
@@ -1467,6 +1480,10 @@ static braided::Projection os_make_projection(uint32_t torus_id, const TorusRunt
 
 #if RSE_NET_EXCHANGE
 static void os_net_exchange(TorusRuntime* runtimes) {
+    if (active_torus_count() < 2) {
+        serial_write("[RSE] net projection skipped (single torus)\n");
+        return;
+    }
     static uint64_t seq = 1;
     static bool inited = false;
     const uint32_t local_id = (RSE_TORUS_ID < kTorusCount) ? RSE_TORUS_ID : 0;
@@ -1566,6 +1583,10 @@ struct ShmRegion {
 };
 
 static void os_shm_exchange(TorusRuntime* runtimes) {
+    if (active_torus_count() < 2) {
+        serial_write("[RSE] shm projection skipped (single torus)\n");
+        return;
+    }
     static ShmRegion* region = nullptr;
     static uint64_t seq = 1;
     static uint64_t last_seen[kTorusCount];
@@ -1753,6 +1774,10 @@ static void os_apply_constraints(TorusRuntime* runtimes, uint32_t src, uint32_t 
 }
 
 static void os_braid_exchange(TorusRuntime* runtimes, uint64_t timestamp) {
+    if (active_torus_count() < 3) {
+        serial_write("[RSE] os braid exchange skipped (single torus)\n");
+        return;
+    }
     uint32_t src = 0;
     uint32_t dst_a = 1;
     uint32_t dst_b = 2;
@@ -1806,8 +1831,9 @@ extern "C" void rse_os_run(void) {
     const uint32_t block_size = has_block ? rse_block_size() : 0;
     const uint64_t block_total = has_block ? rse_block_total_blocks() : 0;
     const bool has_net = (rse_net_init() == 0);
+    const uint32_t torus_count = active_torus_count();
 
-    for (uint32_t torus_id = 0; torus_id < kTorusCount; ++torus_id) {
+    for (uint32_t torus_id = 0; torus_id < torus_count; ++torus_id) {
         TorusRuntime& rt = runtimes[torus_id];
         rt.memfs = create_memfs(torus_id);
         rt.vfs = create_vfs(torus_id, rt.memfs);
@@ -1878,7 +1904,7 @@ extern "C" void rse_os_run(void) {
         user_procs[0][1 + i] = extra;
     }
 
-    for (uint32_t torus_id = 0; torus_id < kTorusCount; ++torus_id) {
+    for (uint32_t torus_id = 0; torus_id < torus_count; ++torus_id) {
         TorusRuntime& rt = runtimes[torus_id];
         for (uint32_t slot = 0; slot < kRing3Slots; ++slot) {
             if (g_ring3_procs[torus_id][slot]) {
@@ -1925,7 +1951,7 @@ extern "C" void rse_os_run(void) {
         .ps = os_ps_dump
     };
 
-    for (uint32_t torus_id = 0; torus_id < kTorusCount; ++torus_id) {
+    for (uint32_t torus_id = 0; torus_id < torus_count; ++torus_id) {
         for (uint32_t slot = 0; slot < (1 + kExtraProcs); ++slot) {
             if (!user_procs[torus_id][slot]) {
                 continue;
@@ -1944,7 +1970,7 @@ extern "C" void rse_os_run(void) {
         }
     }
 
-    for (uint32_t torus_id = 0; torus_id < kTorusCount; ++torus_id) {
+    for (uint32_t torus_id = 0; torus_id < torus_count; ++torus_id) {
         serial_write("[RSE] torus init ");
         serial_write_u64(torus_id);
         serial_write("\n");
@@ -1956,7 +1982,7 @@ extern "C" void rse_os_run(void) {
 
     serial_write("[RSE] userspace run start\n");
     for (uint32_t step = 0; step < 48; ++step) {
-        for (uint32_t torus_id = 0; torus_id < kTorusCount; ++torus_id) {
+        for (uint32_t torus_id = 0; torus_id < torus_count; ++torus_id) {
             runtimes[torus_id].scheduler->tick();
         }
     }
@@ -1966,7 +1992,7 @@ extern "C" void rse_os_run(void) {
     serial_write("[RSE] braid scheduler start\n");
     braid_log_loads(runtimes);
     for (uint32_t step = 0; step < 6; ++step) {
-        for (uint32_t torus_id = 0; torus_id < kTorusCount; ++torus_id) {
+        for (uint32_t torus_id = 0; torus_id < torus_count; ++torus_id) {
             runtimes[torus_id].scheduler->tick();
         }
         if ((step + 1) % 2 == 0) {

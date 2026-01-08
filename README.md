@@ -1,6 +1,6 @@
 # RSE (Resilient Spatial Execution)
 
-RSE is an experimental OS + runtime that explores braided-torus coordination (A → B → C → A) instead of a global scheduler, keeping coordination bounded while each torus remains autonomous. This repository bundles:
+RSE is an experimental OS + runtime that explores braided-torus coordination (A → B → C → A) instead of a global scheduler, keeping coordination bounded while each torus remains autonomous. It produces a bootable UEFI ISO that runs real workloads and benchmarks. This repository bundles:
 
 - **Runtime:** Betti-RDL single-torus engine plus braided projection exchange routines.
 - **OS:** Bootable UEFI kernel with syscalls, VFS, virtio drivers, raw TCP, and a lightweight ring-3 supervisor for deterministic workloads and diagnostics.
@@ -36,6 +36,7 @@ Use the envvars below for specific flows:
 ```bash
 RSE_NET_RAW=1 make -f boot/Makefile.uefi run-iso     # raw TCP smoke
 RSE_BENCH_SMOKE=0 make -f boot/Makefile.uefi run-iso # full benchmarks
+RSE_SINGLE_TORUS=1 make -f boot/Makefile.uefi run-iso # single-torus smoke
 make -f boot/Makefile.uefi run                       # framebuffer dashboard
 ```
 
@@ -54,6 +55,12 @@ This rebuilds the native tests, braided demo, and boots the headless UEFI ISO wi
 - `benchmarks/net_exchange/torus0.log` … `torus2.log` – projection exchange logs.
 
 Keep these logs with release notes as the production trace for the bootable ISO.
+
+## Hardware Benchmarking (Apples-to-Apples)
+
+For real hardware comparisons (not QEMU), follow:
+
+- `docs/HARDWARE_BENCH.md`
 
 ## Projection Exchange
 

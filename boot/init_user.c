@@ -15,6 +15,11 @@
 #define SYS_GETPID    5
 #define SYS_TORUS_ID  9
 #define SYS_YIELD     34
+#define SYS_SOCKET    50
+#define SYS_BIND      51
+#define SYS_LISTEN    52
+#define SYS_ACCEPT    53
+#define SYS_CONNECT   54
 
 #define INIT_TORUS0_COMPUTE_ITERS 1000000ULL
 #define INIT_TORUS1_COMPUTE_ITERS 2000000ULL
@@ -34,12 +39,34 @@
 #define O_CREAT   0x0040
 #define O_TRUNC   0x0200
 
+#define EAGAIN        11
+#define EISCONN       106
+#define ECONNREFUSED  111
+
+#ifndef RSE_NET_RAW
+#define RSE_NET_RAW 0
+#endif
+#ifndef RSE_RAWTCP_ONLY
+#define RSE_RAWTCP_ONLY 0
+#endif
+
+#define RSE_AF_INET        2
+#define RSE_SOCK_STREAM    1
+#define RSE_PROTO_TCP      2
+#define RSE_ADDR_LOOPBACK  0x7F000001u
+
 struct rse_stat {
     uint64_t size;
     uint32_t mode;
     uint32_t type;
     uint32_t uid;
     uint32_t gid;
+};
+
+struct rse_sockaddr {
+    uint16_t family;
+    uint16_t port;
+    uint32_t addr;
 };
 
 static inline int64_t rse_syscall6(uint64_t num, uint64_t a1, uint64_t a2,
@@ -118,6 +145,26 @@ static inline int64_t sys_yield(void) {
     return rse_syscall6(SYS_YIELD, 0, 0, 0, 0, 0, 0);
 }
 
+static inline int64_t sys_socket(uint16_t domain, uint16_t type, uint16_t protocol) {
+    return rse_syscall6(SYS_SOCKET, domain, type, protocol, 0, 0, 0);
+}
+
+static inline int64_t sys_bind(int32_t fd, const struct rse_sockaddr* addr, uint32_t len) {
+    return rse_syscall6(SYS_BIND, (uint64_t)fd, (uint64_t)addr, len, 0, 0, 0);
+}
+
+static inline int64_t sys_listen(int32_t fd, uint32_t backlog) {
+    return rse_syscall6(SYS_LISTEN, (uint64_t)fd, backlog, 0, 0, 0, 0);
+}
+
+static inline int64_t sys_accept(int32_t fd, struct rse_sockaddr* addr, uint32_t* len) {
+    return rse_syscall6(SYS_ACCEPT, (uint64_t)fd, (uint64_t)addr, (uint64_t)len, 0, 0, 0);
+}
+
+static inline int64_t sys_connect(int32_t fd, const struct rse_sockaddr* addr, uint32_t len) {
+    return rse_syscall6(SYS_CONNECT, (uint64_t)fd, (uint64_t)addr, len, 0, 0, 0);
+}
+
 static inline void maybe_yield(uint64_t step, uint64_t stride) {
     if (stride != 0 && step != 0 && (step % stride) == 0) {
         sys_yield();
@@ -180,6 +227,17 @@ static void write_u64(uint64_t value) {
         buf[idx - 1 - i] = t;
     }
     sys_write(1, buf, idx);
+}
+
+static void write_rc(const char* label, int64_t rc) {
+    write_str(label);
+    if (rc < 0) {
+        write_str("-");
+        write_u64((uint64_t)(-rc));
+    } else {
+        write_u64((uint64_t)rc);
+    }
+    write_str("\n");
 }
 
 static uint64_t xorshift64(uint64_t* state) {
@@ -525,6 +583,160 @@ static void run_net0(uint32_t iters) {
     }
 }
 
+#if RSE_NET_RAW
+static int rawtcp_read_exact(int32_t fd, uint8_t* buf, uint32_t len) {
+    uint32_t offset = 0;
+    for (uint32_t attempt = 0; attempt < 64 && offset < len; ++attempt) {
+        int64_t got = sys_read(fd, buf + offset, len - offset);
+        if (got > 0) {
+            offset += (uint32_t)got;
+            continue;
+        }
+        if (got == -EAGAIN) {
+            sys_yield();
+            continue;
+        }
+        return 0;
+    }
+    return offset == len;
+}
+
+static int rawtcp_write_exact(int32_t fd, const uint8_t* buf, uint32_t len) {
+    uint32_t offset = 0;
+    for (uint32_t attempt = 0; attempt < 32 && offset < len; ++attempt) {
+        int64_t wrote = sys_write(fd, buf + offset, len - offset);
+        if (wrote > 0) {
+            offset += (uint32_t)wrote;
+            continue;
+        }
+        if (wrote == -EAGAIN) {
+            sys_yield();
+            continue;
+        }
+        return 0;
+    }
+    return offset == len;
+}
+
+static int rawtcp_buf_eq(const uint8_t* a, const uint8_t* b, uint32_t len) {
+    for (uint32_t i = 0; i < len; ++i) {
+        if (a[i] != b[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static void run_rawtcp_smoke(void) {
+    write_str("[init] rawtcp start\n");
+    int64_t server_fd = sys_socket(RSE_AF_INET, RSE_SOCK_STREAM, RSE_PROTO_TCP);
+    if (server_fd < 0) {
+        write_rc("[init] rawtcp socket rc=", server_fd);
+        return;
+    }
+    write_str("[init] rawtcp socket ok\n");
+    struct rse_sockaddr addr = { RSE_AF_INET, 5052, 0 };
+    int64_t bind_rc = sys_bind((int32_t)server_fd, &addr, sizeof(addr));
+    if (bind_rc < 0) {
+        write_rc("[init] rawtcp bind rc=", bind_rc);
+        sys_close((int32_t)server_fd);
+        return;
+    }
+    write_str("[init] rawtcp bind ok\n");
+    int64_t listen_rc = sys_listen((int32_t)server_fd, 1);
+    if (listen_rc < 0) {
+        write_rc("[init] rawtcp listen rc=", listen_rc);
+        sys_close((int32_t)server_fd);
+        return;
+    }
+    write_str("[init] rawtcp listen ok\n");
+    int64_t client_fd = sys_socket(RSE_AF_INET, RSE_SOCK_STREAM, RSE_PROTO_TCP);
+    if (client_fd < 0) {
+        write_rc("[init] rawtcp client socket rc=", client_fd);
+        sys_close((int32_t)server_fd);
+        return;
+    }
+    write_str("[init] rawtcp client socket ok\n");
+    int64_t connect_rc = sys_connect((int32_t)client_fd, &addr, sizeof(addr));
+    write_str("[init] rawtcp connect rc=");
+    if (connect_rc < 0) {
+        write_str("-");
+        write_u64((uint64_t)(-connect_rc));
+    } else {
+        write_u64((uint64_t)connect_rc);
+    }
+    write_str("\n");
+    if (connect_rc < 0 && connect_rc != -EAGAIN && connect_rc != -EISCONN) {
+        write_rc("[init] rawtcp connect rc=", connect_rc);
+        sys_close((int32_t)client_fd);
+        sys_close((int32_t)server_fd);
+        return;
+    }
+    write_str("[init] rawtcp connect waiting\n");
+
+    int64_t accept_fd = -1;
+    struct rse_sockaddr peer = {};
+    uint32_t peer_len = sizeof(peer);
+    for (uint32_t attempt = 0; attempt < 64; ++attempt) {
+        accept_fd = sys_accept((int32_t)server_fd, &peer, &peer_len);
+        if (accept_fd >= 0) {
+            break;
+        }
+        if (accept_fd != -EAGAIN) {
+            write_rc("[init] rawtcp accept rc=", accept_fd);
+            break;
+        }
+        int64_t retry = sys_connect((int32_t)client_fd, &addr, sizeof(addr));
+        if (retry < 0 && retry != -EAGAIN && retry != -EISCONN) {
+            write_rc("[init] rawtcp connect rc=", retry);
+            break;
+        }
+        sys_yield();
+    }
+    if (accept_fd < 0) {
+        write_rc("[init] rawtcp accept rc=", accept_fd);
+        sys_close((int32_t)client_fd);
+        sys_close((int32_t)server_fd);
+        return;
+    }
+    write_str("[init] rawtcp accept ok\n");
+
+    const uint8_t msg[] = "rawtcp";
+    uint8_t buf[16] = {};
+    if (!rawtcp_write_exact((int32_t)client_fd, msg, (uint32_t)(sizeof(msg) - 1))) {
+        write_str("[init] rawtcp write fail\n");
+        goto rawtcp_cleanup;
+    }
+    if (!rawtcp_read_exact((int32_t)accept_fd, buf, (uint32_t)(sizeof(msg) - 1))) {
+        write_str("[init] rawtcp read fail\n");
+        goto rawtcp_cleanup;
+    }
+    if (!rawtcp_buf_eq(msg, buf, (uint32_t)(sizeof(msg) - 1))) {
+        write_str("[init] rawtcp mismatch\n");
+        goto rawtcp_cleanup;
+    }
+    const uint8_t reply[] = "rawpong";
+    if (!rawtcp_write_exact((int32_t)accept_fd, reply, (uint32_t)(sizeof(reply) - 1))) {
+        write_str("[init] rawtcp reply write fail\n");
+        goto rawtcp_cleanup;
+    }
+    if (!rawtcp_read_exact((int32_t)client_fd, buf, (uint32_t)(sizeof(reply) - 1))) {
+        write_str("[init] rawtcp reply read fail\n");
+        goto rawtcp_cleanup;
+    }
+    if (!rawtcp_buf_eq(reply, buf, (uint32_t)(sizeof(reply) - 1))) {
+        write_str("[init] rawtcp reply mismatch\n");
+        goto rawtcp_cleanup;
+    }
+    write_str("[init] rawtcp ok\n");
+
+rawtcp_cleanup:
+    sys_close((int32_t)accept_fd);
+    sys_close((int32_t)client_fd);
+    sys_close((int32_t)server_fd);
+}
+#endif
+
 static void run_help(void) {
     write_str("commands: help, compute, memstress, fileio, ls, cat, stat, blk, net, loop, run, yield, exit\n");
 }
@@ -655,11 +867,36 @@ static void init_main(void) {
     if (torus < 0) {
         torus = 0;
     }
+    int64_t pid = sys_getpid();
+    if (pid < 0) {
+        pid = 0;
+    }
     write_str("[init] torus=");
     write_u64((uint64_t)torus);
     write_str(" pid=");
-    write_u64((uint64_t)sys_getpid());
+    write_u64((uint64_t)pid);
     write_str("\n");
+
+#if RSE_RAWTCP_ONLY
+#if RSE_NET_RAW
+    if (torus == 2) {
+        if (pid == 2) {
+            run_rawtcp_smoke();
+        } else {
+            write_str("[init] rawtcp-only skip pid=");
+            write_u64((uint64_t)pid);
+            write_str("\n");
+        }
+    } else {
+        write_str("[init] rawtcp-only skip torus=");
+        write_u64((uint64_t)torus);
+        write_str("\n");
+    }
+#else
+    write_str("[init] rawtcp-only requires RSE_NET_RAW\n");
+#endif
+    return;
+#endif
 
     uint64_t iters = (torus == 1) ? INIT_TORUS1_COMPUTE_ITERS : INIT_TORUS0_COMPUTE_ITERS;
     run_compute(iters);
@@ -694,6 +931,15 @@ static void init_main(void) {
 
     if (torus == 2) {
         run_net0(INIT_NET_BENCH_ITERS);
+#if RSE_NET_RAW
+        if (pid == 2) {
+            run_rawtcp_smoke();
+        } else {
+            write_str("[init] rawtcp skip pid=");
+            write_u64((uint64_t)pid);
+            write_str("\n");
+        }
+#endif
     }
     for (uint32_t i = 0; i < 2; ++i) {
         sys_yield();

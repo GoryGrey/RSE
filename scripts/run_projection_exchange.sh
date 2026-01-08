@@ -76,6 +76,7 @@ for torus_id in ${TORUS_IDS}; do
 
   build_dir="${BUILD_BASE}/torus${torus_id}"
   log_file="${LOG_DIR}/torus${torus_id}.log"
+  serial_log="${LOG_DIR}/torus${torus_id}.serial.log"
   (
     {
       echo "[RSE] run start torus=${torus_id} ts=$(date -u +%s)"
@@ -83,6 +84,7 @@ for torus_id in ${TORUS_IDS}; do
       echo "[RSE] run build_dir=${build_dir}"
       echo "[RSE] run shm_path=${SHM_PATH}"
     } >"${log_file}"
+    rm -f "${serial_log}"
     set +e
     timeout --kill-after=5s "${TIMEOUT_SECS}s" \
       make -B -f "${ROOT_DIR}/boot/Makefile.uefi" \
@@ -92,12 +94,16 @@ for torus_id in ${TORUS_IDS}; do
         RSE_SHM_EXCHANGE=1 \
         NETDEV_OPTS="${netdev_opts}" \
         QEMU_EXTRA_OPTS="-object memory-backend-file,id=ivshmem,share=on,mem-path=${SHM_PATH},size=${SHM_SIZE} -device ivshmem-plain,memdev=ivshmem" \
+        QEMU_SERIAL_LOG="${serial_log}" \
         run-iso >>"${log_file}" 2>&1
     rc=$?
     set -e
     echo "[RSE] run exit rc=${rc}" >>"${log_file}"
     if [[ "${rc}" -eq 124 ]]; then
       echo "[RSE] run timeout after ${TIMEOUT_SECS}s" >>"${log_file}"
+    fi
+    if [[ -f "${serial_log}" ]]; then
+      cat "${serial_log}" >>"${log_file}"
     fi
   ) &
   pids+=("$!")

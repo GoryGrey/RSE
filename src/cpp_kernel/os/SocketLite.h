@@ -12,6 +12,31 @@
 
 namespace os {
 
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+extern "C" void serial_write(const char *s);
+extern "C" void serial_write_u64(uint64_t value);
+inline void tcp_trace_str(const char *s) {
+    serial_write(s);
+}
+inline void tcp_trace_u64(const char *label, uint64_t value) {
+    serial_write(label);
+    serial_write_u64(value);
+}
+inline void tcp_trace_rc(const char *label, int64_t rc) {
+    serial_write(label);
+    if (rc < 0) {
+        serial_write("-");
+        serial_write_u64((uint64_t)(-rc));
+    } else {
+        serial_write_u64((uint64_t)rc);
+    }
+}
+#else
+inline void tcp_trace_str(const char *) {}
+inline void tcp_trace_u64(const char *, uint64_t) {}
+inline void tcp_trace_rc(const char *, int64_t) {}
+#endif
+
 struct TcpLiteHeader {
     uint32_t magic;
     uint16_t flags;
@@ -1451,6 +1476,9 @@ inline bool tcp_resolve_peer_mac(SocketLite* sock) {
         return false;
     }
     if (!tcp_fill_local_identity(sock)) {
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+        tcp_trace_str("[RSE] tcp local identity fail\n");
+#endif
         return false;
     }
     if (tcp_is_local_ip(sock->peer_ip) || sock->peer_ip == sock->local_ip) {
@@ -1465,18 +1493,50 @@ inline bool tcp_resolve_peer_mac(SocketLite* sock) {
     return false;
 }
 
+inline volatile int& tcp_tx_lock_ref() {
+    static volatile int lock = 0;
+    return lock;
+}
+
+inline void tcp_tx_lock_acquire() {
+    while (__sync_lock_test_and_set(&tcp_tx_lock_ref(), 1)) {
+    }
+}
+
+inline void tcp_tx_lock_release() {
+    __sync_lock_release(&tcp_tx_lock_ref());
+}
+
+inline uint8_t* tcp_tx_frame_buffer() {
+    static uint8_t frame[1600];
+    return frame;
+}
+
 inline int tcp_send_segment(SocketLite* sock, uint8_t flags, const uint8_t* payload,
                             uint32_t len, uint32_t seq, uint32_t ack) {
     if (!sock || sock->peer_ip == 0 || sock->port == 0 || sock->peer_port == 0) {
         return -EINVAL;
     }
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+    tcp_trace_str("[RSE] tcp seg");
+    tcp_trace_u64(" flags=", flags);
+    tcp_trace_u64(" len=", len);
+    tcp_trace_u64(" seq=", seq);
+    tcp_trace_u64(" ack=", ack);
+    tcp_trace_u64(" lip=", sock->local_ip);
+    tcp_trace_u64(" pip=", sock->peer_ip);
+    tcp_trace_u64(" lport=", sock->port);
+    tcp_trace_u64(" rport=", sock->peer_port);
+    tcp_trace_str("\n");
+#endif
     if (!socket_manager().net_online()) {
         return -EIO;
     }
     if (!tcp_resolve_peer_mac(sock)) {
         return -EAGAIN;
     }
-    uint8_t frame[1600];
+    tcp_tx_lock_acquire();
+    uint8_t* frame = tcp_tx_frame_buffer();
     uint32_t offset = 0;
     net_eth_hdr eth = {};
     net_ipv4_hdr ip = {};
@@ -1526,6 +1586,11 @@ inline int tcp_send_segment(SocketLite* sock, uint8_t flags, const uint8_t* payl
         offset = 60;
     }
     int rc = rse_net_write(frame, offset);
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+    tcp_trace_rc("[RSE] tcp net write rc=", rc);
+    tcp_trace_str("\n");
+#endif
+    tcp_tx_lock_release();
     return rc < 0 ? rc : (int)len;
 }
 
@@ -1546,6 +1611,29 @@ inline void tcp_handle_arp(const net_eth_hdr* eth, const net_arp_pkt* arp) {
         return;
     }
     (void)tcp_send_arp_reply(sender_ip, arp->sha);
+}
+
+inline void tcp_drain_loopback(uint32_t max_frames) {
+    if (max_frames == 0) {
+        return;
+    }
+    static uint8_t scratch[2048];
+    for (uint32_t i = 0; i < max_frames; ++i) {
+        int got = rse_net_read(scratch, sizeof(scratch));
+        if (got <= 0) {
+            return;
+        }
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+        tcp_trace_u64("[RSE] tcp drain got=", (uint64_t)got);
+        tcp_trace_str("\n");
+#endif
+        if (!net_frame_push(scratch, static_cast<size_t>(got))) {
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+            tcp_trace_str("[RSE] tcp drain drop\n");
+#endif
+            return;
+        }
+    }
 }
 
 inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
@@ -1601,11 +1689,26 @@ inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
     uint32_t ack = net_htonl(tcp->ack);
     uint8_t flags = tcp->flags;
     uint16_t window = net_htons(tcp->window);
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+    tcp_trace_str("[RSE] tcp rx");
+    tcp_trace_u64(" sip=", src_ip);
+    tcp_trace_u64(" dip=", dst_ip);
+    tcp_trace_u64(" sport=", src_port);
+    tcp_trace_u64(" dport=", dst_port);
+    tcp_trace_u64(" flags=", flags);
+    tcp_trace_u64(" seq=", seq);
+    tcp_trace_u64(" ack=", ack);
+    tcp_trace_u64(" len=", payload_len);
+    tcp_trace_str("\n");
+#endif
 
     SocketManager& mgr = socket_manager();
     SocketLite* sock = mgr.find_tcp_socket(dst_port, src_port, src_ip);
 
     if ((flags & kTcpFlagSyn) && !(flags & kTcpFlagAck)) {
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+        tcp_trace_str("[RSE] tcp rx syn\n");
+#endif
         SocketLite* listener = mgr.find_listener(dst_port, SocketLite::Backend::TCP);
         if (!listener) {
             SocketLite temp;
@@ -1653,11 +1756,15 @@ inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
         std::memcpy(server_sock->peer_mac, eth->src, sizeof(server_sock->peer_mac));
         (void)tcp_send_segment(server_sock, (uint8_t)(kTcpFlagSyn | kTcpFlagAck),
                                nullptr, 0, server_sock->syn_seq, server_sock->rx_seq);
+        tcp_drain_loopback(2);
         socket_append_pending(listener, server_sock);
         return;
     }
 
     if (!sock) {
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+        tcp_trace_str("[RSE] tcp rx no sock\n");
+#endif
         if (flags & kTcpFlagRst) {
             return;
         }
@@ -1696,6 +1803,9 @@ inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
     if ((flags & kTcpFlagSyn) && (flags & kTcpFlagAck)) {
         if (sock->tcp_state == TcpState::SYN_SENT &&
             ack == sock->syn_seq + 1) {
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+            tcp_trace_str("[RSE] tcp rx synack match\n");
+#endif
             sock->rx_seq = seq + 1;
             sock->state = SocketLite::State::CONNECTED;
             sock->tcp_state = TcpState::ESTABLISHED;
@@ -1707,6 +1817,7 @@ inline void tcp_handle_ipv4(const net_eth_hdr* eth, const net_ipv4_hdr* ip,
             std::memcpy(sock->peer_mac, eth->src, sizeof(sock->peer_mac));
             (void)tcp_send_segment(sock, kTcpFlagAck, nullptr, 0,
                                    sock->tx_seq, sock->rx_seq);
+            tcp_drain_loopback(2);
         }
         return;
     }
@@ -1887,13 +1998,20 @@ inline void tcp_poll_net() {
     if (!mgr.net_online()) {
         return;
     }
-    uint8_t scratch[2048];
+    static uint8_t scratch[2048];
     while (true) {
         int got = rse_net_read(scratch, sizeof(scratch));
         if (got <= 0) {
             break;
         }
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+        tcp_trace_u64("[RSE] tcp poll read=", (uint64_t)got);
+        tcp_trace_str("\n");
+#endif
         if (!net_frame_push(scratch, static_cast<size_t>(got))) {
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+            tcp_trace_str("[RSE] tcp poll drop\n");
+#endif
             break;
         }
     }

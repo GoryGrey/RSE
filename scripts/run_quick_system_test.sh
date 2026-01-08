@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BOOT_LOG_DIR="${BOOT_LOG_DIR:-${ROOT_DIR}/build/boot}"
 BOOT_LOG="${BOOT_LOG:-${BOOT_LOG_DIR}/quick_test.log}"
+BOOT_MAKE_LOG="${BOOT_MAKE_LOG:-${BOOT_LOG_DIR}/quick_test.make.log}"
 TIMEOUT_BOOT="${TIMEOUT_BOOT:-120}"
 RSE_BENCH_SMOKE="${RSE_BENCH_SMOKE:-1}"
 
@@ -34,9 +35,11 @@ mkdir -p "${BOOT_LOG_DIR}"
 
 say "Boot UEFI ISO (quick, headless) and capture log"
 export RSE_BENCH_SMOKE
+rm -f "${BOOT_LOG}"
 set +e
-timeout "${TIMEOUT_BOOT}s" make -B -f "${ROOT_DIR}/boot/Makefile.uefi" run-iso 2>&1 | tee "${BOOT_LOG}"
-boot_rc=${PIPESTATUS[0]}
+QEMU_SERIAL_LOG="${BOOT_LOG}" \
+  timeout "${TIMEOUT_BOOT}s" make -B -f "${ROOT_DIR}/boot/Makefile.uefi" run-iso >"${BOOT_MAKE_LOG}" 2>&1
+boot_rc=$?
 set -e
 if [[ "${boot_rc}" -ne 0 && "${boot_rc}" -ne 124 ]]; then
   fail "UEFI boot failed (exit ${boot_rc})"

@@ -14,6 +14,31 @@
 #include <iostream>
 #endif
 
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+extern "C" void serial_write(const char *s);
+extern "C" void serial_write_u64(uint64_t value);
+inline void tcp_debug_str(const char *s) {
+    serial_write(s);
+}
+inline void tcp_debug_u64(const char *label, uint64_t value) {
+    serial_write(label);
+    serial_write_u64(value);
+}
+inline void tcp_debug_rc(const char *label, int64_t rc) {
+    serial_write(label);
+    if (rc < 0) {
+        serial_write("-");
+        serial_write_u64((uint64_t)(-rc));
+    } else {
+        serial_write_u64((uint64_t)rc);
+    }
+}
+#else
+inline void tcp_debug_str(const char *) {}
+inline void tcp_debug_u64(const char *, uint64_t) {}
+inline void tcp_debug_rc(const char *, int64_t) {}
+#endif
+
 /**
  * SyscallDispatcher: Routes system calls to appropriate handlers.
  * 
@@ -828,8 +853,24 @@ inline int64_t sys_accept(uint64_t fd, uint64_t addr_ptr, uint64_t addrlen_ptr,
     }
     server_sock = socket_pop_pending_ready(listener);
     if (!server_sock) {
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+        if (listener->backend == SocketLite::Backend::TCP) {
+            tcp_debug_str("[RSE] tcp accept pending none\n");
+        }
+#endif
         return -EAGAIN;
     }
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+    if (listener->backend == SocketLite::Backend::TCP) {
+        tcp_debug_str("[RSE] tcp accept ready\n");
+        tcp_debug_u64(" lport=", listener->port);
+        tcp_debug_u64(" sport=", server_sock->port);
+        tcp_debug_u64(" peer_port=", server_sock->peer_port);
+        tcp_debug_u64(" state=", (uint64_t)server_sock->state);
+        tcp_debug_u64(" tcp_state=", (uint64_t)server_sock->tcp_state);
+        tcp_debug_str("\n");
+    }
+#endif
 
     if (addr_ptr != 0) {
         if (addrlen_ptr == 0) {
@@ -1061,11 +1102,27 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
     }
 
     if (sock->backend == SocketLite::Backend::TCP) {
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+        tcp_debug_str("[RSE] tcp connect start");
+        tcp_debug_u64(" pid=", current ? current->pid : 0);
+        tcp_debug_u64(" fd=", fd);
+        tcp_debug_u64(" state=", (uint64_t)sock->state);
+        tcp_debug_str("\n");
+#endif
         uint32_t peer_ip = addr.addr;
         if (addr.family == RSE_AF_LOOP || peer_ip == 0) {
             peer_ip = socket_manager().local_ip();
         }
         if (peer_ip == 0) {
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+            tcp_debug_str("[RSE] tcp connect no peer ip\n");
+#endif
+            return -EIO;
+        }
+        if (!tcp_fill_local_identity(sock)) {
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+            tcp_debug_str("[RSE] tcp connect no local identity\n");
+#endif
             return -EIO;
         }
         if (sock->port == 0) {
@@ -1087,12 +1144,34 @@ inline int64_t sys_connect(uint64_t fd, uint64_t addr_ptr, uint64_t addr_len,
         sock->connect_attempts = 1;
         sock->connect_retry = now + tcp_backoff(kTcpRetryTicks, sock->connect_attempts);
         sock->connect_deadline = now + kTcpConnectTimeout;
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+        tcp_debug_u64(" peer_ip=", peer_ip);
+        tcp_debug_u64(" local_ip=", sock->local_ip);
+        tcp_debug_u64(" lport=", sock->port);
+        tcp_debug_u64(" rport=", sock->peer_port);
+        tcp_debug_u64(" syn_seq=", sock->syn_seq);
+        tcp_debug_str("\n");
+#endif
         int rc = tcp_send_segment(sock, kTcpFlagSyn, nullptr, 0,
                                   sock->syn_seq, 0);
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+        tcp_debug_rc("[RSE] tcp send rc=", rc);
+        tcp_debug_str("\n");
+#endif
         if (rc < 0) {
             return rc;
         }
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+        tcp_debug_str("[RSE] tcp connect poll\n");
+#endif
         socket_poll_net();
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+        tcp_debug_str("[RSE] tcp connect poll done\n");
+        tcp_debug_u64("[RSE] tcp connect end state=", (uint64_t)sock->state);
+        tcp_debug_u64(" tcp_state=", (uint64_t)sock->tcp_state);
+        tcp_debug_u64(" reset=", (uint64_t)sock->reset_pending);
+        tcp_debug_str("\n");
+#endif
         return sock->state == SocketLite::State::CONNECTED ? 0 : -EAGAIN;
     }
 
@@ -1465,6 +1544,13 @@ inline int64_t sys_write(uint64_t fd, uint64_t buf_addr, uint64_t count,
     if (!current) {
         return -ESRCH;
     }
+#if defined(RSE_KERNEL) && defined(RSE_DEBUG_TCP)
+    if (current->pid == 2 && fd == 1 && count > 0) {
+        tcp_debug_str("[RSE] sys_write pid=2 fd=1 count=");
+        tcp_debug_u64("", count);
+        tcp_debug_str("\n");
+    }
+#endif
     if (fd > INT32_MAX) {
         return -EBADF;
     }

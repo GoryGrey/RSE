@@ -4,10 +4,14 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BOOT_LOG_DIR="${BOOT_LOG_DIR:-${ROOT_DIR}/build/boot}"
 BOOT_LOG="${BOOT_LOG:-${BOOT_LOG_DIR}/boot.log}"
+BOOT_LOG_RAW="${BOOT_LOG_RAW:-${BOOT_LOG_DIR}/boot_raw.log}"
+BOOT_MAKE_LOG="${BOOT_MAKE_LOG:-${BOOT_LOG_DIR}/boot.make.log}"
+BOOT_RAW_MAKE_LOG="${BOOT_RAW_MAKE_LOG:-${BOOT_LOG_DIR}/boot_raw.make.log}"
 NET_LOG_DIR="${NET_LOG_DIR:-${ROOT_DIR}/benchmarks/net_exchange}"
 TIMEOUT_BOOT="${TIMEOUT_BOOT:-240}"
 TIMEOUT_EXCHANGE="${TIMEOUT_EXCHANGE:-45}"
 RSE_BENCH_SMOKE="${RSE_BENCH_SMOKE:-1}"
+RSE_NET_RAW_TEST="${RSE_NET_RAW_TEST:-0}"
 
 say() {
   echo "==> $*"
@@ -95,9 +99,11 @@ make -f "${ROOT_DIR}/boot/Makefile.uefi" "${ROOT_DIR}/build/boot/rse_efi.iso"
 say "Boot UEFI ISO (headless) and capture log"
 mkdir -p "${BOOT_LOG_DIR}"
 export RSE_BENCH_SMOKE
+rm -f "${BOOT_LOG}"
 set +e
-timeout "${TIMEOUT_BOOT}s" make -f "${ROOT_DIR}/boot/Makefile.uefi" run-iso 2>&1 | tee "${BOOT_LOG}"
-boot_rc=${PIPESTATUS[0]}
+QEMU_SERIAL_LOG="${BOOT_LOG}" \
+  timeout "${TIMEOUT_BOOT}s" make -f "${ROOT_DIR}/boot/Makefile.uefi" run-iso >"${BOOT_MAKE_LOG}" 2>&1
+boot_rc=$?
 set -e
 if [[ "${boot_rc}" -ne 0 && "${boot_rc}" -ne 124 ]]; then
   fail "UEFI boot failed (exit ${boot_rc})"
@@ -105,6 +111,22 @@ fi
 check_log "${BOOT_LOG}" "[RSE] UEFI kernel start"
 check_log "${BOOT_LOG}" "[RSE] benchmarks end"
 check_log "${BOOT_LOG}" "[RSE] UEFI keyboard online"
+
+if [[ "${RSE_NET_RAW_TEST}" == "1" ]]; then
+  say "Boot UEFI ISO (raw TCP) and capture log"
+  rm -f "${BOOT_LOG_RAW}"
+  set +e
+  QEMU_SERIAL_LOG="${BOOT_LOG_RAW}" \
+    timeout "${TIMEOUT_BOOT}s" make -f "${ROOT_DIR}/boot/Makefile.uefi" RSE_NET_RAW=1 run-iso >"${BOOT_RAW_MAKE_LOG}" 2>&1
+  boot_raw_rc=$?
+  set -e
+  if [[ "${boot_raw_rc}" -ne 0 && "${boot_raw_rc}" -ne 124 ]]; then
+    fail "UEFI raw TCP boot failed (exit ${boot_raw_rc})"
+  fi
+  check_log "${BOOT_LOG_RAW}" "[RSE] UEFI kernel start"
+  check_log "${BOOT_LOG_RAW}" "[init] rawtcp ok"
+  check_log "${BOOT_LOG_RAW}" "[RSE] benchmarks end"
+fi
 
 say "Run projection exchange (SHM, 3 VMs)"
 exchange_timeout="${TIMEOUT_EXCHANGE}"
